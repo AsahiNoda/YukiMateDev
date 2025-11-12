@@ -1,24 +1,25 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
-export const unstable_settings = {
-  anchor: '(tabs)',
-};
+import { Slot, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const router = useRouter();
+  const [ready, setReady] = useState(false);
 
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
-  );
+  useEffect(() => {
+    // 初期セッション確認
+    supabase.auth.getSession().then((result: { data: { session: any; }; }) => {
+      if (!result.data?.session) router.replace('/(auth)/sign-in');
+      setReady(true);
+    });
+    // 以後の変化を監視
+    const { data: sub } = supabase.auth.onAuthStateChange((_e: any, session: any) => {
+      if (!session) router.replace('/(auth)/sign-in');
+      else router.replace('/(tabs)/home');
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  if (!ready) return null;
+  return <Slot />;
 }

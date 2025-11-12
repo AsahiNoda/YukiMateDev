@@ -18,6 +18,11 @@ const MAPPING = {
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
+  // Added mappings for tab icons
+  'safari': 'explore', // Discover
+  'plus.circle': 'add-circle', // Post
+  'message.fill': 'chat', // Chat
+  'person.fill': 'person', // Profile
 } as IconMapping;
 
 /**
