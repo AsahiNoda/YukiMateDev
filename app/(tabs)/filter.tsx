@@ -1,4 +1,4 @@
-import React from "react";
+import React, { JSX } from "react";
 import { DateSelectionSection } from "./DateSelectionSection";
 import { FilterCategoriesSection } from "./FilterCategoriesSection";
 import { FilterHeaderSection } from "./FilterHeaderSection";
@@ -7,7 +7,7 @@ import { MainHeaderSection } from "./MainHeaderSection";
 import { PriceRangeSection } from "./PriceRangeSection";
 import { SkillLevelSection } from "./SkillLevelSection";
 
-export const Filter = (): JSX.Element => {
+export default function FilterScreen(): JSX.Element {
   return (
     <div className="bg-white overflow-hidden w-full min-w-[392px] min-h-[928px] relative">
       <div className="absolute top-0 left-0 w-[393px] h-[928px] bg-[#0b1220]" />
@@ -33,4 +33,4 @@ export const Filter = (): JSX.Element => {
       <MainHeaderSection />
     </div>
   );
-};
+}
