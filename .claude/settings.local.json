@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /s /b /a)",
+      "Bash(ls:*)",
+      "Bash(find . -type f ( -name \"*.ts\" -o -name \"*.tsx\" ) -exec sed -i \"s|from ''@/components/|from ''@components/|g\" {} +)",
+      "Bash(find:*)",
+      "Bash(find . -type f ( -name \"*.ts\" -o -name \"*.tsx\" ) -exec sed -i \"s|from ''@/constants/|from ''@/constants/|g\" {} +)",
+      "Bash(tree:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run start)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
