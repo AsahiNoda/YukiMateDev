@@ -1,0 +1,115 @@
+/**
+ * Mock event chat data
+ */
+
+import type { EventChat } from '@types';
+
+export const mockEventChats: EventChat[] = [
+  {
+    id: 'chat-1',
+    eventId: 'event-1',
+    eventTitle: 'Powder Day @ Hakuba Happo-One',
+    eventResortName: 'Hakuba Happo-One',
+    eventStartAt: '2025-01-20T09:00:00Z',
+    messages: [
+      {
+        id: 'msg-1',
+        chatId: 'chat-1',
+        senderUserId: 'user-1',
+        senderName: 'Yuki Tanaka',
+        senderAvatar: null,
+        contentText: 'Looking forward to tomorrow! The forecast looks amazing ❄️',
+        contentImageUrl: null,
+        createdAt: '2025-01-19T18:00:00Z',
+      },
+      {
+        id: 'msg-2',
+        chatId: 'chat-1',
+        senderUserId: 'user-2',
+        senderName: 'Alex Chen',
+        senderAvatar: null,
+        contentText: 'Same here! Should we meet at the gondola at 9am?',
+        contentImageUrl: null,
+        createdAt: '2025-01-19T18:15:00Z',
+      },
+      {
+        id: 'msg-3',
+        chatId: 'chat-1',
+        senderUserId: 'user-1',
+        senderName: 'Yuki Tanaka',
+        senderAvatar: null,
+        contentText: 'Perfect! See you there 🏂',
+        contentImageUrl: null,
+        createdAt: '2025-01-19T18:20:00Z',
+      },
+    ],
+  },
+  {
+    id: 'chat-2',
+    eventId: 'event-2',
+    eventTitle: 'Beginner Group Lesson',
+    eventResortName: 'Niseko Grand Hirafu',
+    eventStartAt: '2025-01-21T10:00:00Z',
+    messages: [
+      {
+        id: 'msg-4',
+        chatId: 'chat-2',
+        senderUserId: 'user-3',
+        senderName: 'Sarah Johnson',
+        senderAvatar: null,
+        contentText: 'Hi everyone! First time snowboarding, super excited!',
+        contentImageUrl: null,
+        createdAt: '2025-01-20T12:00:00Z',
+      },
+      {
+        id: 'msg-5',
+        chatId: 'chat-2',
+        senderUserId: 'user-4',
+        senderName: 'Mike Davis',
+        senderAvatar: null,
+        contentText: 'Welcome! You\'re going to love it. The instructor is great.',
+        contentImageUrl: null,
+        createdAt: '2025-01-20T12:30:00Z',
+      },
+    ],
+  },
+  {
+    id: 'chat-3',
+    eventId: 'event-3',
+    eventTitle: 'Night Boarding Session',
+    eventResortName: 'Hakuba 47',
+    eventStartAt: '2025-01-22T18:00:00Z',
+    messages: [
+      {
+        id: 'msg-6',
+        chatId: 'chat-3',
+        senderUserId: 'user-5',
+        senderName: 'Hiroshi Sato',
+        senderAvatar: null,
+        contentText: 'Who\'s ready for some night runs? 🌙',
+        contentImageUrl: null,
+        createdAt: '2025-01-21T15:00:00Z',
+      },
+      {
+        id: 'msg-7',
+        chatId: 'chat-3',
+        senderUserId: 'user-6',
+        senderName: 'Emma Wilson',
+        senderAvatar: null,
+        contentText: 'Count me in! Night boarding is magical',
+        contentImageUrl: null,
+        createdAt: '2025-01-21T15:45:00Z',
+      },
+      {
+        id: 'msg-8',
+        chatId: 'chat-3',
+        senderUserId: 'user-7',
+        senderName: 'Kenji Yamamoto',
+        senderAvatar: null,
+        contentText: 'I\'ll bring my GoPro to capture some footage!',
+        contentImageUrl: null,
+        createdAt: '2025-01-21T16:00:00Z',
+      },
+    ],
+  },
+];
