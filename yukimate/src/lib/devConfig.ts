@@ -9,7 +9,7 @@
 export const DEV_CONFIG = {
     // true: モックデータを使用（高速開発）
     // false: Supabaseを使用（本番に近い環境）
-    USE_MOCK_DATA: true,
+    USE_MOCK_DATA: false,
   
     // デバッグログを表示するか
     ENABLE_DEBUG_LOGS: true,

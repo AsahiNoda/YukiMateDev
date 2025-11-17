@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -9,15 +9,32 @@ import {
   View,
 } from 'react-native';
 
-import { IconSymbol } from '@components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
+import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { useHomeData } from '@hooks/useHomeData';
+import { testSupabaseSetup } from '@lib/testSupabaseSetup';
 
 export default function HomeScreen() {
   const state = useHomeData();
   const colorScheme = useColorScheme();
   const tint = Colors[colorScheme ?? 'light'].tint;
+
+  // Supabase connection test: runs once when HomeScreen mounts
+  useEffect(() => {
+    const testConnection = async () => {
+      console.log('🔍 Testing Supabase connection...');
+      const result = await testSupabaseSetup();
+      if (result.success) {
+        console.log('✅ Supabase connection successful');
+      } else {
+        console.error('❌ Supabase connection failed:', result.error);
+      }
+      console.log(result);
+    };
+
+    testConnection();
+  }, []);
 
   if (state.status === 'loading') {
     return (
@@ -50,12 +67,13 @@ export default function HomeScreen() {
         <TouchableOpacity
           style={styles.profileButton}
           activeOpacity={0.8}
-          onPress={() => router.push('/(tabs)/profile')}>
+          onPress={() => router.push('/(tabs)/profile')}
+        >
           <IconSymbol name="person.fill" size={20} color="#E5E7EB" />
         </TouchableOpacity>
       </View>
 
-      {/* Weather card – close to Figma layout */}
+      {/* Weather card */}
       {weather && (
         <View style={styles.weatherCard}>
           <Text style={styles.weatherResort}>{weather.resortName}</Text>
@@ -63,7 +81,7 @@ export default function HomeScreen() {
           <View style={styles.weatherTopRow}>
             <Text style={styles.weatherTemp}>{weather.temperatureC}°C</Text>
             <View style={styles.weatherSnowRow}>
-              <Text style={styles.weatherSnowIcon}>❄</Text>
+              <Text style={styles.weatherSnowIcon}>❄️</Text>
               <Text style={styles.weatherBody}>{weather.snowDepthCm}cm</Text>
             </View>
             <Text style={styles.weatherBody}>New Snow: {weather.newSnowCm}cm</Text>
@@ -110,10 +128,10 @@ export default function HomeScreen() {
           onPress={() => router.push('/(tabs)/snowfeed')}
         />
         <QuickAction
-          icon="plus.circle"
+          icon="plus.circle.fill"
           label="Post"
           tint={tint}
-          onPress={() => router.push('/(tabs)/create')}
+          onPress={() => router.push('/(tabs)/snowfeed')}
         />
       </View>
 
@@ -126,11 +144,14 @@ export default function HomeScreen() {
               key={evt.id}
               style={styles.card}
               activeOpacity={0.8}
-              onPress={() => router.push('/event-detail')}>
+              onPress={() => router.push('/event-detail')}
+            >
               <Text style={styles.cardTitle}>{evt.title}</Text>
               <Text style={styles.cardBody}>
                 {evt.resortName} · {evt.spotsTaken}/{evt.capacityTotal} spots ·{' '}
-                {evt.pricePerPersonJpy > 0 ? `¥${evt.pricePerPersonJpy.toLocaleString()}` : 'Free'}
+                {evt.pricePerPersonJpy > 0
+                  ? `¥${evt.pricePerPersonJpy.toLocaleString()}`
+                  : 'Free'}
               </Text>
             </TouchableOpacity>
           ))}
@@ -146,7 +167,8 @@ export default function HomeScreen() {
               key={post.id}
               style={styles.card}
               activeOpacity={0.8}
-              onPress={() => router.push('/(tabs)/snowfeed')}>
+              onPress={() => router.push('/(tabs)/snowfeed')}
+            >
               <Text style={styles.cardTitle}>
                 {post.resortName} · {post.snowTag}
               </Text>
@@ -362,7 +384,8 @@ function WeatherChip({ label, active }: WeatherChipProps) {
         paddingVertical: 8,
         borderRadius: 18,
         backgroundColor: active ? '#ffffff40' : '#ffffff20',
-      }}>
+      }}
+    >
       <Text style={{ fontSize: 10, color: '#FFFFFF' }}>{label}</Text>
     </View>
   );

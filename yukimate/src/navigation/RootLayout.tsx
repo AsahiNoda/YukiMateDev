@@ -1,100 +1,85 @@
-import { Slot, useRouter, useSegments } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { supabase } from '@lib/supabase';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import 'react-native-url-polyfill/auto';
 import 'react-native-get-random-values';
+import 'react-native-url-polyfill/auto';
+
+import { supabase } from '@lib/supabase';
+import { Slot, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 
 export default function RootLayout() {
   const router = useRouter();
-  const segments = useSegments();
-  const [ready, setReady] = useState(false);
-  const [initializing, setInitializing] = useState(true);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     let mounted = true;
+    let authSubscription: any = null;
 
-    const checkAuthAndProfile = async () => {
+    console.log('🚀 RootLayout: Mounted');
+
+    const initialize = async () => {
       try {
-        // 初期セッション確認
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
+        console.log('🔄 Checking session...');
 
-        if (!session) {
-          if (mounted) {
+        // 初期セッションチェック（タイムアウト付き）
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Timeout')), 5000)
+        );
+
+        const { data: { session } } = await Promise.race([
+          sessionPromise,
+          timeoutPromise,
+        ]) as any;
+
+        console.log('✅ Session check done:', session ? 'Logged in' : 'Guest');
+
+        if (mounted) {
+          // 初期化完了 - ローディング解除
+          setIsReady(true);
+        }
+
+        // 認証状態の変化を監視
+        const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+          console.log(`🔔 Auth event: ${event}`);
+
+          if (!mounted) return;
+
+          // SIGNED_INイベントのみホーム画面へリダイレクト
+          if (event === 'SIGNED_IN' && session) {
+            console.log('➡️  Redirecting to home...');
+            router.replace('/(tabs)/home');
+          }
+          // SIGNED_OUTイベントのみサインイン画面へリダイレクト
+          else if (event === 'SIGNED_OUT') {
+            console.log('➡️  Redirecting to sign-in...');
             router.replace('/(auth)/sign-in');
-            setReady(true);
-            setInitializing(false);
           }
-          return;
-        }
+        });
 
-        // プロフィール確認
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('user_id, display_name, home_resort_id')
-          .eq('user_id', session?.user?.id || '')
-          .single();
+        authSubscription = listener.subscription;
 
-        if (mounted) {
-          // プロフィールが存在しない、または必須項目が未設定の場合
-          if (error || !profile || !profile.display_name || !profile.home_resort_id) {
-            // 認証済みのルートにいる場合はプロフィール設定を促す
-            if (segments[0] !== '(auth)') {
-              // TODO: プロフィール設定画面にリダイレクト（現在はホームに）
-              // router.replace('/(auth)/setup-profile');
-            }
-          }
-
-          setReady(true);
-          setInitializing(false);
-        }
       } catch (error) {
-        console.error('Auth check error:', error);
+        console.error('❌ Init error:', error);
         if (mounted) {
-          setReady(true);
-          setInitializing(false);
+          setIsReady(true);
         }
       }
     };
 
-    checkAuthAndProfile();
-
-    // 認証状態の変化を監視
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-
-      if (!session) {
-        router.replace('/(auth)/sign-in');
-      } else {
-        // プロフィール確認
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('user_id, display_name, home_resort_id')
-          .eq('user_id', session?.user?.id || '')
-          .single();
-
-        if (!profile || !profile.display_name || !profile.home_resort_id) {
-          // TODO: プロフィール設定画面にリダイレクト
-          // router.replace('/(auth)/setup-profile');
-        } else {
-          router.replace('/(tabs)/home');
-        }
-      }
-    });
+    initialize();
 
     return () => {
+      console.log('🧹 RootLayout: Unmounted');
       mounted = false;
-      subscription.unsubscribe();
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
     };
-  }, [router, segments]);
+  }, []);
 
-  if (initializing || !ready) {
+  if (!isReady) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.loadingContainer}>
@@ -110,6 +95,7 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,

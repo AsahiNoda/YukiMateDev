@@ -7,8 +7,8 @@
  * 3. コンソールログで詳細な診断情報を確認
  */
 
-import { supabase } from './supabase';
 import Constants from 'expo-constants';
+import { supabase } from './supabase';
 
 export async function testSupabaseSetup() {
   console.log('\n🔍 ========== Supabase Setup Test ==========');
