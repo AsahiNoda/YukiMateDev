@@ -3,7 +3,7 @@ import 'react-native-url-polyfill/auto';
 
 import { supabase } from '@lib/supabase';
 import { Slot, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -11,12 +11,20 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 export default function RootLayout() {
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
+  const initRef = useRef(false);
 
   useEffect(() => {
+    // すでに初期化済みの場合はスキップ
+    if (initRef.current) {
+      console.log('⚠️  Already initialized, skipping...');
+      return;
+    }
+
+    initRef.current = true;
     let mounted = true;
     let authSubscription: any = null;
 
-    console.log('🚀 RootLayout: Mounted');
+    console.log('🚀 RootLayout: Initializing...');
 
     const initialize = async () => {
       try {
@@ -42,9 +50,24 @@ export default function RootLayout() {
 
         // 認証状態の変化を監視
         const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
-          console.log(`🔔 Auth event: ${event}`);
+          console.log(`🔔 Auth event: ${event}, Has session: ${!!session}`);
 
-          if (!mounted) return;
+          if (!mounted) {
+            console.log('⚠️  Auth event ignored: component unmounted');
+            return;
+          }
+
+          // INITIAL_SESSIONは無視（既にセッションチェック済み）
+          if (event === 'INITIAL_SESSION') {
+            console.log('ℹ️  Initial session event - ignoring');
+            return;
+          }
+
+          // TOKEN_REFRESHEDも無視
+          if (event === 'TOKEN_REFRESHED') {
+            console.log('ℹ️  Token refreshed - ignoring');
+            return;
+          }
 
           // SIGNED_INイベントのみホーム画面へリダイレクト
           if (event === 'SIGNED_IN' && session) {
@@ -71,15 +94,17 @@ export default function RootLayout() {
     initialize();
 
     return () => {
-      console.log('🧹 RootLayout: Unmounted');
+      console.log('🧹 RootLayout: Cleanup');
       mounted = false;
       if (authSubscription) {
+        console.log('🔕 Unsubscribing from auth listener');
         authSubscription.unsubscribe();
       }
     };
   }, []);
 
   if (!isReady) {
+    console.log('⏳ RootLayout: Loading...');
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View style={styles.loadingContainer}>
@@ -89,6 +114,7 @@ export default function RootLayout() {
     );
   }
 
+  console.log('✅ RootLayout: Ready, rendering Slot');
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Slot />

@@ -38,18 +38,37 @@ export function useProfile(userId?: string): ProfileState {
             level,
             styles,
             bio,
-            home_resort_id,
-            resorts(name)
+            home_resort_id
           `
           )
           .eq('user_id', targetUserId)
           .single();
 
         if (profileError) {
+          // PGRST116 = プロフィールが見つからない場合のエラーコード
+          if (profileError.code === 'PGRST116') {
+            throw new Error('プロフィールが見つかりません。プロフィールを作成してください。');
+          }
           throw new Error(`プロフィール取得エラー: ${profileError.message}`);
         }
 
-        const resort = Array.isArray(profile.resorts) ? profile.resorts[0] : profile.resorts;
+        if (!profile) {
+          throw new Error('プロフィールが見つかりません。プロフィールを作成してください。');
+        }
+
+        // ホームリゾート名を取得（プロフィールにhome_resort_idがある場合）
+        let homeResortName: string | null = null;
+        if (profile.home_resort_id) {
+          const { data: resortData, error: resortError } = await supabase
+            .from('resorts')
+            .select('name')
+            .eq('id', profile.home_resort_id)
+            .single();
+
+          if (!resortError && resortData) {
+            homeResortName = resortData.name;
+          }
+        }
 
         // 2. ギア情報を取得
         const { data: gear, error: gearError } = await supabase
@@ -88,8 +107,7 @@ export function useProfile(userId?: string): ProfileState {
               id,
               title,
               start_at,
-              resort_id,
-              resorts(name)
+              resort_id
             )
           `
           )
@@ -106,34 +124,57 @@ export function useProfile(userId?: string): ProfileState {
             id,
             text,
             created_at,
-            resort_id,
-            resorts(name)
+            resort_id
           `
           )
           .eq('user_id', targetUserId)
           .order('created_at', { ascending: false })
           .limit(5);
 
-        // 6. データを変換
+        // 6. イベントと投稿のリゾート名を取得
+        const eventResortIds = recentEventsData
+          ?.map((ep: any) => ep.posts_events?.resort_id)
+          .filter(Boolean) || [];
+
+        const postResortIds = recentPostsData
+          ?.map((post: any) => post.resort_id)
+          .filter(Boolean) || [];
+
+        const allResortIds = [...new Set([...eventResortIds, ...postResortIds])];
+
+        let resortMap: Record<string, string> = {};
+        if (allResortIds.length > 0) {
+          const { data: resortsData } = await supabase
+            .from('resorts')
+            .select('id, name')
+            .in('id', allResortIds);
+
+          if (resortsData) {
+            resortMap = resortsData.reduce((acc, r) => {
+              acc[r.id] = r.name;
+              return acc;
+            }, {} as Record<string, string>);
+          }
+        }
+
+        // 7. データを変換
         const recentEvents =
           recentEventsData?.map((ep: any) => {
             const event = ep.posts_events;
-            const eventResort = Array.isArray(event.resorts) ? event.resorts[0] : event.resorts;
             return {
               id: event.id,
               title: event.title || 'Untitled Event',
-              resortName: eventResort?.name || null,
+              resortName: event.resort_id ? resortMap[event.resort_id] || null : null,
               startAt: event.start_at,
             };
           }) || [];
 
         const recentPosts =
           recentPostsData?.map((post: any) => {
-            const postResort = Array.isArray(post.resorts) ? post.resorts[0] : post.resorts;
             return {
               id: post.id,
               text: post.text,
-              resortName: postResort?.name || null,
+              resortName: post.resort_id ? resortMap[post.resort_id] || null : null,
               createdAt: post.created_at,
             };
           }) || [];
@@ -152,7 +193,7 @@ export function useProfile(userId?: string): ProfileState {
             styles: profile.styles || [],
             bio: profile.bio,
             homeResortId: profile.home_resort_id,
-            homeResortName: resort?.name || null,
+            homeResortName: homeResortName,
             gear: gear
               ? {
                   board: gear.board,

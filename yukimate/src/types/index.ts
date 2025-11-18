@@ -33,3 +33,15 @@ export type {
   SnowfeedWeather,
   SnowfeedData,
 } from './social';
+
+export type RootStackParamList = {
+  Auth: undefined;
+  ProfileSetup: undefined;
+  Main: undefined;
+  EditProfile: undefined;
+  EventDetail: { eventId: string };
+  EventChat: { eventId: string; roomId: string };
+  CreateEvent: undefined;
+  UserProfile: { userId: string };
+  ResortDetail: { resortId: number };
+};

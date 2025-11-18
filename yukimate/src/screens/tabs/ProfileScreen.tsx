@@ -1,19 +1,21 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  TextInput,
-  Alert,
-} from 'react-native';
-import { IconSymbol } from '@components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
+import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
-import { useProfile, updateProfile, updateGear } from '@hooks/useProfile';
+import { updateProfile, useProfile } from '@hooks/useProfile';
+import { router } from 'expo-router';
 import type { ProfileData } from '@types';
+import React, { useState } from 'react';
+import { supabase } from '@lib/supabase';
+import {
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
@@ -21,6 +23,16 @@ export default function ProfileScreen() {
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState<Partial<ProfileData>>({});
   const [saving, setSaving] = useState(false);
+
+  const handleSignOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.replace('/(auth)/sign-in');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      Alert.alert('エラー', 'ログアウトに失敗しました');
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -58,11 +70,31 @@ export default function ProfileScreen() {
   }
 
   if (profileState.status === 'error') {
+    const isProfileNotFound = profileState.error.includes('プロフィールが見つかりません');
+
     return (
       <View style={styles.container}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>エラーが発生しました</Text>
+          <Text style={styles.errorIcon}>❄️</Text>
+          <Text style={styles.errorText}>
+            {isProfileNotFound ? 'プロフィールが未作成です' : 'エラーが発生しました'}
+          </Text>
           <Text style={styles.errorSubText}>{profileState.error}</Text>
+
+          {isProfileNotFound && (
+            <Text style={styles.errorHint}>
+              Supabase Dashboardでプロフィールを作成してください
+            </Text>
+          )}
+
+          <View style={styles.errorActions}>
+            <TouchableOpacity
+              style={styles.logoutButton}
+              onPress={handleSignOut}
+            >
+              <Text style={styles.logoutButtonText}>ログアウト</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -278,6 +310,25 @@ export default function ProfileScreen() {
           ))}
         </View>
       )}
+
+      {/* Logout Button */}
+      <View style={styles.section}>
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={() => {
+            Alert.alert(
+              'ログアウト',
+              'ログアウトしますか？',
+              [
+                { text: 'キャンセル', style: 'cancel' },
+                { text: 'ログアウト', onPress: handleSignOut, style: 'destructive' },
+              ]
+            );
+          }}
+        >
+          <Text style={styles.logoutButtonText}>ログアウト</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -312,6 +363,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#E5E7EB',
     textAlign: 'center',
+    marginBottom: 8,
+  },
+  errorIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  errorHint: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginBottom: 24,
+    paddingHorizontal: 32,
+  },
+  errorActions: {
+    width: '100%',
+    paddingHorizontal: 32,
+    gap: 12,
   },
   header: {
     flexDirection: 'row',
@@ -525,5 +593,16 @@ const styles = StyleSheet.create({
   activityTime: {
     fontSize: 12,
     color: '#9CA3AF',
+  },
+  logoutButton: {
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+  },
+  logoutButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
