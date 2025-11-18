@@ -43,6 +43,28 @@ export default function RootLayout() {
 
         console.log('✅ Session check done:', session ? 'Logged in' : 'Guest');
 
+        // セッションがある場合、プロフィールの存在を確認
+        if (session?.user) {
+          console.log('🔍 Checking profile existence...');
+          const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('user_id')
+            .eq('user_id', session.user.id)
+            .single();
+
+          if (error && error.code === 'PGRST116') {
+            // プロフィールが存在しない場合、プロフィール作成画面へ
+            console.log('⚠️  Profile not found, redirecting to setup...');
+            if (mounted) {
+              setIsReady(true);
+              router.replace('/profile-setup');
+            }
+            return;
+          } else if (profile) {
+            console.log('✅ Profile exists');
+          }
+        }
+
         if (mounted) {
           // 初期化完了 - ローディング解除
           setIsReady(true);
