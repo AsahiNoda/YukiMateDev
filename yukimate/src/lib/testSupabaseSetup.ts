@@ -26,9 +26,10 @@ export async function testSupabaseSetup() {
     return { success: false, error: 'Missing credentials' };
   }
 
-  // Step 2: リゾートテーブルへの接続テスト
+  // Step 2: テーブルへの接続テスト　好きなテーブルに変えてテスト
   console.log('\n📊 Step 2: Database Connection Test');
   try {
+    // リゾートテーブルのテスト
     const { data: resorts, error: resortsError } = await supabase
       .from('resorts')
       .select('id, name')
@@ -40,15 +41,6 @@ export async function testSupabaseSetup() {
       return { success: false, error: resortsError.message };
     }
 
-    console.log('✅ Successfully connected to database');
-    console.log(`   Found ${resorts?.length || 0} resorts:`);
-    resorts?.forEach(r => console.log(`     - ${r.name}`));
-
-    if (!resorts || resorts.length === 0) {
-      console.warn('⚠️  No data found in resorts table');
-      console.warn('   Run the sample data SQL script to populate tables');
-    }
-
     // プロフィールテーブルのテスト
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
@@ -57,17 +49,29 @@ export async function testSupabaseSetup() {
 
     if (profilesError) {
       console.warn('⚠️  Profiles query failed:', profilesError.message);
-    } else {
-      console.log(`   Found ${profiles?.length || 0} profiles:`);
-      profiles?.forEach(p => console.log(`     - ${p.display_name || 'No name'}`));
-
-      if (!profiles || profiles.length === 0) {
-        console.warn('⚠️  No data found in profiles table');
-      }
+      console.error('   Details:', profilesError);
+      return { success: false, error: profilesError.message };
     }
 
+    // 接続成功
+    console.log('✅ Successfully connected to database');
+
+    // リゾートテーブルテスト結果
+    console.log(`   Found ${resorts?.length || 0} resorts:`);
+    resorts?.forEach(r => console.log(`     - ${r.name}`));
+    if (!resorts || resorts.length === 0) {
+      console.warn('⚠️  No data found in resorts table');
+    }
+
+    // プロフィールテーブルテスト結果
+    console.log(`   Found ${profiles?.length || 0} profiles:`);
+    profiles?.forEach(p => console.log(`     - ${p.display_name || 'No name'}`));
+    if (!profiles || profiles.length === 0) {
+      console.warn('⚠️  No data found in profiles table');
+    }
+    
   } catch (err) {
-    console.error('❌ Unexpected error:', err);
+    console.error('❌ Database connection error:', err);
     return { success: false, error: String(err) };
   }
 
@@ -108,6 +112,7 @@ export async function testSupabaseSetup() {
         console.warn('   Create profile data in Supabase Dashboard');
       } else {
         console.log('✅ Profile found');
+        // 出したいテーブルログは自由に変更
         console.log(`   Display Name: ${profile.display_name || 'Not set'}`);
         console.log(`   Home Resort: ${profile.home_resort_id || 'Not set'}`);
       }
