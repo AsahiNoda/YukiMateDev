@@ -267,7 +267,7 @@ export default function CreateEventScreen() {
         .single();
 
       if (insertError) throw insertError;
-      if (!newEvent) throw new Error('イベントの作成に失敗しました');
+      if (!newEvent) throw new Error('投稿に失敗しました');
 
       // Upload images if any
       let photoUrls: string[] | null = null;
@@ -287,12 +287,12 @@ export default function CreateEventScreen() {
           // Continue even if image upload fails
           Alert.alert(
             '警告',
-            '画像のアップロードに失敗しましたが、イベントは作成されました'
+            '画像のアップロードに失敗しましたが、投稿は作成されました'
           );
         }
       }
 
-      Alert.alert('完了', 'イベントを作成しました！', [
+      Alert.alert('完了', '投稿を作成しました！', [
         {
           text: 'OK',
           onPress: () => {
@@ -303,7 +303,7 @@ export default function CreateEventScreen() {
       ]);
     } catch (error) {
       console.error('Error creating event:', error);
-      Alert.alert('エラー', 'イベントの作成に失敗しました');
+      Alert.alert('エラー', '投稿に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -400,7 +400,7 @@ export default function CreateEventScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>イベント作成</Text>
+        <Text style={styles.title}>投稿を作成</Text>
 
         {/* Title */}
         <View style={styles.section}>
@@ -419,7 +419,7 @@ export default function CreateEventScreen() {
           <Text style={styles.label}>説明</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="イベントの詳細を入力してください"
+            placeholder="投稿の詳細を入力してください"
             placeholderTextColor="#9CA3AF"
             value={description}
             onChangeText={setDescription}
@@ -659,7 +659,7 @@ export default function CreateEventScreen() {
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.createButtonText}>イベントを作成</Text>
+            <Text style={styles.createButtonText}>投稿する</Text>
           )}
         </TouchableOpacity>
 
