@@ -29,47 +29,45 @@ export async function testSupabaseSetup() {
   // Step 2: テーブルへの接続テスト　好きなテーブルに変えてテスト
   console.log('\n📊 Step 2: Database Connection Test');
   try {
-    // リゾートテーブルのテスト
+    // posts_eventsテーブルのテスト
+    const { data: posts_events, error: posts_eventsError } = await supabase
+      .from('posts_events')
+      .select('id, title')
+      .limit(10);
+
+    if (posts_eventsError) {
+      console.error('❌ posts_events query failed:', posts_eventsError.message);
+      console.error('   Details:', posts_eventsError);
+      return { success: false, error: posts_eventsError.message };
+    }
+
+    // リゾートのテスト
     const { data: resorts, error: resortsError } = await supabase
       .from('resorts')
       .select('id, name')
-      .limit(10);
 
     if (resortsError) {
-      console.error('❌ Resorts query failed:', resortsError.message);
+      console.warn('⚠️  resorts query failed:', resortsError.message);
       console.error('   Details:', resortsError);
       return { success: false, error: resortsError.message };
-    }
-
-    // プロフィールテーブルのテスト
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('user_id, display_name')
-      .limit(10);
-
-    if (profilesError) {
-      console.warn('⚠️  Profiles query failed:', profilesError.message);
-      console.error('   Details:', profilesError);
-      return { success: false, error: profilesError.message };
     }
 
     // 接続成功
     console.log('✅ Successfully connected to database');
 
+    // posts_eventsテーブルテスト結果
+    console.log(`   Found ${posts_events?.length || 0} posts_events:`);
+    posts_events?.forEach(r => console.log(`     - ${r.title}`));
+    if (!posts_events || posts_events.length === 0) {
+      console.warn('⚠️  No data found in posts_events table');
+    }
+
     // リゾートテーブルテスト結果
     console.log(`   Found ${resorts?.length || 0} resorts:`);
-    resorts?.forEach(r => console.log(`     - ${r.name}`));
     if (!resorts || resorts.length === 0) {
       console.warn('⚠️  No data found in resorts table');
     }
 
-    // プロフィールテーブルテスト結果
-    console.log(`   Found ${profiles?.length || 0} profiles:`);
-    profiles?.forEach(p => console.log(`     - ${p.display_name || 'No name'}`));
-    if (!profiles || profiles.length === 0) {
-      console.warn('⚠️  No data found in profiles table');
-    }
-    
   } catch (err) {
     console.error('❌ Database connection error:', err);
     return { success: false, error: String(err) };
@@ -132,7 +130,7 @@ export async function testSupabaseSetup() {
  */
 export async function quickSupabaseCheck(): Promise<boolean> {
   try {
-    const { error } = await supabase.from('resorts').select('id').limit(1);
+    const { error } = await supabase.from('posts_events').select('id').limit(1);
     return !error;
   } catch {
     return false;
@@ -143,7 +141,7 @@ export async function quickSupabaseCheck(): Promise<boolean> {
  * Check if tables have data
  */
 export async function checkTablesHaveData() {
-  const tables = ['resorts', 'profiles', 'posts_events', 'feed_posts'];
+  const tables = ['posts_events', 'resorts', 'posts_events', 'feed_posts'];
   const results: Record<string, number> = {};
 
   for (const table of tables) {

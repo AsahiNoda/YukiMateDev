@@ -11,6 +11,7 @@ export type SnowQuality = 'powder' | 'packed' | 'slushy' | 'icy';
 export type SkillLevel = 'beginner' | 'intermediate' | 'advanced';
 export type PostType = 'snow' | 'spot' | 'access';
 export type EventStatus = 'open' | 'closed' | 'cancelled' | 'full';
+export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
 
 // ==========================================
 // Database Tables
@@ -20,6 +21,7 @@ export interface Resort {
   id: string; // uuid
   name: string;
   area: string;
+  region: string | null;
   latitude: number | null;
   longitude: number | null;
   official_site_url: string | null;
@@ -76,15 +78,18 @@ export interface Event {
   id: string; // uuid
   title: string;
   description: string | null;
-  category: string;
+  type: string; // event type (from schema)
   resort_id: string | null; // uuid
-  host_id: string; // uuid
+  host_user_id: string; // uuid
   start_at: string; // timestamptz
   end_at: string | null; // timestamptz
   capacity_total: number | null;
-  level: SkillLevel | null;
+  level_required: SkillLevel | null; // from schema
   status: EventStatus;
-  image_url: string | null;
+  photos: string[] | null;
+  tags: string[] | null;
+  price_per_person_jpy: number | null;
+  meeting_place: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -107,6 +112,24 @@ export interface Gear {
   boots: string | null;
   others: Record<string, any> | null; // jsonb
   updated_at: string | null;
+}
+
+export interface EventParticipant {
+  id: string; // uuid
+  event_id: string; // uuid
+  user_id: string; // uuid
+  joined_at: string; // timestamptz
+  left_at: string | null; // timestamptz
+}
+
+export interface EventApplication {
+  id: string; // uuid
+  event_id: string; // uuid
+  applicant_user_id: string; // uuid
+  status: ApplicationStatus;
+  message: string | null;
+  created_at: string; // timestamptz
+  updated_at: string | null; // timestamptz
 }
 
 // ==========================================
@@ -221,6 +244,23 @@ export interface Database {
         };
         Update: Partial<Omit<Gear, 'user_id'>>;
       };
+      event_participants: {
+        Row: EventParticipant;
+        Insert: Omit<EventParticipant, 'id' | 'joined_at'> & {
+          id?: string;
+          joined_at?: string;
+        };
+        Update: Partial<Omit<EventParticipant, 'id' | 'event_id' | 'user_id'>>;
+      };
+      event_applications: {
+        Row: EventApplication;
+        Insert: Omit<EventApplication, 'id' | 'created_at' | 'updated_at'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<EventApplication, 'id' | 'event_id' | 'applicant_user_id'>>;
+      };
     };
     Views: {
       // ビューがある場合はここに追加
@@ -234,6 +274,7 @@ export interface Database {
       skill_level: SkillLevel;
       post_type: PostType;
       event_status: EventStatus;
+      application_status: ApplicationStatus;
     };
   };
 }

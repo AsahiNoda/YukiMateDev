@@ -6,6 +6,13 @@
 // Common types
 export type { SkillLevel, LoadingState, ErrorState, SuccessState, ApiState } from './common';
 
+// Database types
+export type {
+  ApplicationStatus,
+  EventParticipant,
+  EventApplication,
+} from '@/lib/database.types';
+
 // Event types
 export type { HomeEvent, DiscoverEvent, EventFilterOptions } from './events';
 

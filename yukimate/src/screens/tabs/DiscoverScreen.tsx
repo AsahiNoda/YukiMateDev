@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
@@ -28,10 +29,29 @@ const CARD_WIDTH = SCREEN_WIDTH - 40;
 const CARD_HEIGHT = SCREEN_HEIGHT * 0.7;
 const SWIPE_THRESHOLD = 120;
 
+const CATEGORIES = [
+  { value: 'all', label: 'すべて' },
+  { value: 'event', label: 'イベント' },
+  { value: 'rideshare', label: '相乗り' },
+  { value: 'filming', label: '追い撮り' },
+  { value: 'lesson', label: 'レッスン' },
+  { value: 'group', label: '仲間募集' },
+];
+
 export default function DiscoverScreen() {
   const colorScheme = useColorScheme();
-  const eventsState = useDiscoverEvents({ limit: 20 });
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [currentIndex, setCurrentIndex] = useState(0);
+
+  const eventsState = useDiscoverEvents({
+    limit: 20,
+    category: selectedCategory,
+  });
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    setCurrentIndex(0); // Reset to first card when category changes
+  };
 
   const handleSwipe = useCallback(
     async (direction: 'left' | 'right', eventId: string) => {
@@ -89,6 +109,34 @@ export default function DiscoverScreen() {
         <Text style={styles.headerTitle}>Discover</Text>
         <View style={styles.headerSpacer} />
       </View>
+
+      {/* Category Filter */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.categoryScroll}
+        contentContainerStyle={styles.categoryScrollContent}
+      >
+        {CATEGORIES.map((cat) => (
+          <TouchableOpacity
+            key={cat.value}
+            style={[
+              styles.categoryTab,
+              selectedCategory === cat.value && styles.categoryTabActive,
+            ]}
+            onPress={() => handleCategoryChange(cat.value)}
+          >
+            <Text
+              style={[
+                styles.categoryTabText,
+                selectedCategory === cat.value && styles.categoryTabTextActive,
+              ]}
+            >
+              {cat.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
 
       {/* Card Stack */}
       <View style={styles.cardContainer}>
@@ -341,6 +389,35 @@ const styles = StyleSheet.create({
     marginTop: 16,
     color: '#E5E7EB',
     fontSize: 16,
+  },
+  categoryScroll: {
+    maxHeight: 50,
+    marginBottom: 8,
+  },
+  categoryScrollContent: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  categoryTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  categoryTabActive: {
+    backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
+  },
+  categoryTabText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  categoryTabTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   errorText: {
     fontSize: 18,

@@ -1,149 +1,671 @@
-import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
+  View,
   Text,
   TextInput,
+  StyleSheet,
+  ScrollView,
   TouchableOpacity,
-  View,
+  Alert,
+  ActivityIndicator,
+  Image,
+  Platform,
+  Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import { supabase } from '@/lib/supabase';
+import { useResorts } from '@/hooks/useResorts';
+import type { SkillLevel } from '@/types';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+
+const CATEGORIES = [
+  { value: 'event', label: 'イベント' },
+  // { value: 'rideshare', label: '相乗り' }, // MVP では未実装
+  { value: 'filming', label: '追い撮り' },
+  { value: 'lesson', label: 'レッスン' },
+  { value: 'group', label: '仲間募集' },
+];
+
+const SKILL_LEVELS: { value: SkillLevel | ''; label: string }[] = [
+  { value: '', label: '指定なし' },
+  { value: 'beginner', label: '初級' },
+  { value: 'intermediate', label: '中級' },
+  { value: 'advanced', label: '上級' },
+];
 
 export default function CreateEventScreen() {
+  const resortsState = useResorts();
+
+  // Form states
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState('2025-12-20');
+  const [category, setCategory] = useState('event');
+  const [resortId, setResortId] = useState('');
+  const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('10:00');
   const [endTime, setEndTime] = useState('15:00');
-  const [location, setLocation] = useState('Hakuba Happo-One');
   const [capacity, setCapacity] = useState('6');
-  const [level, setLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
+  const [level, setLevel] = useState<SkillLevel | ''>('');
+  const [price, setPrice] = useState('');
+  const [meetingPlace, setMeetingPlace] = useState('');
+  const [tagInput, setTagInput] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
+  const [selectedImages, setSelectedImages] = useState<string[]>([]);
 
-  const handleCreate = () => {
-    if (!title.trim()) {
-      Alert.alert('Missing title', 'Please enter an event title.');
+  // UI states
+  const [loading, setLoading] = useState(false);
+  const [showCategoryPicker, setShowCategoryPicker] = useState(false);
+  const [showResortPicker, setShowResortPicker] = useState(false);
+  const [showLevelPicker, setShowLevelPicker] = useState(false);
+
+  // Resort filter states
+  const [expandedArea, setExpandedArea] = useState<string | null>(null);
+
+  // Group resorts by area
+  const resortsByArea = React.useMemo(() => {
+    if (resortsState.status !== 'success') return {};
+
+    const grouped: Record<string, typeof resortsState.resorts> = {};
+    resortsState.resorts.forEach((resort) => {
+      if (!grouped[resort.area]) {
+        grouped[resort.area] = [];
+      }
+      grouped[resort.area].push(resort);
+    });
+
+    // Sort areas alphabetically
+    const sortedGrouped: Record<string, typeof resortsState.resorts> = {};
+    Object.keys(grouped)
+      .sort()
+      .forEach((area) => {
+        sortedGrouped[area] = grouped[area];
+      });
+
+    return sortedGrouped;
+  }, [resortsState]);
+
+  const pickImage = async () => {
+    if (selectedImages.length >= 3) {
+      Alert.alert('制限', '画像は最大3枚まで選択できます');
       return;
     }
 
-    Alert.alert(
-      'Event created (mock)',
-      `Title: ${title}\nResort: ${location}\nDate: ${date} ${startTime} - ${endTime}`,
-      [{ text: 'OK', onPress: () => router.back() }]
-    );
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('権限が必要です', 'ギャラリーへのアクセス権限が必要です');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setSelectedImages([...selectedImages, result.assets[0].uri]);
+    }
   };
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Create Event</Text>
+  const removeImage = (index: number) => {
+    setSelectedImages(selectedImages.filter((_, i) => i !== index));
+  };
 
-        <Text style={styles.label}>Title</Text>
-        <TextInput
-          style={styles.input}
-          value={title}
-          onChangeText={setTitle}
-          placeholder="Epic Niseko Powder Session"
-          placeholderTextColor="#6B7280"
-        />
+  const addTag = () => {
+    const trimmed = tagInput.trim();
+    if (!trimmed) return;
 
-        <Text style={styles.label}>Description</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={description}
-          onChangeText={setDescription}
-          placeholder="Looking for riders to explore the backcountry together..."
-          placeholderTextColor="#6B7280"
-          multiline
-        />
+    if (tags.length >= 10) {
+      Alert.alert('制限', 'タグは最大10個まで追加できます');
+      return;
+    }
 
-        <Text style={styles.label}>Resort</Text>
-        <TextInput
-          style={styles.input}
-          value={location}
-          onChangeText={setLocation}
-          placeholder="Hakuba Happo-One"
-          placeholderTextColor="#6B7280"
-        />
+    if (tags.includes(trimmed)) {
+      Alert.alert('エラー', 'このタグは既に追加されています');
+      return;
+    }
 
-        <View style={styles.row}>
-          <View style={styles.rowItem}>
-            <Text style={styles.label}>Date</Text>
-            <TextInput
-              style={styles.input}
-              value={date}
-              onChangeText={setDate}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor="#6B7280"
-            />
-          </View>
-          <View style={styles.rowItem}>
-            <Text style={styles.label}>Start</Text>
-            <TextInput
-              style={styles.input}
-              value={startTime}
-              onChangeText={setStartTime}
-              placeholder="10:00"
-              placeholderTextColor="#6B7280"
-            />
-          </View>
-          <View style={styles.rowItem}>
-            <Text style={styles.label}>End</Text>
-            <TextInput
-              style={styles.input}
-              value={endTime}
-              onChangeText={setEndTime}
-              placeholder="15:00"
-              placeholderTextColor="#6B7280"
-            />
-          </View>
+    setTags([...tags, trimmed]);
+    setTagInput('');
+  };
+
+  const removeTag = (index: number) => {
+    setTags(tags.filter((_, i) => i !== index));
+  };
+
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setCategory('event');
+    setResortId('');
+    setDate('');
+    setStartTime('10:00');
+    setEndTime('15:00');
+    setCapacity('6');
+    setLevel('');
+    setPrice('');
+    setMeetingPlace('');
+    setTagInput('');
+    setTags([]);
+    setSelectedImages([]);
+  };
+
+  const uploadImages = async (eventId: string): Promise<string[]> => {
+    const uploadedUrls: string[] = [];
+
+    for (let i = 0; i < selectedImages.length; i++) {
+      const imageUri = selectedImages[i];
+      const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileName = `${eventId}/${Date.now()}-${i}.${fileExt}`;
+
+      // Fetch the image as arraybuffer
+      const response = await fetch(imageUri);
+      const arrayBuffer = await response.arrayBuffer();
+
+      const { data, error } = await supabase.storage
+        .from('event_images')
+        .upload(fileName, arrayBuffer, {
+          contentType: `image/${fileExt}`,
+          upsert: false,
+        });
+
+      if (error) {
+        console.error('Image upload error:', error);
+        throw error;
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('event_images')
+        .getPublicUrl(fileName);
+
+      uploadedUrls.push(publicUrl);
+    }
+
+    return uploadedUrls;
+  };
+
+  const handleCreate = async () => {
+    // Validation
+    if (!(title || '').trim()) {
+      Alert.alert('エラー', 'タイトルを入力してください');
+      return;
+    }
+
+    if (!category) {
+      Alert.alert('エラー', 'カテゴリを選択してください');
+      return;
+    }
+
+    if (!resortId) {
+      Alert.alert('エラー', 'スキー場を選択してください');
+      return;
+    }
+
+    if (!date) {
+      Alert.alert('エラー', '日付を入力してください');
+      return;
+    }
+
+    if (!startTime) {
+      Alert.alert('エラー', '開始時刻を入力してください');
+      return;
+    }
+
+    const capacityNum = parseInt(capacity, 10);
+    if (isNaN(capacityNum) || capacityNum <= 0) {
+      Alert.alert('エラー', '定員は1以上の数値を入力してください');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Get current user
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error('ログインが必要です');
+      }
+
+      // Parse datetime
+      const startAt = new Date(`${date}T${startTime}:00`).toISOString();
+      const endAt = endTime ? new Date(`${date}T${endTime}:00`).toISOString() : null;
+
+      // Parse price
+      const trimmedPrice = (price || '').trim();
+      const priceNum = trimmedPrice ? parseInt(trimmedPrice, 10) : null;
+      if (trimmedPrice && (isNaN(priceNum!) || priceNum! < 0)) {
+        Alert.alert('エラー', '価格は0以上の数値を入力してください');
+        setLoading(false);
+        return;
+      }
+
+      // Create event (without photos first to get event ID)
+      const { data: newEvent, error: insertError } = await supabase
+        .from('posts_events')
+        .insert({
+          title: (title || '').trim(),
+          description: (description || '').trim() || null,
+          type: category,
+          resort_id: resortId,
+          host_user_id: session.user.id,
+          start_at: startAt,
+          end_at: endAt,
+          capacity_total: capacityNum,
+          level_required: level || null,
+          price_per_person_jpy: priceNum,
+          meeting_place: (meetingPlace || '').trim() || null,
+          tags: tags.length > 0 ? tags : null,
+          photos: null, // Will update later if images exist
+          status: 'open',
+        })
+        .select('id')
+        .single();
+
+      if (insertError) throw insertError;
+      if (!newEvent) throw new Error('イベントの作成に失敗しました');
+
+      // Upload images if any
+      let photoUrls: string[] | null = null;
+      if (selectedImages.length > 0) {
+        try {
+          photoUrls = await uploadImages(newEvent.id);
+
+          // Update event with photo URLs
+          const { error: updateError } = await supabase
+            .from('posts_events')
+            .update({ photos: photoUrls })
+            .eq('id', newEvent.id);
+
+          if (updateError) throw updateError;
+        } catch (uploadError) {
+          console.error('Image upload error:', uploadError);
+          // Continue even if image upload fails
+          Alert.alert(
+            '警告',
+            '画像のアップロードに失敗しましたが、イベントは作成されました'
+          );
+        }
+      }
+
+      Alert.alert('完了', 'イベントを作成しました！', [
+        {
+          text: 'OK',
+          onPress: () => {
+            resetForm();
+            router.back();
+          },
+        },
+      ]);
+    } catch (error) {
+      console.error('Error creating event:', error);
+      Alert.alert('エラー', 'イベントの作成に失敗しました');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectedCategoryLabel =
+    CATEGORIES.find((c) => c.value === category)?.label || 'カテゴリを選択';
+
+  const selectedResortName =
+    resortsState.status === 'success'
+      ? resortsState.resorts.find((r) => r.id === resortId)?.name || 'スキー場を選択'
+      : 'スキー場を選択';
+
+  const selectedLevelLabel =
+    SKILL_LEVELS.find((l) => l.value === level)?.label || '指定なし';
+
+  const renderResortModal = () => (
+    <Modal
+      visible={showResortPicker}
+      animationType="slide"
+      transparent={false}
+      onRequestClose={() => setShowResortPicker(false)}
+    >
+      <SafeAreaView style={styles.modalContainer}>
+        {/* モーダルヘッダー */}
+        <View style={styles.modalHeader}>
+          <Text style={styles.modalTitle}>スキー場を選択</Text>
+          <TouchableOpacity
+            onPress={() => setShowResortPicker(false)}
+            style={styles.closeButton}
+          >
+            <IconSymbol name="xmark" size={24} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.row}>
-          <View style={styles.rowItem}>
-            <Text style={styles.label}>Capacity</Text>
-            <TextInput
-              style={styles.input}
-              value={capacity}
-              onChangeText={setCapacity}
-              keyboardType="number-pad"
-              placeholder="6"
-              placeholderTextColor="#6B7280"
-            />
-          </View>
-          <View style={styles.rowItem}>
-            <Text style={styles.label}>Level</Text>
-            <View style={styles.segmentRow}>
-              {(['beginner', 'intermediate', 'advanced'] as const).map((lv) => (
+        {/* スキー場リスト（エリア別トグル） */}
+        <ScrollView style={styles.modalContent}>
+          {Object.entries(resortsByArea).map(([area, resorts]) => (
+            <View key={area} style={styles.areaSection}>
+              {/* Area Header (Toggle) */}
+              <TouchableOpacity
+                style={styles.areaHeader}
+                onPress={() => setExpandedArea(expandedArea === area ? null : area)}
+              >
+                <Text style={styles.areaHeaderText}>
+                  {area} ({resorts.length})
+                </Text>
+                <IconSymbol
+                  name={expandedArea === area ? 'chevron.up' : 'chevron.down'}
+                  size={20}
+                  color="#9CA3AF"
+                />
+              </TouchableOpacity>
+
+              {/* Resort List (Collapsible) */}
+              {expandedArea === area && (
+                <View style={styles.resortListContainer}>
+                  {resorts.map((resort) => (
+                    <TouchableOpacity
+                      key={resort.id}
+                      style={[
+                        styles.resortItem,
+                        resortId === resort.id && styles.resortItemActive,
+                      ]}
+                      onPress={() => {
+                        setResortId(resort.id);
+                        setShowResortPicker(false);
+                        setExpandedArea(null);
+                      }}
+                    >
+                      <Text
+                        style={[
+                          styles.resortItemText,
+                          resortId === resort.id && styles.resortItemTextActive,
+                        ]}
+                      >
+                        {resort.name}
+                      </Text>
+                      {resortId === resort.id && (
+                        <IconSymbol name="checkmark" size={16} color="#3B82F6" />
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          ))}
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
+
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.content}>
+        <Text style={styles.title}>イベント作成</Text>
+
+        {/* Title */}
+        <View style={styles.section}>
+          <Text style={styles.label}>タイトル *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="白馬でパウダーライディング"
+            placeholderTextColor="#9CA3AF"
+            value={title}
+            onChangeText={setTitle}
+          />
+        </View>
+
+        {/* Description */}
+        <View style={styles.section}>
+          <Text style={styles.label}>説明</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            placeholder="イベントの詳細を入力してください"
+            placeholderTextColor="#9CA3AF"
+            value={description}
+            onChangeText={setDescription}
+            multiline
+            numberOfLines={4}
+          />
+        </View>
+
+        {/* Category */}
+        <View style={styles.section}>
+          <Text style={styles.label}>カテゴリ *</Text>
+          <TouchableOpacity
+            style={styles.picker}
+            onPress={() => setShowCategoryPicker(!showCategoryPicker)}
+          >
+            <Text style={styles.pickerText}>{selectedCategoryLabel}</Text>
+            <IconSymbol name="chevron.down" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+          {showCategoryPicker && (
+            <View style={styles.pickerOptions}>
+              {CATEGORIES.map((cat) => (
                 <TouchableOpacity
-                  key={lv}
-                  style={[
-                    styles.segment,
-                    level === lv && styles.segmentActive,
-                  ]}
-                  onPress={() => setLevel(lv)}>
+                  key={cat.value}
+                  style={styles.pickerOption}
+                  onPress={() => {
+                    setCategory(cat.value);
+                    setShowCategoryPicker(false);
+                  }}
+                >
                   <Text
                     style={[
-                      styles.segmentText,
-                      level === lv && styles.segmentTextActive,
-                    ]}>
-                    {lv}
+                      styles.pickerOptionText,
+                      category === cat.value && styles.pickerOptionTextActive,
+                    ]}
+                  >
+                    {cat.label}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
+          )}
+        </View>
+
+        {/* Resort */}
+        <View style={styles.section}>
+          <Text style={styles.label}>スキー場 *</Text>
+          {resortsState.status === 'loading' ? (
+            <View style={styles.picker}>
+              <ActivityIndicator size="small" color="#9CA3AF" />
+            </View>
+          ) : resortsState.status === 'error' ? (
+            <Text style={styles.errorText}>リゾート読み込みエラー</Text>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={styles.picker}
+                onPress={() => setShowResortPicker(true)} // モーダルを開く
+              >
+                <Text style={styles.pickerText}>{selectedResortName}</Text>
+                <IconSymbol name="chevron.down" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+              
+              {/* ここでモーダルコンポーネントを呼び出す */}
+              {renderResortModal()}
+            </>
+          )}
+        </View>
+
+        {/* Date & Time */}
+        <View style={styles.section}>
+          <Text style={styles.label}>日付 *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="YYYY-MM-DD (例: 2025-12-20)"
+            placeholderTextColor="#9CA3AF"
+            value={date}
+            onChangeText={setDate}
+          />
+        </View>
+
+        <View style={styles.row}>
+          <View style={styles.rowItem}>
+            <Text style={styles.label}>開始時刻 *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="HH:MM (例: 10:00)"
+              placeholderTextColor="#9CA3AF"
+              value={startTime}
+              onChangeText={setStartTime}
+            />
+          </View>
+          <View style={styles.rowItem}>
+            <Text style={styles.label}>終了時刻</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="HH:MM (例: 15:00)"
+              placeholderTextColor="#9CA3AF"
+              value={endTime}
+              onChangeText={setEndTime}
+            />
           </View>
         </View>
 
-        <TouchableOpacity style={styles.createButton} activeOpacity={0.8} onPress={handleCreate}>
-          <Text style={styles.createButtonText}>Create Event (Mock)</Text>
+        {/* Capacity */}
+        <View style={styles.section}>
+          <Text style={styles.label}>定員 *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="6"
+            placeholderTextColor="#9CA3AF"
+            value={capacity}
+            onChangeText={setCapacity}
+            keyboardType="number-pad"
+          />
+        </View>
+
+        {/* Level */}
+        <View style={styles.section}>
+          <Text style={styles.label}>レベル</Text>
+          <TouchableOpacity
+            style={styles.picker}
+            onPress={() => setShowLevelPicker(!showLevelPicker)}
+          >
+            <Text style={styles.pickerText}>{selectedLevelLabel}</Text>
+            <IconSymbol name="chevron.down" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+          {showLevelPicker && (
+            <View style={styles.pickerOptions}>
+              {SKILL_LEVELS.map((lv) => (
+                <TouchableOpacity
+                  key={lv.value}
+                  style={styles.pickerOption}
+                  onPress={() => {
+                    setLevel(lv.value);
+                    setShowLevelPicker(false);
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.pickerOptionText,
+                      level === lv.value && styles.pickerOptionTextActive,
+                    ]}
+                  >
+                    {lv.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Price */}
+        <View style={styles.section}>
+          <Text style={styles.label}>価格（円）</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="0 (無料の場合は空欄)"
+            placeholderTextColor="#9CA3AF"
+            value={price}
+            onChangeText={setPrice}
+            keyboardType="number-pad"
+          />
+        </View>
+
+        {/* Meeting Place */}
+        <View style={styles.section}>
+          <Text style={styles.label}>集合場所</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="ゴンドラ山頂駅前"
+            placeholderTextColor="#9CA3AF"
+            value={meetingPlace}
+            onChangeText={setMeetingPlace}
+          />
+        </View>
+
+        {/* Tags */}
+        <View style={styles.section}>
+          <Text style={styles.label}>タグ（最大10個）</Text>
+          <View style={styles.tagInputRow}>
+            <TextInput
+              style={[styles.input, styles.tagInput]}
+              placeholder="タグを入力"
+              placeholderTextColor="#9CA3AF"
+              value={tagInput}
+              onChangeText={setTagInput}
+              onSubmitEditing={addTag}
+            />
+            <TouchableOpacity style={styles.tagAddButton} onPress={addTag}>
+              <Text style={styles.tagAddButtonText}>追加</Text>
+            </TouchableOpacity>
+          </View>
+          {tags.length > 0 && (
+            <View style={styles.tagsList}>
+              {tags.map((tag, index) => (
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{tag}</Text>
+                  <TouchableOpacity onPress={() => removeTag(index)}>
+                    <IconSymbol name="xmark.circle.fill" size={16} color="#9CA3AF" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Images */}
+        <View style={styles.section}>
+          <Text style={styles.label}>画像（最大3枚）</Text>
+          <View style={styles.imagesContainer}>
+            {selectedImages.map((uri, index) => (
+              <View key={index} style={styles.imageWrapper}>
+                <Image source={{ uri }} style={styles.image} />
+                <TouchableOpacity
+                  style={styles.imageRemoveButton}
+                  onPress={() => removeImage(index)}
+                >
+                  <IconSymbol name="xmark.circle.fill" size={24} color="#F87171" />
+                </TouchableOpacity>
+              </View>
+            ))}
+            {selectedImages.length < 3 && (
+              <TouchableOpacity style={styles.imagePlaceholder} onPress={pickImage}>
+                <IconSymbol name="photo" size={32} color="#9CA3AF" />
+                <Text style={styles.imagePlaceholderText}>画像を追加</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Create Button */}
+        <TouchableOpacity
+          style={[styles.createButton, loading && styles.createButtonDisabled]}
+          onPress={handleCreate}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.createButtonText}>イベントを作成</Text>
+          )}
         </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+
+        <View style={{ height: 40 }} />
+      </View>
+    </ScrollView>
   );
 }
 
@@ -152,79 +674,238 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0A1628',
   },
-  scroll: {
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#0A1628',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+    backgroundColor: '#0F172A',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalContent: {
     flex: 1,
   },
   content: {
     padding: 16,
-    paddingBottom: 32,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: 28,
+    fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 16,
+    marginBottom: 24,
+    marginTop: 16,
+  },
+  section: {
+    marginBottom: 20,
   },
   label: {
     fontSize: 14,
-    color: '#9CA3AF',
-    marginBottom: 4,
+    fontWeight: '600',
+    color: '#E5E7EB',
+    marginBottom: 8,
   },
   input: {
-    borderRadius: 12,
-    backgroundColor: '#111827',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: '#F9FAFB',
-    marginBottom: 12,
-    fontSize: 14,
+    backgroundColor: '#1E293B',
+    color: '#FFFFFF',
+    fontSize: 16,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
   },
   textArea: {
-    minHeight: 80,
+    minHeight: 100,
+    textAlignVertical: 'top',
   },
   row: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 12,
+    marginBottom: 20,
   },
   rowItem: {
     flex: 1,
   },
-  segmentRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 4,
-  },
-  segment: {
-    flex: 1,
-    borderRadius: 999,
+  picker: {
+    backgroundColor: '#1E293B',
+    padding: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#374151',
-    paddingVertical: 6,
+    borderColor: '#334155',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
   },
-  segmentActive: {
-    backgroundColor: '#2563EB',
-    borderColor: '#2563EB',
-  },
-  segmentText: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  segmentTextActive: {
+  pickerText: {
     color: '#FFFFFF',
+    fontSize: 16,
   },
-  createButton: {
-    marginTop: 16,
-    borderRadius: 12,
-    backgroundColor: '#3B82F6',
-    paddingVertical: 12,
+  pickerOptions: {
+    marginTop: 8,
+    backgroundColor: '#1E293B',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+    maxHeight: 200,
+  },
+  pickerOption: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  pickerOptionText: {
+    color: '#9CA3AF',
+    fontSize: 16,
+  },
+  pickerOptionTextActive: {
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  areaSection: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  areaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#1E293B',
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
   },
-  createButtonText: {
+  areaHeaderText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#E5E7EB',
+  },
+  resortListContainer: {
+    backgroundColor: '#0F172A',
+  },
+  resortItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1E293B',
+  },
+  resortItemActive: {
+    backgroundColor: '#1E3A8A',
+  },
+  resortItemText: {
+    fontSize: 14,
+    color: '#D1D5DB',
+  },
+  resortItemTextActive: {
     color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  tagInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  tagInput: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  tagAddButton: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    justifyContent: 'center',
+  },
+  tagAddButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  tagsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  tag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#1E3A8A',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  tagText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+  },
+  imagesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  imageWrapper: {
+    position: 'relative',
+    width: 100,
+    height: 100,
+  },
+  image: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
+  },
+  imageRemoveButton: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+  },
+  imagePlaceholder: {
+    width: 100,
+    height: 100,
+    backgroundColor: '#1E293B',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imagePlaceholderText: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  createButton: {
+    marginTop: 24,
+    paddingVertical: 16,
+    backgroundColor: '#3B82F6',
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  createButtonDisabled: {
+    opacity: 0.6,
+  },
+  createButtonText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  errorText: {
+    color: '#F87171',
+    fontSize: 14,
   },
 });
-

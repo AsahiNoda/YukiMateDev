@@ -131,7 +131,7 @@ export default function HomeScreen() {
           icon="plus.circle.fill"
           label="Post"
           tint={tint}
-          onPress={() => router.push('/(tabs)/snowfeed')}
+          onPress={() => router.push('/(tabs)/create')}
         />
       </View>
 

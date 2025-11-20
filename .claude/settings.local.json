@@ -14,7 +14,8 @@
       "Bash(dir:*)",
       "Bash(npx expo start:*)",
       "Bash(taskkill:*)",
-      "Bash(npm audit:*)"
+      "Bash(npm audit:*)",
+      "Bash(psql:*)"
     ],
     "deny": [],
     "ask": []
