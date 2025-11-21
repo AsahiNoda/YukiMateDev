@@ -164,23 +164,40 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
         const sortedEvents = scoredEvents.sort((a, b) => b.score - a.score);
 
         // 9. DiscoverEvent型に変換
-        const discoverEvents: DiscoverEvent[] = sortedEvents.map(event => ({
-          id: event.id,
-          title: event.title,
-          description: event.description,
-          hostName: event.profiles?.display_name || 'Unknown',
-          hostAvatar: event.profiles?.avatar_url || null,
-          resortName: event.resorts?.name || 'Unknown Resort',
-          startAt: event.start_at,
-          endAt: event.end_at,
-          capacityTotal: event.capacity_total || 0,
-          spotsTaken: event.spotsTaken,
-          levelRequired: event.level_required,
-          pricePerPersonJpy: event.price_per_person_jpy,
-          tags: event.tags || [],
-          photoUrl: event.photos?.[0] || null,
-          hostUserId: event.host_user_id,
-        }));
+        const discoverEvents: DiscoverEvent[] = sortedEvents.map(event => {
+          // event_imagesストレージから画像URLを取得
+          let photoUrl: string | null = null;
+          if (event.photos && event.photos.length > 0) {
+            const photoPath = event.photos[0];
+            // パスがすでに完全なURLの場合はそのまま使用、そうでなければStorage URLを生成
+            if (photoPath.startsWith('http')) {
+              photoUrl = photoPath;
+            } else {
+              const { data } = supabase.storage
+                .from('event_images')
+                .getPublicUrl(photoPath);
+              photoUrl = data.publicUrl;
+            }
+          }
+
+          return {
+            id: event.id,
+            title: event.title,
+            description: event.description,
+            hostName: event.profiles?.display_name || 'Unknown',
+            hostAvatar: event.profiles?.avatar_url || null,
+            resortName: event.resorts?.name || 'Unknown Resort',
+            startAt: event.start_at,
+            endAt: event.end_at,
+            capacityTotal: event.capacity_total || 0,
+            spotsTaken: event.spotsTaken,
+            levelRequired: event.level_required,
+            pricePerPersonJpy: event.price_per_person_jpy,
+            tags: event.tags || [],
+            photoUrl,
+            hostUserId: event.host_user_id,
+          };
+        });
 
         setState({ status: 'success', events: discoverEvents });
       } catch (error) {
@@ -248,6 +265,54 @@ export async function applyToEvent(
     return { success: true };
   } catch (error) {
     console.error('Error applying to event:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * イベント保存
+ * - saved_eventsテーブルにINSERT
+ */
+export async function saveEvent(
+  eventId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 現在のユーザーを取得
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      return { success: false, error: 'ユーザーがログインしていません' };
+    }
+
+    // 既に保存済みかチェック
+    const { data: existingSave } = await supabase
+      .from('saved_events')
+      .select('id')
+      .eq('event_id', eventId)
+      .eq('user_id', session.user.id)
+      .single();
+
+    if (existingSave) {
+      return { success: false, error: '既に保存済みです' };
+    }
+
+    // 保存を作成
+    const { error } = await supabase
+      .from('saved_events')
+      .insert({
+        event_id: eventId,
+        user_id: session.user.id,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error saving event:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

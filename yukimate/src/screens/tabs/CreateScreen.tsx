@@ -155,7 +155,7 @@ export default function CreateEventScreen() {
   };
 
   const uploadImages = async (eventId: string): Promise<string[]> => {
-    const uploadedUrls: string[] = [];
+    const uploadedPaths: string[] = [];
 
     for (let i = 0; i < selectedImages.length; i++) {
       const imageUri = selectedImages[i];
@@ -178,15 +178,12 @@ export default function CreateEventScreen() {
         throw error;
       }
 
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('event_images')
-        .getPublicUrl(fileName);
-
-      uploadedUrls.push(publicUrl);
+      // ファイルパスを保存（URLではなく）
+      // useDiscoverEventsフックが自動的にPublic URLを生成します
+      uploadedPaths.push(fileName);
     }
 
-    return uploadedUrls;
+    return uploadedPaths;
   };
 
   const handleCreate = async () => {
@@ -270,15 +267,15 @@ export default function CreateEventScreen() {
       if (!newEvent) throw new Error('投稿に失敗しました');
 
       // Upload images if any
-      let photoUrls: string[] | null = null;
+      let photoPaths: string[] | null = null;
       if (selectedImages.length > 0) {
         try {
-          photoUrls = await uploadImages(newEvent.id);
+          photoPaths = await uploadImages(newEvent.id);
 
-          // Update event with photo URLs
+          // Update event with photo paths (not URLs)
           const { error: updateError } = await supabase
             .from('posts_events')
-            .update({ photos: photoUrls })
+            .update({ photos: photoPaths })
             .eq('id', newEvent.id);
 
           if (updateError) throw updateError;
