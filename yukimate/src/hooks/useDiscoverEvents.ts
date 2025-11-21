@@ -57,6 +57,7 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
             capacity_total,
             level_required,
             price_per_person_jpy,
+            meeting_place,
             tags,
             photos,
             host_user_id,
@@ -165,19 +166,20 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
 
         // 9. DiscoverEvent型に変換
         const discoverEvents: DiscoverEvent[] = sortedEvents.map(event => {
-          // event_imagesストレージから画像URLを取得
-          let photoUrl: string | null = null;
+          // event_imagesストレージから画像URLを取得（全画像）
+          const photoUrls: string[] = [];
           if (event.photos && event.photos.length > 0) {
-            const photoPath = event.photos[0];
-            // パスがすでに完全なURLの場合はそのまま使用、そうでなければStorage URLを生成
-            if (photoPath.startsWith('http')) {
-              photoUrl = photoPath;
-            } else {
-              const { data } = supabase.storage
-                .from('event_images')
-                .getPublicUrl(photoPath);
-              photoUrl = data.publicUrl;
-            }
+            event.photos.forEach((photoPath: string) => {
+              // パスがすでに完全なURLの場合はそのまま使用、そうでなければStorage URLを生成
+              if (photoPath.startsWith('http')) {
+                photoUrls.push(photoPath);
+              } else {
+                const { data } = supabase.storage
+                  .from('event_images')
+                  .getPublicUrl(photoPath);
+                photoUrls.push(data.publicUrl);
+              }
+            });
           }
 
           return {
@@ -193,8 +195,10 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
             spotsTaken: event.spotsTaken,
             levelRequired: event.level_required,
             pricePerPersonJpy: event.price_per_person_jpy,
+            meetingPlace: event.meeting_place,
             tags: event.tags || [],
-            photoUrl,
+            photoUrl: photoUrls[0] || null, // 下位互換性のため最初の画像
+            photoUrls, // 全画像
             hostUserId: event.host_user_id,
           };
         });

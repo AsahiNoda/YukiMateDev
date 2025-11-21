@@ -18,6 +18,8 @@ import Animated, {
   interpolate,
   Extrapolate,
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@hooks/use-color-scheme';
@@ -71,11 +73,11 @@ function ConfirmationModal({ visible, type, event, onConfirm, onCancel }: Confir
 
             {/* Event Preview */}
             <View style={styles.modalEventPreview}>
-              {event.photoUrl ? (
+              {event.photoUrls.length > 0 ? (
                 <Image
-                  source={{ uri: event.photoUrl }}
+                  source={{ uri: event.photoUrls[0] }}
                   style={styles.modalEventImage}
-                  resizeMode="cover"
+                  resizeMode="contain"
                 />
               ) : (
                 <View style={styles.modalEventImagePlaceholder}>
@@ -111,153 +113,9 @@ function ConfirmationModal({ visible, type, event, onConfirm, onCancel }: Confir
   );
 }
 
-type EventDetailModalProps = {
-  visible: boolean;
-  event: DiscoverEvent | null;
-  onClose: () => void;
-};
-
-function EventDetailModal({ visible, event, onClose }: EventDetailModalProps) {
-  if (!event) return null;
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ja-JP', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'short'
-    });
-  };
-
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('ja-JP', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}>
-      <View style={styles.detailModalOverlay}>
-        <View style={styles.detailModalContent}>
-          {/* Header with Image */}
-          <View style={styles.detailHeader}>
-            {event.photoUrl ? (
-              <Image
-                source={{ uri: event.photoUrl }}
-                style={styles.detailHeaderImage}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={styles.detailHeaderPlaceholder}>
-                <Text style={styles.detailHeaderEmoji}>🏔️</Text>
-              </View>
-            )}
-            <TouchableOpacity style={styles.detailCloseButton} onPress={onClose}>
-              <IconSymbol name="xmark" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Scrollable Content */}
-          <View style={styles.detailBody}>
-            <Text style={styles.detailTitle}>{event.title}</Text>
-
-            {/* Host Info */}
-            <View style={styles.detailHostRow}>
-              <View style={styles.detailHostAvatar}>
-                {event.hostAvatar ? (
-                  <Image source={{ uri: event.hostAvatar }} style={styles.detailHostAvatarImage} />
-                ) : (
-                  <Text style={styles.detailHostAvatarText}>{event.hostName.charAt(0).toUpperCase()}</Text>
-                )}
-              </View>
-              <Text style={styles.detailHostName}>{event.hostName}</Text>
-            </View>
-
-            {/* Event Details */}
-            <View style={styles.detailSection}>
-              <View style={styles.detailRow}>
-                <IconSymbol name="calendar" size={20} color="#6B7280" />
-                <View style={styles.detailRowContent}>
-                  <Text style={styles.detailLabel}>日時</Text>
-                  <Text style={styles.detailValue}>{formatDate(event.startAt)}</Text>
-                  <Text style={styles.detailValue}>{formatTime(event.startAt)} 〜</Text>
-                </View>
-              </View>
-
-              <View style={styles.detailRow}>
-                <IconSymbol name="mappin.circle.fill" size={20} color="#6B7280" />
-                <View style={styles.detailRowContent}>
-                  <Text style={styles.detailLabel}>リゾート</Text>
-                  <Text style={styles.detailValue}>{event.resortName}</Text>
-                </View>
-              </View>
-
-              <View style={styles.detailRow}>
-                <IconSymbol name="person.2.fill" size={20} color="#6B7280" />
-                <View style={styles.detailRowContent}>
-                  <Text style={styles.detailLabel}>参加人数</Text>
-                  <Text style={styles.detailValue}>{event.spotsTaken} / {event.capacityTotal}人</Text>
-                </View>
-              </View>
-
-              {event.levelRequired && (
-                <View style={styles.detailRow}>
-                  <IconSymbol name="mountain.2.fill" size={20} color="#6B7280" />
-                  <View style={styles.detailRowContent}>
-                    <Text style={styles.detailLabel}>レベル</Text>
-                    <Text style={styles.detailValue}>{event.levelRequired}</Text>
-                  </View>
-                </View>
-              )}
-
-              <View style={styles.detailRow}>
-                <IconSymbol name="yensign.circle.fill" size={20} color="#6B7280" />
-                <View style={styles.detailRowContent}>
-                  <Text style={styles.detailLabel}>参加費</Text>
-                  <Text style={styles.detailValue}>
-                    {event.pricePerPersonJpy ? `¥${event.pricePerPersonJpy.toLocaleString()}` : '無料'}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Description */}
-            {event.description && (
-              <View style={styles.detailSection}>
-                <Text style={styles.detailSectionTitle}>詳細</Text>
-                <Text style={styles.detailDescription}>{event.description}</Text>
-              </View>
-            )}
-
-            {/* Tags */}
-            {event.tags && event.tags.length > 0 && (
-              <View style={styles.detailSection}>
-                <Text style={styles.detailSectionTitle}>タグ</Text>
-                <View style={styles.detailTags}>
-                  {event.tags.map((tag, idx) => (
-                    <View key={idx} style={styles.detailTag}>
-                      <Text style={styles.detailTagText}>#{tag}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            )}
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 export default function DiscoverScreen() {
   const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [pendingSwipe, setPendingSwipe] = useState<{
     direction: 'left' | 'right' | 'up';
@@ -272,18 +130,14 @@ export default function DiscoverScreen() {
     type: 'apply',
     event: null,
   });
-  const [detailModal, setDetailModal] = useState<{
-    visible: boolean;
-    event: DiscoverEvent | null;
-  }>({
-    visible: false,
-    event: null,
-  });
 
   const eventsState = useDiscoverEvents({
     limit: 20,
     category: 'all',
   });
+
+  // カードの高さを計算（ナビバー + ヘッダー分を除く）
+  const CARD_HEIGHT = SCREEN_HEIGHT - insets.bottom - 200; // bottom inset(ナビバー) + ヘッダー分
 
   const handleConfirmAction = useCallback(async () => {
     if (!confirmModal.event) return;
@@ -392,18 +246,18 @@ export default function DiscoverScreen() {
             onSwipe={handleSwipe}
             isTopCard={index === 0}
             shouldReset={pendingSwipe === null && index === 0}
-            onShowDetail={(evt) => setDetailModal({ visible: true, event: evt })}
+            onShowDetail={(evt) => router.push({
+              pathname: '/event-detail',
+              params: { eventId: evt.id }
+            })}
+            cardHeight={CARD_HEIGHT}
           />
         ))}
       </View>
 
       {/* Header Overlay */}
       <View style={styles.headerOverlay}>
-        <TouchableOpacity style={styles.backButton} activeOpacity={0.8}>
-          <IconSymbol name="chevron.left" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
         <Text style={styles.headerTitle}>Discover</Text>
-        <View style={styles.headerSpacer} />
       </View>
 
       {/* Confirmation Modal */}
@@ -413,13 +267,6 @@ export default function DiscoverScreen() {
         event={confirmModal.event}
         onConfirm={handleConfirmAction}
         onCancel={handleCancelAction}
-      />
-
-      {/* Detail Modal */}
-      <EventDetailModal
-        visible={detailModal.visible}
-        event={detailModal.event}
-        onClose={() => setDetailModal({ visible: false, event: null })}
       />
     </View>
   );
@@ -432,13 +279,32 @@ type SwipeableCardProps = {
   isTopCard: boolean;
   shouldReset: boolean;
   onShowDetail: (event: DiscoverEvent) => void;
+  cardHeight: number;
 };
 
-function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDetail }: SwipeableCardProps) {
+function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDetail, cardHeight }: SwipeableCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
+
+  // 画像インデックス管理（複数画像切り替え用）
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const hasMultipleImages = event.photoUrls.length > 1;
+
+  // 次の画像へ
+  const nextImage = useCallback(() => {
+    if (hasMultipleImages) {
+      setCurrentImageIndex((prev) => (prev + 1) % event.photoUrls.length);
+    }
+  }, [hasMultipleImages, event.photoUrls.length]);
+
+  // 前の画像へ
+  const prevImage = useCallback(() => {
+    if (hasMultipleImages) {
+      setCurrentImageIndex((prev) => (prev - 1 + event.photoUrls.length) % event.photoUrls.length);
+    }
+  }, [hasMultipleImages, event.photoUrls.length]);
 
   // shouldResetがtrueになったらカードをリセット
   React.useEffect(() => {
@@ -447,6 +313,7 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
       translateY.value = withSpring(0);
       scale.value = withSpring(1);
       opacity.value = withSpring(1);
+      setCurrentImageIndex(0); // 画像インデックスもリセット
     }
   }, [shouldReset, translateX, translateY, scale, opacity]);
 
@@ -524,22 +391,53 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
 
   const formatPrice = (price: number | null) => {
     if (price === null || price === 0) return 'Free';
-    return `€¥${price.toLocaleString()}`;
+    return `¥${price.toLocaleString()}`;
   };
 
   const levelText = event.levelRequired || 'Any';
 
   return (
     <GestureDetector gesture={panGesture}>
-      <Animated.View style={[styles.card, cardStyle]}>
+      <Animated.View style={[styles.card, { height: cardHeight }, cardStyle]}>
         {/* Background Image */}
         <View style={styles.cardBackground}>
-          {event.photoUrl ? (
-            <Image
-              source={{ uri: event.photoUrl }}
-              style={styles.cardImage}
-              resizeMode="cover"
-            />
+          {event.photoUrls.length > 0 ? (
+            <>
+              <Image
+                source={{ uri: event.photoUrls[currentImageIndex] }}
+                style={styles.cardImage}
+                resizeMode="contain"
+              />
+
+              {/* 画像切り替えエリア（左右端タップ） */}
+              {hasMultipleImages && (
+                <>
+                  <TouchableOpacity
+                    style={styles.imageTapAreaLeft}
+                    onPress={prevImage}
+                    activeOpacity={1}
+                  />
+                  <TouchableOpacity
+                    style={styles.imageTapAreaRight}
+                    onPress={nextImage}
+                    activeOpacity={1}
+                  />
+
+                  {/* 画像インジケーター */}
+                  <View style={styles.imageIndicatorContainer}>
+                    {event.photoUrls.map((_, idx) => (
+                      <View
+                        key={idx}
+                        style={[
+                          styles.imageIndicatorDot,
+                          idx === currentImageIndex && styles.imageIndicatorDotActive,
+                        ]}
+                      />
+                    ))}
+                  </View>
+                </>
+              )}
+            </>
           ) : (
             <View style={styles.cardImagePlaceholder}>
               <Text style={styles.cardImageText}>🏔️</Text>
@@ -694,39 +592,28 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    justifyContent: 'center',
     paddingTop: 60,
     paddingBottom: 20,
     zIndex: 10,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 22,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   headerTitle: {
     fontSize: 26,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  headerSpacer: {
-    width: 40,
-  },
   cardContainer: {
     flex: 1,
   },
   card: {
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    height: SCREEN_HEIGHT - 220, // ナビバー(~80px)とヘッダー分を十分に考慮
     position: 'absolute',
+    top: 120, // Discoverヘッダーより下に配置
     overflow: 'hidden',
     backgroundColor: '#1E293B',
+    borderRadius: 20,
   },
   cardBackground: {
     ...StyleSheet.absoluteFillObject,
@@ -747,6 +634,44 @@ const styles = StyleSheet.create({
   },
   cardGradient: {
     ...StyleSheet.absoluteFillObject,
+  },
+  // 画像切り替えタップエリア
+  imageTapAreaLeft: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 100,
+    zIndex: 5,
+  },
+  imageTapAreaRight: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: 100,
+    zIndex: 5,
+  },
+  // 画像インジケーター
+  imageIndicatorContainer: {
+    position: 'absolute',
+    top: 20,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 6,
+    zIndex: 6,
+  },
+  imageIndicatorDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  imageIndicatorDotActive: {
+    backgroundColor: '#FFFFFF',
+    width: 20,
   },
   swipeOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -991,138 +916,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
-  },
-  // Detail Modal Styles
-  detailModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
-    justifyContent: 'flex-end',
-  },
-  detailModalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: SCREEN_HEIGHT * 0.9,
-    overflow: 'hidden',
-  },
-  detailHeader: {
-    width: '100%',
-    height: 250,
-    position: 'relative',
-  },
-  detailHeaderImage: {
-    width: '100%',
-    height: '100%',
-  },
-  detailHeaderPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#334155',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailHeaderEmoji: {
-    fontSize: 80,
-  },
-  detailCloseButton: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  detailBody: {
-    padding: 24,
-    paddingBottom: 40,
-  },
-  detailTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 16,
-  },
-  detailHostRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  detailHostAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#E5E7EB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    overflow: 'hidden',
-  },
-  detailHostAvatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  detailHostAvatarText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#6B7280',
-  },
-  detailHostName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-  },
-  detailSection: {
-    marginBottom: 24,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  detailRowContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  detailLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  detailValue: {
-    fontSize: 16,
-    color: '#1F2937',
-    fontWeight: '500',
-  },
-  detailSectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1F2937',
-    marginBottom: 12,
-  },
-  detailDescription: {
-    fontSize: 15,
-    color: '#4B5563',
-    lineHeight: 24,
-  },
-  detailTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  detailTag: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  detailTagText: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
   },
 });
