@@ -24,7 +24,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 const CATEGORIES = [
   { value: 'event', label: 'イベント' },
   // { value: 'rideshare', label: '相乗り' }, // MVP では未実装
-  { value: 'filming', label: '追い撮り' },
+  { value: 'filming', label: '撮影' },
   { value: 'lesson', label: 'レッスン' },
   { value: 'group', label: '仲間募集' },
 ];

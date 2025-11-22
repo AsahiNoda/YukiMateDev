@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-export default function DiscoverLayout() {
+export default function SearchLayout() {
   return (
     <Stack
       screenOptions={{
@@ -10,6 +10,7 @@ export default function DiscoverLayout() {
     >
       <Stack.Screen name="index" />
       <Stack.Screen name="event-detail" />
+      <Stack.Screen name="filter" />
     </Stack>
   );
 }

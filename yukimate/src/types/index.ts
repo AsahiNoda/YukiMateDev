@@ -51,4 +51,6 @@ export type RootStackParamList = {
   CreateEvent: undefined;
   UserProfile: { userId: string };
   ResortDetail: { resortId: number };
+  Explore: { filters?: string };
+  ExploreFilter: { currentFilters?: string };
 };
