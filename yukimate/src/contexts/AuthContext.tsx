@@ -2,16 +2,21 @@ import React, { createContext, useState, useEffect, useContext, ReactNode } from
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { User as AppUser } from '@/types';
+import type { UserRole } from '@/types';
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
   profile: AppUser | null;
+  userRole: UserRole | null;
   loading: boolean;
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  isDeveloper: () => boolean;
+  isOfficial: () => boolean;
+  isUser: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<AppUser | null>(null);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
+        fetchUserRole(session.user.id);
       } else {
         setLoading(false);
       }
@@ -41,8 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(session?.user ?? null);
         if (session?.user) {
           await fetchProfile(session.user.id);
+          await fetchUserRole(session.user.id);
         } else {
           setProfile(null);
+          setUserRole(null);
           setLoading(false);
         }
       }
@@ -56,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('user_id', userId)
         .single();
 
       if (error) {
@@ -68,15 +77,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       } else if (data) {
         const appUser: AppUser = {
-          id: data.id,
-          username: data.username,
-          displayName: data.display_name || data.username,
+          id: data.user_id,
+          username: data.display_name || 'ユーザー',
+          displayName: data.display_name || 'ユーザー',
           avatar: data.avatar_url,
           countryCode: data.country_code,
-          ageRange: data.age_range,
-          skillLevel: data.skill_level,
-          ridingStyle: data.riding_style || [],
-          gearInfo: data.gear_info,
+          ageRange: null,
+          skillLevel: data.level,
+          ridingStyle: data.styles || [],
+          gearInfo: null,
           createdAt: data.created_at,
           updatedAt: data.updated_at,
         };
@@ -86,6 +95,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Error fetching profile:', error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchUserRole(userId: string) {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        // PGRST116 = レコードが見つからない
+        if (error.code === 'PGRST116') {
+          console.warn('⚠️  User record not found in public.users. Defaulting to "user" role.');
+          console.warn('   Please set up the Supabase trigger to automatically create user records.');
+          setUserRole('user'); // デフォルトロール
+        } else {
+          console.error('Error fetching user role:', error);
+          setUserRole('user'); // エラー時もデフォルトロール
+        }
+      } else if (data) {
+        setUserRole(data.role as UserRole);
+      }
+    } catch (error) {
+      console.error('Error fetching user role:', error);
+      setUserRole('user'); // エラー時もデフォルトロール
     }
   }
 
@@ -115,18 +151,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function refreshProfile() {
     if (user) {
       await fetchProfile(user.id);
+      await fetchUserRole(user.id);
     }
+  }
+
+  // ロール確認のヘルパー関数
+  function isDeveloper(): boolean {
+    return userRole === 'developer';
+  }
+
+  function isOfficial(): boolean {
+    return userRole === 'official';
+  }
+
+  function isUser(): boolean {
+    return userRole === 'user';
   }
 
   const value = {
     session,
     user,
     profile,
+    userRole,
     loading,
     signUp,
     signIn,
     signOut,
     refreshProfile,
+    isDeveloper,
+    isOfficial,
+    isUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

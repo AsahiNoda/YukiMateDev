@@ -150,13 +150,15 @@ CREATE TABLE public.posts_events (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT posts_events_pkey PRIMARY KEY (id),
-  CONSTRAINT posts_events_host_user_id_fkey FOREIGN KEY (host_user_id) REFERENCES public.users(id),
-  CONSTRAINT posts_events_resort_id_fkey FOREIGN KEY (resort_id) REFERENCES public.resorts(id)
+  CONSTRAINT posts_events_resort_id_fkey FOREIGN KEY (resort_id) REFERENCES public.resorts(id),
+  CONSTRAINT posts_events_host_user_id_fkey1 FOREIGN KEY (host_user_id) REFERENCES public.users(id),
+  CONSTRAINT posts_events_host_user_id_fkey FOREIGN KEY (host_user_id) REFERENCES public.profiles(user_id)
 );
 CREATE TABLE public.profiles (
   user_id uuid NOT NULL,
   display_name text,
   avatar_url text,
+  header_url text,
   country_code text,
   languages ARRAY DEFAULT '{}'::text[],
   level USER-DEFINED,
@@ -166,7 +168,8 @@ CREATE TABLE public.profiles (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT profiles_pkey PRIMARY KEY (user_id),
-  CONSTRAINT profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  CONSTRAINT profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT profiles_home_resort_id_fkey FOREIGN KEY (home_resort_id) REFERENCES public.resorts(id)
 );
 CREATE TABLE public.reports (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -232,6 +235,15 @@ CREATE TABLE public.resorts (
   region text,
   CONSTRAINT resorts_pkey PRIMARY KEY (id)
 );
+CREATE TABLE public.saved_events (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  event_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT saved_events_pkey PRIMARY KEY (id),
+  CONSTRAINT saved_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT saved_events_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.posts_events(id)
+);
 CREATE TABLE public.spot_reviews (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   spot_id uuid NOT NULL,
@@ -270,6 +282,7 @@ CREATE TABLE public.users (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   email text UNIQUE,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
+  role USER-DEFINED NOT NULL DEFAULT 'user'::user_role,
   CONSTRAINT users_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.weather_daily_cache (

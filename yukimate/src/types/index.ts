@@ -4,7 +4,7 @@
  */
 
 // Common types
-export type { SkillLevel, LoadingState, ErrorState, SuccessState, ApiState } from './common';
+export type { SkillLevel, UserRole, LoadingState, ErrorState, SuccessState, ApiState } from './common';
 
 // Database types
 export type {

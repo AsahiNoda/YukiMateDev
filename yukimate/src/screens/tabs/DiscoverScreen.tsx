@@ -247,7 +247,7 @@ export default function DiscoverScreen() {
             isTopCard={index === 0}
             shouldReset={pendingSwipe === null && index === 0}
             onShowDetail={(evt) => router.push({
-              pathname: '/event-detail',
+              pathname: '/(tabs)/discover/event-detail',
               params: { eventId: evt.id }
             })}
             cardHeight={CARD_HEIGHT}

@@ -107,7 +107,7 @@ export async function testSupabaseSetup() {
         console.error('❌ Profile query failed:', error.message);
       } else if (!profile) {
         console.warn('⚠️  Profile not found for current user');
-        console.warn('   Create profile data in Supabase Dashboard');
+        console.warn('   Check profile data in Supabase Dashboard');
       } else {
         console.log('✅ Profile found');
         // 出したいテーブルログは自由に変更

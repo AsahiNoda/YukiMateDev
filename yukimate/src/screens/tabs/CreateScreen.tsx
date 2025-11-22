@@ -438,7 +438,6 @@ export default function CreateEventScreen() {
           <Text style={styles.label}>タイトル *</Text>
           <TextInput
             style={styles.input}
-            placeholder="白馬でパウダーライディング"
             placeholderTextColor="#9CA3AF"
             value={title}
             onChangeText={setTitle}
@@ -571,7 +570,6 @@ export default function CreateEventScreen() {
           <Text style={styles.label}>定員 *</Text>
           <TextInput
             style={styles.input}
-            placeholder="6"
             placeholderTextColor="#9CA3AF"
             value={capacity}
             onChangeText={setCapacity}

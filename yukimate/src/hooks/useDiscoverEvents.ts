@@ -182,12 +182,27 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
             });
           }
 
+          // プロフィールアバターのURLを取得
+          let hostAvatarUrl: string | null = null;
+          if (event.profiles?.avatar_url) {
+            const avatarPath = event.profiles.avatar_url;
+            // パスがすでに完全なURLの場合はそのまま使用、そうでなければStorage URLを生成
+            if (avatarPath.startsWith('http')) {
+              hostAvatarUrl = avatarPath;
+            } else {
+              const { data } = supabase.storage
+                .from('profile_avatar')
+                .getPublicUrl(avatarPath);
+              hostAvatarUrl = data.publicUrl;
+            }
+          }
+
           return {
             id: event.id,
             title: event.title,
             description: event.description,
             hostName: event.profiles?.display_name || 'Unknown',
-            hostAvatar: event.profiles?.avatar_url || null,
+            hostAvatar: hostAvatarUrl,
             resortName: event.resorts?.name || 'Unknown Resort',
             startAt: event.start_at,
             endAt: event.end_at,
