@@ -20,8 +20,8 @@ import { useExplore, type ExploreFilters, type SortOptions } from '@/hooks/useEx
 const CATEGORIES = [
   { key: 'event', label: 'イベント', icon: 'person.3.fill' },
   { key: 'lesson', label: 'レッスン', icon: 'graduationcap.fill' },
-  { key: 'photo', label: '撮影', icon: 'camera.fill' },
-  { key: 'mate', label: '仲間', icon: 'person.2.fill' },
+  { key: 'filming', label: '撮影', icon: 'camera.fill' },
+  { key: 'group', label: '仲間', icon: 'person.2.fill' },
 ];
 
 const SORT_OPTIONS = [
