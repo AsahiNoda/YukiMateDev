@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { supabase } from '@/lib/supabase';
 import { useResorts } from '@/hooks/useResorts';
 import type { SkillLevel } from '@/types';
@@ -23,7 +24,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 const CATEGORIES = [
   { value: 'event', label: 'イベント' },
   // { value: 'rideshare', label: '相乗り' }, // MVP では未実装
-  { value: 'filming', label: '追い撮り' },
+  { value: 'filming', label: '撮影' },
   { value: 'lesson', label: 'レッスン' },
   { value: 'group', label: '仲間募集' },
 ];
@@ -43,9 +44,10 @@ export default function CreateEventScreen() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('event');
   const [resortId, setResortId] = useState('');
-  const [date, setDate] = useState('');
+  const [date, setDate] = useState<Date | null>(null);
   const [startTime, setStartTime] = useState('10:00');
   const [endTime, setEndTime] = useState('15:00');
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [capacity, setCapacity] = useState('6');
   const [level, setLevel] = useState<SkillLevel | ''>('');
   const [price, setPrice] = useState('');
@@ -100,10 +102,8 @@ export default function CreateEventScreen() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [4, 3],
+      allowsEditing: false, // Cropを無効化 - アスペクト比を保持
       quality: 0.8,
-      base64: true,
     });
 
     if (!result.canceled && result.assets[0]) {
@@ -142,7 +142,7 @@ export default function CreateEventScreen() {
     setDescription('');
     setCategory('event');
     setResortId('');
-    setDate('');
+    setDate(null);
     setStartTime('10:00');
     setEndTime('15:00');
     setCapacity('6');
@@ -152,6 +152,30 @@ export default function CreateEventScreen() {
     setTagInput('');
     setTags([]);
     setSelectedImages([]);
+  };
+
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setDate(selectedDate);
+    }
+  };
+
+  const formatDisplayDate = (date: Date | null) => {
+    if (!date) return '日付を選択';
+    return date.toLocaleDateString('ja-JP', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'short'
+    });
+  };
+
+  const formatDateForDB = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const uploadImages = async (eventId: string): Promise<string[]> => {
@@ -229,8 +253,9 @@ export default function CreateEventScreen() {
       }
 
       // Parse datetime
-      const startAt = new Date(`${date}T${startTime}:00`).toISOString();
-      const endAt = endTime ? new Date(`${date}T${endTime}:00`).toISOString() : null;
+      const dateStr = formatDateForDB(date);
+      const startAt = new Date(`${dateStr}T${startTime}:00`).toISOString();
+      const endAt = endTime ? new Date(`${dateStr}T${endTime}:00`).toISOString() : null;
 
       // Parse price
       const trimmedPrice = (price || '').trim();
@@ -257,7 +282,7 @@ export default function CreateEventScreen() {
           price_per_person_jpy: priceNum,
           meeting_place: (meetingPlace || '').trim() || null,
           tags: tags.length > 0 ? tags : null,
-          photos: null, // Will update later if images exist
+          photos: [], // Empty array instead of null (matches DB default)
           status: 'open',
         })
         .select('id')
@@ -270,21 +295,30 @@ export default function CreateEventScreen() {
       let photoPaths: string[] | null = null;
       if (selectedImages.length > 0) {
         try {
+          console.log(`Uploading ${selectedImages.length} images for event ${newEvent.id}...`);
           photoPaths = await uploadImages(newEvent.id);
+          console.log('Upload successful. Paths:', photoPaths);
 
           // Update event with photo paths (not URLs)
-          const { error: updateError } = await supabase
+          console.log('Updating posts_events.photos field...');
+          const { data: updateData, error: updateError } = await supabase
             .from('posts_events')
             .update({ photos: photoPaths })
-            .eq('id', newEvent.id);
+            .eq('id', newEvent.id)
+            .select('id, photos');
 
-          if (updateError) throw updateError;
+          if (updateError) {
+            console.error('Update error:', updateError);
+            throw updateError;
+          }
+
+          console.log('Photos field updated successfully:', updateData);
         } catch (uploadError) {
-          console.error('Image upload error:', uploadError);
+          console.error('Image upload/update error:', uploadError);
           // Continue even if image upload fails
           Alert.alert(
             '警告',
-            '画像のアップロードに失敗しましたが、投稿は作成されました'
+            '画像のアップロードまたは登録に失敗しましたが、投稿は作成されました。詳細はログを確認してください。'
           );
         }
       }
@@ -404,7 +438,6 @@ export default function CreateEventScreen() {
           <Text style={styles.label}>タイトル *</Text>
           <TextInput
             style={styles.input}
-            placeholder="白馬でパウダーライディング"
             placeholderTextColor="#9CA3AF"
             value={title}
             onChangeText={setTitle}
@@ -488,13 +521,25 @@ export default function CreateEventScreen() {
         {/* Date & Time */}
         <View style={styles.section}>
           <Text style={styles.label}>日付 *</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="YYYY-MM-DD (例: 2025-12-20)"
-            placeholderTextColor="#9CA3AF"
-            value={date}
-            onChangeText={setDate}
-          />
+          <TouchableOpacity
+            style={styles.picker}
+            onPress={() => setShowDatePicker(true)}
+          >
+            <Text style={[styles.pickerText, !date && styles.placeholderText]}>
+              {formatDisplayDate(date)}
+            </Text>
+            <IconSymbol name="calendar" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={date || new Date()}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              onChange={handleDateChange}
+              minimumDate={new Date()}
+              textColor="#FFFFFF"
+            />
+          )}
         </View>
 
         <View style={styles.row}>
@@ -525,7 +570,6 @@ export default function CreateEventScreen() {
           <Text style={styles.label}>定員 *</Text>
           <TextInput
             style={styles.input}
-            placeholder="6"
             placeholderTextColor="#9CA3AF"
             value={capacity}
             onChangeText={setCapacity}
@@ -614,8 +658,14 @@ export default function CreateEventScreen() {
               {tags.map((tag, index) => (
                 <View key={index} style={styles.tag}>
                   <Text style={styles.tagText}>{tag}</Text>
-                  <TouchableOpacity onPress={() => removeTag(index)}>
-                    <IconSymbol name="xmark.circle.fill" size={16} color="#9CA3AF" />
+                  <TouchableOpacity
+                    onPress={() => removeTag(index)}
+                    style={styles.tagRemoveButton}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <View style={styles.tagRemoveIcon}>
+                      <IconSymbol name="xmark" size={14} color="#FFFFFF" />
+                    </View>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -633,8 +683,11 @@ export default function CreateEventScreen() {
                 <TouchableOpacity
                   style={styles.imageRemoveButton}
                   onPress={() => removeImage(index)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
-                  <IconSymbol name="xmark.circle.fill" size={24} color="#F87171" />
+                  <View style={styles.imageRemoveButtonInner}>
+                    <IconSymbol name="xmark" size={16} color="#FFFFFF" />
+                  </View>
                 </TouchableOpacity>
               </View>
             ))}
@@ -840,15 +893,26 @@ const styles = StyleSheet.create({
   tag: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     backgroundColor: '#1E3A8A',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderRadius: 16,
   },
   tagText: {
     color: '#FFFFFF',
     fontSize: 14,
+  },
+  tagRemoveButton: {
+    marginLeft: 4,
+  },
+  tagRemoveIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   imagesContainer: {
     flexDirection: 'row',
@@ -867,8 +931,22 @@ const styles = StyleSheet.create({
   },
   imageRemoveButton: {
     position: 'absolute',
-    top: -8,
-    right: -8,
+    top: -10,
+    right: -10,
+    zIndex: 10,
+  },
+  imageRemoveButtonInner: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 4,
   },
   imagePlaceholder: {
     width: 100,
@@ -904,5 +982,8 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#F87171',
     fontSize: 14,
+  },
+  placeholderText: {
+    color: '#9CA3AF',
   },
 });

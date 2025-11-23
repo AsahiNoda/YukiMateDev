@@ -6,7 +6,10 @@ import { Slot, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { AuthProvider } from '@/contexts/AuthContext';
 
+// グローバル変数で初期化状態を管理（再マウント時もリセットされない）
+let globalInitialized = false;
 
 export default function RootLayout() {
   const router = useRouter();
@@ -14,12 +17,14 @@ export default function RootLayout() {
   const initRef = useRef(false);
 
   useEffect(() => {
-    // すでに初期化済みの場合はスキップ
-    if (initRef.current) {
+    // すでに初期化済みの場合はスキップ（グローバル変数を使用）
+    if (globalInitialized) {
       console.log('⚠️  Already initialized, skipping...');
+      setIsReady(true);
       return;
     }
 
+    globalInitialized = true;
     initRef.current = true;
     let mounted = true;
     let authSubscription: any = null;
@@ -91,10 +96,31 @@ export default function RootLayout() {
             return;
           }
 
-          // SIGNED_INイベントのみホーム画面へリダイレクト
+          // SIGNED_INイベント時にプロフィールの存在を確認
           if (event === 'SIGNED_IN' && session) {
-            console.log('➡️  Redirecting to home...');
-            router.replace('/(tabs)/home');
+            console.log('➡️  User signed in, checking profile...');
+
+            // プロフィールの存在確認
+            supabase
+              .from('profiles')
+              .select('user_id')
+              .eq('user_id', session.user.id)
+              .single()
+              .then(({ data: profile, error }) => {
+                if (error && error.code === 'PGRST116') {
+                  // プロフィールが存在しない場合
+                  console.log('⚠️  Profile not found, redirecting to setup...');
+                  router.replace('/profile-setup');
+                } else if (profile) {
+                  // プロフィールが存在する場合
+                  console.log('✅ Profile exists, redirecting to home...');
+                  router.replace('/(tabs)/home');
+                } else {
+                  // その他のエラー
+                  console.error('❌ Error checking profile:', error);
+                  router.replace('/(tabs)/home');
+                }
+              });
           }
           // SIGNED_OUTイベントのみサインイン画面へリダイレクト
           else if (event === 'SIGNED_OUT') {
@@ -125,21 +151,17 @@ export default function RootLayout() {
     };
   }, []);
 
-  if (!isReady) {
-    console.log('⏳ RootLayout: Loading...');
-    return (
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
-        </View>
-      </GestureHandlerRootView>
-    );
-  }
-
-  console.log('✅ RootLayout: Ready, rendering Slot');
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Slot />
+      <AuthProvider>
+        {!isReady ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3B82F6" />
+          </View>
+        ) : (
+          <Slot />
+        )}
+      </AuthProvider>
     </GestureHandlerRootView>
   );
 }

@@ -32,8 +32,10 @@ export type DiscoverEvent = {
   spotsTaken: number;
   levelRequired: SkillLevel | null;
   pricePerPersonJpy: number | null;
+  meetingPlace: string | null;
   tags: string[];
-  photoUrl: string | null;
+  photoUrl: string | null; // 下位互換性のため残す（最初の画像）
+  photoUrls: string[]; // 全画像のURL配列
   hostUserId: string;
 };
 

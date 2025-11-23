@@ -8,19 +8,23 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
 import type { SkillLevel } from '@/types';
+import { pickAndUploadImage } from '@/lib/imageUpload';
+import { Ionicons } from '@expo/vector-icons';
 
 type RidingStyle = 'Freeride' | 'Powder' | 'Carving' | 'Park' | 'Backcountry';
 
 const COUNTRIES = [
-  { code: 'JP', name: '日本', flag: '🇯🇵' },
-  { code: 'AU', name: 'オーストラリア', flag: '🇦🇺' },
-  { code: 'NZ', name: 'ニュージーランド', flag: '🇳🇿' },
-  { code: 'US', name: 'アメリカ', flag: '🇺🇸' },
-  { code: 'CA', name: 'カナダ', flag: '🇨🇦' },
+  { code: 'JP', name: '日本', flag: require('../../../assets/images/flags/jp.png') },
+  { code: 'AU', name: 'オーストラリア', flag: require('../../../assets/images/flags/au.png') },
+  { code: 'NZ', name: 'ニュージーランド', flag: require('../../../assets/images/flags/nz.png') },
+  { code: 'US', name: 'アメリカ', flag: require('../../../assets/images/flags/us.png') },
+  { code: 'CA', name: 'カナダ', flag: require('../../../assets/images/flags/ca.png') },
 ];
 
 const SKILL_LEVELS: SkillLevel[] = ['beginner', 'intermediate', 'advanced'];
@@ -34,25 +38,23 @@ const RIDING_STYLES: RidingStyle[] = [
 ];
 
 export default function ProfileSetupScreen() {
+  const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
-
-  // セッションからユーザーIDを取得
-  React.useEffect(() => {
-    const getUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUserId(session.user.id);
-      }
-    };
-    getUser();
-  }, []);
 
   // フォーム状態
   const [displayName, setDisplayName] = useState('');
   const [countryCode, setCountryCode] = useState('JP');
+  const [languages, setLanguages] = useState<string[]>([]);
   const [skillLevel, setSkillLevel] = useState<SkillLevel>('beginner');
   const [ridingStyle, setRidingStyle] = useState<RidingStyle[]>([]);
+  const [bio, setBio] = useState('');
+  const homeResortId = null; // 将来的にホームゲレンデ選択機能を追加予定
+
+  // 画像関連の状態
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [headerUrl, setHeaderUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingHeader, setUploadingHeader] = useState(false);
 
   const toggleRidingStyle = (style: RidingStyle) => {
     if (ridingStyle.includes(style)) {
@@ -62,9 +64,41 @@ export default function ProfileSetupScreen() {
     }
   };
 
+  const toggleLanguage = (language: string) => {
+    if (languages.includes(language)) {
+      setLanguages(languages.filter((l) => l !== language));
+    } else {
+      setLanguages([...languages, language]);
+    }
+  };
+
+  // アバター画像をアップロード
+  const handleAvatarUpload = async () => {
+    if (!user?.id) return;
+
+    setUploadingAvatar(true);
+    const url = await pickAndUploadImage(user.id, 'avatar');
+    if (url) {
+      setAvatarUrl(url);
+    }
+    setUploadingAvatar(false);
+  };
+
+  // ヘッダー画像をアップロード
+  const handleHeaderUpload = async () => {
+    if (!user?.id) return;
+
+    setUploadingHeader(true);
+    const url = await pickAndUploadImage(user.id, 'header');
+    if (url) {
+      setHeaderUrl(url);
+    }
+    setUploadingHeader(false);
+  };
+
   const handleSubmit = async () => {
     // バリデーション
-    if (!userId) {
+    if (!user?.id) {
       Alert.alert('エラー', 'ユーザー情報が取得できませんでした');
       return;
     }
@@ -74,8 +108,13 @@ export default function ProfileSetupScreen() {
       return;
     }
 
-    if (ridingStyle.length === 0) {
-      Alert.alert('エラー', '少なくとも1つのライディングスタイルを選択してください');
+    if (!countryCode) {
+      Alert.alert('エラー', '国籍を選択してください');
+      return;
+    }
+
+    if (languages.length === 0) {
+      Alert.alert('エラー', '少なくとも1つの言語を選択してください');
       return;
     }
 
@@ -83,11 +122,16 @@ export default function ProfileSetupScreen() {
       setLoading(true);
 
       const { error } = await supabase.from('profiles').insert({
-        user_id: userId,
+        user_id: user.id,
         display_name: displayName.trim(),
+        avatar_url: avatarUrl,
+        header_url: headerUrl,
         country_code: countryCode,
+        languages: languages,
         level: skillLevel,
         styles: ridingStyle,
+        bio: bio.trim() || null,
+        home_resort_id: homeResortId,
       });
 
       if (error) {
@@ -99,14 +143,17 @@ export default function ProfileSetupScreen() {
         return;
       }
 
-      Alert.alert('完了', 'プロフィールを作成しました！', [
-        {
-          text: 'OK',
-          onPress: () => {
-            router.replace('/(tabs)/home');
-          },
-        },
-      ]);
+      // プロフィール作成成功
+      console.log('✅ Profile created successfully');
+
+      // AuthContextを更新してプロフィール情報を取得
+      console.log('🔄 Refreshing profile...');
+      await refreshProfile();
+      console.log('✅ Profile refreshed');
+
+      // プロフィール情報が更新されたことを確認してからホーム画面に遷移
+      console.log('➡️  Navigating to home...');
+      router.replace('/(tabs)/home');
     } catch (error: any) {
       console.error('Error creating profile:', error);
       Alert.alert('エラー', 'プロフィールの作成に失敗しました');
@@ -123,9 +170,57 @@ export default function ProfileSetupScreen() {
           <Text style={styles.subtitle}>基本情報を登録しましょう</Text>
         </View>
 
+        {/* ヘッダー画像 */}
+        <View style={styles.section}>
+          <Text style={styles.label}>ヘッダー</Text>
+          <TouchableOpacity
+            style={styles.headerImageContainer}
+            onPress={handleHeaderUpload}
+            disabled={uploadingHeader}
+          >
+            {headerUrl ? (
+              <Image source={{ uri: headerUrl }} style={styles.headerImage} />
+            ) : (
+              <View style={styles.headerImagePlaceholder}>
+                {uploadingHeader ? (
+                  <ActivityIndicator color="#3B82F6" />
+                ) : (
+                  <>
+                    <Ionicons name="image-outline" size={32} color="#9CA3AF" />
+                    <Text style={styles.placeholderText}>タップしてヘッダー画像を選択</Text>
+                  </>
+                )}
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* アバター画像 */}
+        <View style={styles.section}>
+          <Text style={styles.label}>アイコン</Text>
+          <TouchableOpacity
+            style={styles.avatarContainer}
+            onPress={handleAvatarUpload}
+            disabled={uploadingAvatar}
+          >
+            {avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                {uploadingAvatar ? (
+                  <ActivityIndicator color="#3B82F6" />
+                ) : (
+                  <Ionicons name="person-outline" size={40} color="#9CA3AF" />
+                )}
+              </View>
+            )}
+          </TouchableOpacity>
+          <Text style={styles.avatarHint}>タップしてアイコン画像を選択</Text>
+        </View>
+
         {/* 表示名 */}
         <View style={styles.section}>
-          <Text style={styles.label}>表示名 *</Text>
+          <Text style={styles.label}>ユーザー名 *</Text>
           <TextInput
             style={styles.input}
             placeholder="雪山　太郎"
@@ -148,7 +243,7 @@ export default function ProfileSetupScreen() {
                 ]}
                 onPress={() => setCountryCode(country.code)}
               >
-                <Text style={styles.countryFlag}>{country.flag}</Text>
+                <Image source={country.flag} style={styles.countryFlag} />
                 <Text
                   style={[
                     styles.countryName,
@@ -159,6 +254,45 @@ export default function ProfileSetupScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+        </View>
+
+        {/* 言語 */}
+        <View style={styles.section}>
+          <Text style={styles.label}>言語 * (複数選択可)</Text>
+          <View style={styles.buttonGroup}>
+            <TouchableOpacity
+              style={[
+                styles.languageButton,
+                languages.includes('Japanese') && styles.languageButtonActive,
+              ]}
+              onPress={() => toggleLanguage('Japanese')}
+            >
+              <Text
+                style={[
+                  styles.languageText,
+                  languages.includes('Japanese') && styles.languageTextActive,
+                ]}
+              >
+                日本語
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.languageButton,
+                languages.includes('English') && styles.languageButtonActive,
+              ]}
+              onPress={() => toggleLanguage('English')}
+            >
+              <Text
+                style={[
+                  styles.languageText,
+                  languages.includes('English') && styles.languageTextActive,
+                ]}
+              >
+                English
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -190,7 +324,7 @@ export default function ProfileSetupScreen() {
 
         {/* ライディングスタイル */}
         <View style={styles.section}>
-          <Text style={styles.label}>ライディングスタイル * (複数選択可)</Text>
+          <Text style={styles.label}>ライディングスタイル (複数選択可)</Text>
           <View style={styles.styleGrid}>
             {RIDING_STYLES.map((style) => (
               <TouchableOpacity
@@ -212,6 +346,21 @@ export default function ProfileSetupScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        </View>
+
+        {/* Bio */}
+        <View style={styles.section}>
+          <Text style={styles.label}>自己紹介</Text>
+          <TextInput
+            style={[styles.input, styles.bioInput]}
+            placeholder="スノーボードについて、自分について..."
+            placeholderTextColor="#9CA3AF"
+            value={bio}
+            onChangeText={setBio}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+          />
         </View>
 
         <TouchableOpacity
@@ -272,6 +421,72 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#334155',
   },
+  bioInput: {
+    minHeight: 100,
+    paddingTop: 16,
+  },
+  hint: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginTop: 8,
+  },
+  // ヘッダー画像スタイル
+  headerImageContainer: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#1E293B',
+    borderWidth: 2,
+    borderColor: '#334155',
+  },
+  headerImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  headerImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  placeholderText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 8,
+  },
+  // アバター画像スタイル
+  avatarContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    overflow: 'hidden',
+    backgroundColor: '#1E293B',
+    borderWidth: 3,
+    borderColor: '#334155',
+    alignSelf: 'center',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+  },
+  avatarHint: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  // 国旗スタイル
   countryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -293,7 +508,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E3A8A',
   },
   countryFlag: {
-    fontSize: 20,
+    width: 24,
+    height: 16,
+    resizeMode: 'contain',
   },
   countryName: {
     fontSize: 14,
@@ -307,6 +524,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
+  // 言語スタイル
+  languageButton: {
+    flex: 1,
+    paddingVertical: 16,
+    backgroundColor: '#1E293B',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#334155',
+    alignItems: 'center',
+  },
+  languageButtonActive: {
+    borderColor: '#3B82F6',
+    backgroundColor: '#1E3A8A',
+  },
+  languageText: {
+    fontSize: 16,
+    color: '#9CA3AF',
+  },
+  languageTextActive: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+  // スキルレベルスタイル
   skillButton: {
     flex: 1,
     paddingVertical: 16,

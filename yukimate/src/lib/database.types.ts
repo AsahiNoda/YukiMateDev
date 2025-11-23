@@ -12,10 +12,18 @@ export type SkillLevel = 'beginner' | 'intermediate' | 'advanced';
 export type PostType = 'snow' | 'spot' | 'access';
 export type EventStatus = 'open' | 'closed' | 'cancelled' | 'full';
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
+export type UserRole = 'user' | 'official' | 'developer';
 
 // ==========================================
 // Database Tables
 // ==========================================
+
+export interface User {
+  id: string; // uuid
+  email: string | null;
+  role: UserRole;
+  created_at: string;
+}
 
 export interface Resort {
   id: string; // uuid
@@ -64,6 +72,7 @@ export interface Profile {
   user_id: string; // uuid (primary key)
   display_name: string | null;
   avatar_url: string | null;
+  header_url: string | null;
   country_code: string | null;
   languages: string[] | null;
   level: SkillLevel | null;
@@ -188,6 +197,15 @@ export type SupabaseClient = ReturnType<typeof createClient<Database>>;
 export interface Database {
   public: {
     Tables: {
+      users: {
+        Row: User;
+        Insert: Omit<User, 'id' | 'created_at' | 'role'> & {
+          id?: string;
+          created_at?: string;
+          role?: UserRole;
+        };
+        Update: Partial<Omit<User, 'id'>>;
+      };
       resorts: {
         Row: Resort;
         Insert: Omit<Resort, 'id' | 'created_at' | 'updated_at'> & {
@@ -275,6 +293,7 @@ export interface Database {
       post_type: PostType;
       event_status: EventStatus;
       application_status: ApplicationStatus;
+      user_role: UserRole;
     };
   };
 }

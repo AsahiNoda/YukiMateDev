@@ -4,7 +4,7 @@
  */
 
 // Common types
-export type { SkillLevel, LoadingState, ErrorState, SuccessState, ApiState } from './common';
+export type { SkillLevel, UserRole, LoadingState, ErrorState, SuccessState, ApiState } from './common';
 
 // Database types
 export type {
@@ -51,4 +51,6 @@ export type RootStackParamList = {
   CreateEvent: undefined;
   UserProfile: { userId: string };
   ResortDetail: { resortId: number };
+  Explore: { filters?: string };
+  ExploreFilter: { currentFilters?: string };
 };
