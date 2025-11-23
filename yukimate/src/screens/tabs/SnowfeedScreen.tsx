@@ -1,29 +1,181 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Modal,
+  TextInput,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { IconSymbol } from '@components/ui/icon-symbol';
+import { WeatherCard } from '@components/snowfeed/WeatherCard';
+import { WeatherForecast } from '@components/snowfeed/WeatherForecast';
+import { ResortSearch } from '@components/snowfeed/ResortSearch';
 import { Colors } from '@/constants/theme';
 import { spacing, fontSize, borderRadius, fontWeight } from '@/constants/spacing';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { useSnowfeed } from '@hooks/useSnowfeed';
+import { router } from 'expo-router';
+import { fetch7DayForecast, DailyForecast } from '@/services/weatherApi';
 
-const resortTabs = [
-  { id: 'all', name: 'All Resorts' },
-  { id: 'hakuba-happo', name: 'Hakuba Happo-One' },
-  { id: 'hakuba-47', name: 'Hakuba 47' },
-  { id: 'niseko', name: 'Niseko' },
-];
+const HOME_RESORT_KEY = '@snowfeed_home_resort';
+const CURRENT_RESORT_KEY = '@snowfeed_current_resort';
 
 export default function SnowfeedScreen() {
-  const [selectedResort, setSelectedResort] = useState('all');
+  const [homeResortId, setHomeResortId] = useState<string | null>(null);
+  const [homeResortName, setHomeResortName] = useState<string>('');
+  const [selectedResortId, setSelectedResortId] = useState<string | null>(null);
+  const [selectedResortName, setSelectedResortName] = useState<string>('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [isFirstTime, setIsFirstTime] = useState(false);
+  const [isChangingHome, setIsChangingHome] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [forecast, setForecast] = useState<DailyForecast[]>([]);
+  const [forecastLoading, setForecastLoading] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const snowfeedState = useSnowfeed(selectedResort === 'all' ? null : selectedResort);
+  const snowfeedState = useSnowfeed(selectedResortId);
+
+  // Load home resort and current resort on mount
+  useEffect(() => {
+    const loadResortData = async () => {
+      try {
+        // Check for home resort
+        const homeResort = await AsyncStorage.getItem(HOME_RESORT_KEY);
+
+        if (homeResort) {
+          // User has set a home resort
+          const { id, name } = JSON.parse(homeResort);
+          setHomeResortId(id);
+          setHomeResortName(name);
+
+          // Check if there's a currently viewed resort
+          const currentResort = await AsyncStorage.getItem(CURRENT_RESORT_KEY);
+          if (currentResort) {
+            const { id: currentId, name: currentName } = JSON.parse(currentResort);
+            setSelectedResortId(currentId);
+            setSelectedResortName(currentName);
+          } else {
+            // Default to home resort
+            setSelectedResortId(id);
+            setSelectedResortName(name);
+          }
+        } else {
+          // First-time user - no home resort set
+          setIsFirstTime(true);
+          setShowSearch(true);
+        }
+      } catch (error) {
+        console.error('Error loading resort data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadResortData();
+  }, []);
+
+  // Load 7-day forecast when resort changes
+  useEffect(() => {
+    if (selectedResortId && selectedResortName) {
+      const loadForecast = async () => {
+        setForecastLoading(true);
+        try {
+          // Use resort name instead of ID for coordinate matching
+          const forecastData = await fetch7DayForecast(selectedResortName);
+          setForecast(forecastData);
+          console.log(`Loaded forecast for: ${selectedResortName}`, forecastData);
+        } catch (error) {
+          console.error('Error loading forecast:', error);
+        } finally {
+          setForecastLoading(false);
+        }
+      };
+      loadForecast();
+    }
+  }, [selectedResortId, selectedResortName]);
+
+  // Handle resort selection from search
+  const handleSelectResort = async (resortId: string, resortName: string, setAsHome: boolean = false) => {
+    setSelectedResortId(resortId);
+    setSelectedResortName(resortName);
+    setShowSearch(false); // Close modal after selection
+
+    try {
+      // Save as current resort
+      await AsyncStorage.setItem(
+        CURRENT_RESORT_KEY,
+        JSON.stringify({ id: resortId, name: resortName })
+      );
+
+      // If first-time user or explicitly setting as home
+      if (isFirstTime || setAsHome) {
+        await AsyncStorage.setItem(
+          HOME_RESORT_KEY,
+          JSON.stringify({ id: resortId, name: resortName })
+        );
+        setHomeResortId(resortId);
+        setHomeResortName(resortName);
+        setIsFirstTime(false);
+      }
+    } catch (error) {
+      console.error('Error saving resort preference:', error);
+    }
+  };
+
+  // Return to home resort
+  const handleReturnToHome = async () => {
+    if (homeResortId && homeResortName) {
+      setSelectedResortId(homeResortId);
+      setSelectedResortName(homeResortName);
+      try {
+        await AsyncStorage.setItem(
+          CURRENT_RESORT_KEY,
+          JSON.stringify({ id: homeResortId, name: homeResortName })
+        );
+      } catch (error) {
+        console.error('Error saving current resort:', error);
+      }
+    }
+  };
+
+  // Show empty state if no resort selected (shouldn't happen with new flow, but keep as fallback)
+  if (!selectedResortId && !isLoading) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.emptyStateContainer, styles.centered]}>
+          <IconSymbol name="mountain.2" size={80} color={colors.icon} />
+          <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
+            雪山を選択してください
+          </Text>
+          <Text style={[styles.emptyStateSubtitle, { color: colors.textSecondary }]}>
+            お気に入りの雪山の最新情報をチェックしよう
+          </Text>
+          <TouchableOpacity
+            style={[styles.searchButton, { backgroundColor: colors.accent }]}
+            onPress={() => setShowSearch(true)}>
+            <IconSymbol name="magnifyingglass" size={20} color="#FFFFFF" />
+            <Text style={styles.searchButtonText}>雪山を検索</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Search Modal */}
+        <Modal visible={showSearch} animationType="slide" presentationStyle="pageSheet">
+          <ResortSearch
+            onSelectResort={handleSelectResort}
+            onClose={() => {
+              setShowSearch(false);
+              setIsChangingHome(false);
+            }}
+            isFirstTime={isFirstTime}
+            hasHomeResort={!!homeResortId}
+            isChangingHome={isChangingHome}
+          />
+        </Modal>
+      </View>
+    );
+  }
 
   if (snowfeedState.status === 'loading') {
     return (
@@ -46,6 +198,13 @@ export default function SnowfeedScreen() {
 
   const { rating, weather, posts } = snowfeedState.data;
 
+  // Debug: データの状態を確認
+  console.log('Selected Resort ID:', selectedResortId);
+  console.log('Selected Resort Name:', selectedResortName);
+  console.log('Weather data:', weather);
+  console.log('Rating data:', rating);
+  console.log('Posts count:', posts.length);
+
   const renderRatingBar = (label: string, value: number | null, max: number = 5) => {
     if (!value) return null;
     const percentage = (value / max) * 100;
@@ -67,75 +226,62 @@ export default function SnowfeedScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Resort Tabs */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={[styles.tabsContainer, { backgroundColor: colors.background }]}
-        contentContainerStyle={styles.tabsContent}>
-        {resortTabs.map((resort) => (
+      {/* Header with Back Button and Search */}
+      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        {/* Back/Home Button */}
+        {homeResortId && selectedResortId !== homeResortId ? (
           <TouchableOpacity
-            key={resort.id}
-            style={[
-              styles.tab,
-              selectedResort === resort.id && styles.tabActive,
-              {
-                backgroundColor:
-                  selectedResort === resort.id ? colors.accent : colors.backgroundSecondary,
-              },
-            ]}
-            onPress={() => setSelectedResort(resort.id)}>
-            <Text
-              style={[
-                styles.tabText,
-                selectedResort === resort.id && styles.tabTextActive,
-                { color: selectedResort === resort.id ? '#fff' : colors.text },
-              ]}>
-              {resort.name}
-            </Text>
+            style={styles.backButton}
+            onPress={handleReturnToHome}>
+            <IconSymbol name="house.fill" size={24} color={colors.accent} />
           </TouchableOpacity>
-        ))}
-      </ScrollView>
+        ) : (
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}>
+            <IconSymbol name="chevron.left" size={24} color={colors.text} />
+          </TouchableOpacity>
+        )}
+
+        {/* Search Box */}
+        <TouchableOpacity
+          style={[styles.searchBox, { backgroundColor: colors.backgroundSecondary }]}
+          onPress={() => {
+            setIsChangingHome(false);
+            setShowSearch(true);
+          }}
+          activeOpacity={0.7}>
+          <IconSymbol name="magnifyingglass" size={20} color={colors.textSecondary} />
+          <Text style={[styles.searchBoxText, { color: colors.textSecondary }]}>
+            {selectedResortName || '雪山を検索...'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Change Home Button - Only show when on home resort */}
+        {homeResortId === selectedResortId && (
+          <TouchableOpacity
+            style={[styles.changeHomeButton, { backgroundColor: colors.accent }]}
+            onPress={() => {
+              setIsChangingHome(true);
+              setShowSearch(true);
+            }}>
+            <IconSymbol name="house.fill" size={16} color="#FFFFFF" />
+          </TouchableOpacity>
+        )}
+      </View>
 
       <ScrollView style={styles.content}>
-        {/* Weather Summary */}
+        {/* Weather Card */}
         {weather && (
-          <View style={[styles.weatherCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>Current Conditions</Text>
-            <View style={styles.weatherGrid}>
-              <View style={styles.weatherItem}>
-                <IconSymbol name="thermometer" size={24} color={colors.icon} />
-                <Text style={[styles.weatherValue, { color: colors.text }]}>
-                  {weather.tempC || '--'}°C
-                </Text>
-                <Text style={[styles.weatherLabel, { color: colors.textSecondary }]}>Temp</Text>
-              </View>
-              <View style={styles.weatherItem}>
-                <IconSymbol name="snow" size={24} color={colors.icon} />
-                <Text style={[styles.weatherValue, { color: colors.text }]}>
-                  {weather.newSnowCm || '--'}cm
-                </Text>
-                <Text style={[styles.weatherLabel, { color: colors.textSecondary }]}>
-                  New Snow
-                </Text>
-              </View>
-              <View style={styles.weatherItem}>
-                <IconSymbol name="wind" size={24} color={colors.icon} />
-                <Text style={[styles.weatherValue, { color: colors.text }]}>
-                  {weather.windMs || '--'}m/s
-                </Text>
-                <Text style={[styles.weatherLabel, { color: colors.textSecondary }]}>Wind</Text>
-              </View>
-              <View style={styles.weatherItem}>
-                <Text style={[styles.weatherValue, { color: colors.text }]}>
-                  {weather.visibility || 'N/A'}
-                </Text>
-                <Text style={[styles.weatherLabel, { color: colors.textSecondary }]}>
-                  Visibility
-                </Text>
-              </View>
-            </View>
-          </View>
+          <WeatherCard
+            resortName={selectedResortName}
+            weather={weather}
+          />
+        )}
+
+        {/* 7-Day Weather Forecast */}
+        {!forecastLoading && forecast.length > 0 && (
+          <WeatherForecast forecast={forecast} />
         )}
 
         {/* Resort Rating */}
@@ -227,6 +373,20 @@ export default function SnowfeedScreen() {
           )}
         </View>
       </ScrollView>
+
+      {/* Search Modal */}
+      <Modal visible={showSearch} animationType="slide" presentationStyle="pageSheet">
+        <ResortSearch
+          onSelectResort={handleSelectResort}
+          onClose={() => {
+            setShowSearch(false);
+            setIsChangingHome(false);
+          }}
+          isFirstTime={isFirstTime}
+          hasHomeResort={!!homeResortId}
+          isChangingHome={isChangingHome}
+        />
+      </Modal>
     </View>
   );
 }
@@ -239,6 +399,96 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  // Empty state styles
+  emptyStateContainer: {
+    flex: 1,
+    padding: spacing.xl,
+  },
+  emptyStateTitle: {
+    fontSize: fontSize.xxl,
+    fontWeight: fontWeight.bold,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  emptyStateSubtitle: {
+    fontSize: fontSize.md,
+    marginBottom: spacing.xl,
+    textAlign: 'center',
+  },
+  searchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.lg,
+    gap: spacing.sm,
+  },
+  searchButtonText: {
+    color: '#FFFFFF',
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+  },
+  // Header styles
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    gap: spacing.sm,
+  },
+  backButton: {
+    padding: spacing.xs,
+  },
+  searchBox: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
+    gap: spacing.sm,
+  },
+  searchBoxText: {
+    fontSize: fontSize.md,
+    flex: 1,
+  },
+  changeHomeButton: {
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: spacing.md,
+  },
+  headerInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  headerTitle: {
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
+  },
+  changeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  changeButtonText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+  },
   loadingText: {
     fontSize: fontSize.md,
   },
@@ -250,56 +500,58 @@ const styles = StyleSheet.create({
   errorSubtext: {
     fontSize: fontSize.sm,
   },
-  tabsContainer: {
-    maxHeight: 60,
-  },
-  tabsContent: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
-  },
-  tab: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.lg,
-  },
-  tabActive: {
-    //backgroundColor will be set dynamically
-  },
-  tabText: {
-    fontSize: fontSize.sm,
-  },
-  tabTextActive: {
-    fontWeight: fontWeight.semibold,
-  },
+  // Old tab styles (commented out - using header with search now)
+  // tabsContainer: {
+  //   maxHeight: 60,
+  // },
+  // tabsContent: {
+  //   paddingHorizontal: spacing.md,
+  //   paddingVertical: spacing.sm,
+  //   gap: spacing.sm,
+  // },
+  // tab: {
+  //   paddingHorizontal: spacing.md,
+  //   paddingVertical: spacing.sm,
+  //   borderRadius: borderRadius.lg,
+  // },
+  // tabActive: {
+  //   //backgroundColor will be set dynamically
+  // },
+  // tabText: {
+  //   fontSize: fontSize.sm,
+  // },
+  // tabTextActive: {
+  //   fontWeight: fontWeight.semibold,
+  // },
   content: {
     flex: 1,
   },
-  weatherCard: {
-    margin: spacing.md,
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-  },
+  // Old weather card styles (commented out - using WeatherCard component now)
+  // weatherCard: {
+  //   margin: spacing.md,
+  //   padding: spacing.md,
+  //   borderRadius: borderRadius.lg,
+  // },
   cardTitle: {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
     marginBottom: spacing.md,
   },
-  weatherGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  weatherItem: {
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  weatherValue: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-  },
-  weatherLabel: {
-    fontSize: fontSize.xs,
-  },
+  // weatherGrid: {
+  //   flexDirection: 'row',
+  //   justifyContent: 'space-around',
+  // },
+  // weatherItem: {
+  //   alignItems: 'center',
+  //   gap: spacing.xs,
+  // },
+  // weatherValue: {
+  //   fontSize: fontSize.lg,
+  //   fontWeight: fontWeight.bold,
+  // },
+  // weatherLabel: {
+  //   fontSize: fontSize.xs,
+  // },
   ratingCard: {
     marginHorizontal: spacing.md,
     marginBottom: spacing.md,

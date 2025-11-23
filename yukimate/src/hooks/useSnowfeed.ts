@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@lib/supabase';
+import { fetchWeatherData } from '../services/weatherApi';
 import type { SocialResortRating as ResortRating, SnowfeedWeather, SnowfeedPost, SnowfeedData } from '@types';
 
 type SnowfeedState =
@@ -32,7 +33,7 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
           console.warn('レーティング取得エラー:', ratingError);
         }
 
-        // 2. 天気データを取得
+        // 2. 天気データを取得（DBから）
         const { data: weatherData, error: weatherError } = await supabase
           .from('weather_daily_cache')
           .select('*')
@@ -43,6 +44,33 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
 
         if (weatherError && weatherError.code !== 'PGRST116') {
           console.warn('天気データ取得エラー:', weatherError);
+        }
+
+        // 2.5. DBに天気データがない場合、APIから取得
+        let apiWeatherData = null;
+        if (!weatherData) {
+          console.log('DBに天気データがないため、APIから取得します...');
+          apiWeatherData = await fetchWeatherData(resortId);
+
+          if (apiWeatherData) {
+            // APIから取得したデータをDBに保存
+            const { error: insertError } = await supabase
+              .from('weather_daily_cache')
+              .insert({
+                resort_id: resortId,
+                date: new Date().toISOString().split('T')[0],
+                temp_c: apiWeatherData.tempC,
+                new_snow_cm: apiWeatherData.newSnowCm,
+                base_depth_cm: apiWeatherData.baseDepthCm,
+                wind_ms: apiWeatherData.windMs,
+                visibility: apiWeatherData.visibility,
+                snow_quality: apiWeatherData.snowQuality,
+              });
+
+            if (insertError) {
+              console.warn('天気データのDB保存エラー:', insertError);
+            }
+          }
         }
 
         // 3. 投稿を取得
@@ -58,8 +86,7 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
             tags,
             photos,
             created_at,
-            resorts(name),
-            profiles!feed_posts_user_id_fkey(display_name, avatar_url)
+            resorts(name)
           `
           )
           .eq('resort_id', resortId)
@@ -68,6 +95,25 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
 
         if (postsError) {
           throw new Error(`投稿取得エラー: ${postsError.message}`);
+        }
+
+        // 3.5. ユーザープロフィールを取得
+        const userIds = postsData?.map((p: any) => p.user_id) || [];
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, display_name, avatar_url')
+          .in('user_id', userIds);
+
+        if (profilesError) {
+          console.warn('プロフィール取得エラー:', profilesError);
+        }
+
+        // プロフィールをMapに変換
+        const profilesMap = new Map();
+        if (profilesData) {
+          profilesData.forEach((profile: any) => {
+            profilesMap.set(profile.user_id, profile);
+          });
         }
 
         // 4. いいね数とコメント数を取得
@@ -122,11 +168,20 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
               visibility: weatherData.visibility as SnowfeedWeather['visibility'],
               snowQuality: weatherData.snow_quality as SnowfeedWeather['snowQuality'],
             }
+          : apiWeatherData
+          ? {
+              tempC: apiWeatherData.tempC,
+              newSnowCm: apiWeatherData.newSnowCm,
+              baseDepthCm: apiWeatherData.baseDepthCm,
+              windMs: apiWeatherData.windMs,
+              visibility: apiWeatherData.visibility,
+              snowQuality: apiWeatherData.snowQuality,
+            }
           : null;
 
         const posts: SnowfeedPost[] = (postsData || []).map((row: any) => {
           const resort = Array.isArray(row.resorts) ? row.resorts[0] : row.resorts;
-          const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+          const profile = profilesMap.get(row.user_id);
 
           return {
             id: row.id,
