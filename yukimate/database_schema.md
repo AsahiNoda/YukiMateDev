@@ -46,8 +46,9 @@ CREATE TABLE public.event_applications (
 );
 CREATE TABLE public.event_chats (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  event_id uuid NOT NULL,
-  closed_at timestamp with time zone,
+  event_id uuid NOT NULL UNIQUE,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone,
   CONSTRAINT event_chats_pkey PRIMARY KEY (id),
   CONSTRAINT event_chats_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.posts_events(id)
 );
@@ -59,7 +60,6 @@ CREATE TABLE public.event_messages (
   content_image_url text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT event_messages_pkey PRIMARY KEY (id),
-  CONSTRAINT event_messages_chat_id_fkey FOREIGN KEY (chat_id) REFERENCES public.event_chats(id),
   CONSTRAINT event_messages_sender_user_id_fkey FOREIGN KEY (sender_user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.event_participants (
@@ -158,7 +158,6 @@ CREATE TABLE public.profiles (
   user_id uuid NOT NULL,
   display_name text,
   avatar_url text,
-  header_url text,
   country_code text,
   languages ARRAY DEFAULT '{}'::text[],
   level USER-DEFINED,
@@ -167,6 +166,7 @@ CREATE TABLE public.profiles (
   home_resort_id uuid,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  header_url text,
   CONSTRAINT profiles_pkey PRIMARY KEY (user_id),
   CONSTRAINT profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
   CONSTRAINT profiles_home_resort_id_fkey FOREIGN KEY (home_resort_id) REFERENCES public.resorts(id)

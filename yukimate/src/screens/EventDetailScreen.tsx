@@ -442,14 +442,37 @@ export default function EventDetailScreen() {
         {/* アクションボタン */}
         <View style={styles.actionSection}>
           {event.isHost ? (
+            <>
+              <TouchableOpacity
+                style={styles.manageButton}
+                onPress={() => {
+                  // TODO: 申請管理画面へ遷移
+                  Alert.alert('開発中', '申請管理機能は開発中です');
+                }}
+              >
+                <Text style={styles.manageButtonText}>申請を管理</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.chatButton}
+                onPress={() => router.push({
+                  pathname: '/event-chat/[eventId]' as any,
+                  params: { eventId: event.id }
+                })}
+              >
+                <IconSymbol name="message" size={20} color="#3B82F6" />
+                <Text style={styles.chatButtonText}>チャット</Text>
+              </TouchableOpacity>
+            </>
+          ) : event.hasApplied && event.applicationStatus === 'approved' ? (
             <TouchableOpacity
-              style={styles.manageButton}
-              onPress={() => {
-                // TODO: 申請管理画面へ遷移
-                Alert.alert('開発中', '申請管理機能は開発中です');
-              }}
+              style={styles.chatButton}
+              onPress={() => router.push({
+                pathname: '/event-chat/[eventId]' as any,
+                params: { eventId: event.id }
+              })}
             >
-              <Text style={styles.manageButtonText}>申請を管理</Text>
+              <IconSymbol name="message" size={20} color="#3B82F6" />
+              <Text style={styles.chatButtonText}>チャットを開く</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -804,9 +827,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#8B5CF6',
     borderRadius: 12,
     alignItems: 'center',
+    marginBottom: 12,
   },
   manageButtonText: {
     color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  chatButton: {
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  chatButtonText: {
+    color: '#3B82F6',
     fontSize: 18,
     fontWeight: '600',
   },

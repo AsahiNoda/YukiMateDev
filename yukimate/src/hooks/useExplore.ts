@@ -66,6 +66,15 @@ export function useExplore(
 
       const blockedUserIds = blocks?.map(b => b.blocked_user_id) || [];
 
+      // 自分がapprovedされたイベントIDリストを取得
+      const { data: approvedApplications } = await supabase
+        .from('event_applications')
+        .select('event_id')
+        .eq('applicant_user_id', userId)
+        .eq('status', 'approved');
+
+      const approvedEventIds = approvedApplications?.map(a => a.event_id) || [];
+
       // ベースクエリ
       let query = supabase
         .from('posts_events')
@@ -96,11 +105,17 @@ export function useExplore(
           )
         `)
         .eq('status', 'open')
-        .gte('start_at', new Date().toISOString());
+        .gte('start_at', new Date().toISOString())
+        .neq('host_user_id', userId); // 自分がホストのイベントを除外
 
       // ブロックユーザー除外
       if (blockedUserIds.length > 0) {
         query = query.not('host_user_id', 'in', `(${blockedUserIds.join(',')})`);
+      }
+
+      // approvedされたイベント除外
+      if (approvedEventIds.length > 0) {
+        query = query.not('id', 'in', `(${approvedEventIds.join(',')})`);
       }
 
       // キーワード検索

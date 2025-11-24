@@ -44,6 +44,15 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
 
         const blockedUserIds = blocks?.map(b => b.blocked_user_id) || [];
 
+        // 3.5. 自分がapprovedされたイベントIDリストを取得
+        const { data: approvedApplications } = await supabase
+          .from('event_applications')
+          .select('event_id')
+          .eq('applicant_user_id', userId)
+          .eq('status', 'approved');
+
+        const approvedEventIds = approvedApplications?.map(a => a.event_id) || [];
+
         // 4. イベントデータを取得
         let query = supabase
           .from('posts_events')
@@ -72,7 +81,8 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
             )
           `)
           .eq('status', 'open')
-          .gte('start_at', new Date().toISOString());
+          .gte('start_at', new Date().toISOString())
+          .neq('host_user_id', userId); // 自分がホストのイベントを除外
 
         // カテゴリフィルター適用
         if (options.category && options.category !== 'all') {
@@ -99,9 +109,9 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
 
         if (!isMounted) return;
 
-        // 5. ブロックユーザーのイベントを除外
+        // 5. ブロックユーザーのイベントとapprovedされたイベントを除外
         const filteredEvents = events?.filter(
-          event => !blockedUserIds.includes(event.host_user_id)
+          event => !blockedUserIds.includes(event.host_user_id) && !approvedEventIds.includes(event.id)
         ) || [];
 
         // 6. 参加者数を取得
