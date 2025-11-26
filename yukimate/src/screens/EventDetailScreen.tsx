@@ -344,6 +344,20 @@ export default function EventDetailScreen() {
               </View>
             </View>
           </View>
+
+          {/* タグセクション */}
+          {event.tags && event.tags.length > 0 && (
+            <View style={styles.tagsSection}>
+              <Text style={styles.tagsSectionTitle}>タグ</Text>
+              <View style={styles.tagsContainer}>
+                {event.tags.map((tag, index) => (
+                  <View key={index} style={styles.tag}>
+                    <Text style={styles.tagText}>#{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
         </View>
 
         {/* フッター用のスペース */}
@@ -552,6 +566,33 @@ const styles = StyleSheet.create({
   gridValue: {
     fontSize: 14,
     color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  tagsSection: {
+    marginTop: 8,
+  },
+  tagsSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 12,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tag: {
+    backgroundColor: '#2D3748',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#5A7D9A',
+  },
+  tagText: {
+    fontSize: 13,
+    color: '#5A7D9A',
     fontWeight: '500',
   },
   footer: {

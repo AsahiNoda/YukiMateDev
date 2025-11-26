@@ -1,7 +1,7 @@
 import { EventListCard } from '@/components/EventListCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { useExplore, type ExploreFilters, type SortOptions } from '@/hooks/useExplore';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -38,13 +38,11 @@ const SORT_OPTIONS = [
 
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
-  const params = useLocalSearchParams<{ filters?: string }>();
 
   // 検索とフィルター状態
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ExploreFilters['category'] | null>(null);
-  const [filters, setFilters] = useState<ExploreFilters>({});
   const [sortOption, setSortOption] = useState<SortOptions>({
     sortBy: 'date',
     order: 'asc',
@@ -63,21 +61,8 @@ export default function ExploreScreen() {
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // フィルター適用時の処理
-  useEffect(() => {
-    if (params.filters) {
-      try {
-        const appliedFilters = JSON.parse(params.filters);
-        setFilters(appliedFilters);
-      } catch (error) {
-        console.error('Error parsing filters:', error);
-      }
-    }
-  }, [params.filters]);
-
   // 検索クエリとカテゴリをフィルターに統合
   const combinedFilters: ExploreFilters = {
-    ...filters,
     keyword: debouncedQuery || undefined,
     category: selectedCategory ? selectedCategory : undefined,
   };
@@ -95,13 +80,6 @@ export default function ExploreScreen() {
     } as any);
   };
 
-  const handleFilterPress = () => {
-    router.push({
-      pathname: '/(tabs)/search/filter',
-      params: { currentFilters: JSON.stringify(filters) },
-    } as any);
-  };
-
   const handleSortSelect = (key: string) => {
     const option = SORT_OPTIONS.find(o => o.key === key);
     if (option) {
@@ -113,29 +91,11 @@ export default function ExploreScreen() {
     }
   };
 
-  const activeFilterCount = Object.keys(filters).filter(key => {
-    const value = filters[key as keyof ExploreFilters];
-    if (Array.isArray(value)) return value.length > 0;
-    if (typeof value === 'object') return Object.values(value).some(v => v);
-    return value !== undefined;
-  }).length;
-
   return (
     <View style={styles.container}>
       {/* ヘッダー */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
         <View style={{ flex: 1 }} />
-        <TouchableOpacity
-          style={styles.filterButton}
-          onPress={handleFilterPress}
-        >
-          <IconSymbol name="line.3.horizontal.decrease.circle" size={24} color="#FFFFFF" />
-          {activeFilterCount > 0 && (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
-            </View>
-          )}
-        </TouchableOpacity>
       </View>
 
       {/* 検索バー */}
@@ -326,27 +286,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-  },
-  filterButton: {
-    position: 'relative',
-    padding: 8,
-  },
-  filterBadge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: '#5A7D9A',
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  filterBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
   },
   searchContainer: {
     flexDirection: 'row',

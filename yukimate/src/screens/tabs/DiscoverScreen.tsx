@@ -517,18 +517,18 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
               <View style={styles.cardMetadataItem}>
                 <IconSymbol name="person.2.fill" size={16} color="#E5E7EB" />
                 <Text style={styles.cardMetadataText}>
-                  {event.spotsTaken}/{event.capacityTotal} spots
+                  {event.spotsTaken}/{event.capacityTotal} 人
                 </Text>
               </View>
               <View style={styles.cardMetadataItem}>
                 <IconSymbol name="mountain.2.fill" size={16} color="#E5E7EB" />
-                <Text style={styles.cardMetadataText}>Level: {levelText}</Text>
+                <Text style={styles.cardMetadataText}>レベル: {levelText}</Text>
               </View>
               <View style={styles.cardPriceContainer}>
                 <Text style={styles.cardPriceAmount}>
                   {formatPrice(event.pricePerPersonJpy)}
                 </Text>
-                <Text style={styles.cardPriceUnit}> / person</Text>
+                <Text style={styles.cardPriceUnit}></Text>
               </View>
             </View>
           </TouchableOpacity>
