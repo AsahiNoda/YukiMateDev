@@ -23,6 +23,7 @@ export type DiscoverEvent = {
   id: string;
   title: string;
   description: string | null;
+  category: 'event' | 'lesson' | 'filming' | 'group';
   hostName: string;
   hostAvatar: string | null;
   resortName: string;
@@ -41,7 +42,7 @@ export type DiscoverEvent = {
 
 // Event filter options
 export type EventFilterOptions = {
-  category?: string;
+  category?: 'event' | 'lesson' | 'filming' | 'group';
   level?: SkillLevel;
   resortId?: string;
   limit?: number;

@@ -828,7 +828,7 @@ export default function EventChatScreen() {
           style={[
             styles.sendButton,
             {
-              backgroundColor: inputText.trim() && !sending ? '#3b82f6' : colors.border,
+              backgroundColor: inputText.trim() && !sending ? '#5A7D9A' : colors.border,
             },
           ]}
         >
@@ -938,6 +938,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     gap: spacing.md,
+    marginTop: 40,
   },
   headerImage: {
     width: 100,

@@ -1,29 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Modal,
-  TextInput,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { IconSymbol } from '@components/ui/icon-symbol';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
+import { Colors } from '@/constants/theme';
+import { DailyForecast, fetch7DayForecast } from '@/services/weatherApi';
+import { ResortSearch } from '@components/snowfeed/ResortSearch';
 import { WeatherCard } from '@components/snowfeed/WeatherCard';
 import { WeatherForecast } from '@components/snowfeed/WeatherForecast';
-import { ResortSearch } from '@components/snowfeed/ResortSearch';
-import { Colors } from '@/constants/theme';
-import { spacing, fontSize, borderRadius, fontWeight } from '@/constants/spacing';
+import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { useSnowfeed } from '@hooks/useSnowfeed';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
-import { fetch7DayForecast, DailyForecast } from '@/services/weatherApi';
+import React, { useEffect, useState } from 'react';
+import {
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const HOME_RESORT_KEY = '@snowfeed_home_resort';
 const CURRENT_RESORT_KEY = '@snowfeed_current_resort';
 
 export default function SnowfeedScreen() {
+  const insets = useSafeAreaInsets();
   const [homeResortId, setHomeResortId] = useState<string | null>(null);
   const [homeResortName, setHomeResortName] = useState<string>('');
   const [selectedResortId, setSelectedResortId] = useState<string | null>(null);
@@ -227,7 +228,11 @@ export default function SnowfeedScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header with Back Button and Search */}
-      <View style={[styles.header, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { 
+        backgroundColor: colors.card, 
+        borderBottomColor: colors.border,
+        paddingTop: Math.max(insets.top, 16) + spacing.md
+      }]}>
         {/* Back/Home Button */}
         {homeResortId && selectedResortId !== homeResortId ? (
           <TouchableOpacity
@@ -270,7 +275,13 @@ export default function SnowfeedScreen() {
         )}
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={{ 
+          paddingTop: spacing.md, 
+          paddingBottom: 120 
+        }}
+      >
         {/* Weather Card */}
         {weather && (
           <WeatherCard

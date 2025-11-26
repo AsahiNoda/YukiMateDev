@@ -7,7 +7,7 @@ import type { DiscoverEvent } from '@types';
  */
 export interface ExploreFilters {
   keyword?: string;
-  category?: 'all' | 'event' | 'carpool' | 'photo' | 'lesson' | 'mate';
+  category?: 'event' | 'lesson' | 'filming' | 'group';
   resortIds?: number[];
   skillLevel?: 'beginner' | 'intermediate' | 'advanced';
   dateRange?: {
@@ -127,7 +127,7 @@ export function useExplore(
       }
 
       // カテゴリフィルター
-      if (filters.category && filters.category !== 'all') {
+      if (filters.category) {
         query = query.eq('type', filters.category);
       }
 
@@ -247,6 +247,7 @@ export function useExplore(
           id: event.id,
           title: event.title,
           description: event.description,
+          category: event.type as 'event' | 'lesson' | 'filming' | 'group',
           hostName: event.profiles?.display_name || 'Unknown',
           hostAvatar: hostAvatarUrl,
           resortName: event.resorts?.name || 'Unknown Resort',

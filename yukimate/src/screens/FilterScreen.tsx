@@ -1,19 +1,20 @@
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import type { ExploreFilters } from '@/hooks/useExplore';
+import { useResorts } from '@/hooks/useResorts';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View,
-  ScrollView,
-  TouchableOpacity,
-  TextInput,
-  Switch,
-  Platform,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { useResorts } from '@/hooks/useResorts';
-import type { ExploreFilters } from '@/hooks/useExplore';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const LEVELS = [
   { key: 'beginner', label: '初級', icon: '🟢' },
@@ -29,6 +30,7 @@ const LANGUAGES = [
 ];
 
 export default function FilterScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ currentFilters?: string }>();
   const resortsState = useResorts();
 
@@ -319,12 +321,12 @@ export default function FilterScreen() {
               value={onlyAvailable}
               onValueChange={setOnlyAvailable}
               trackColor={{ false: '#374151', true: '#60A5FA' }}
-              thumbColor={onlyAvailable ? '#3B82F6' : '#9CA3AF'}
+              thumbColor={onlyAvailable ? '#5A7D9A' : '#9CA3AF'}
             />
           </View>
         </View>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 120 }} />
       </ScrollView>
 
       {/* ボタン */}
@@ -343,7 +345,7 @@ export default function FilterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A1628',
+    backgroundColor: '#1A202C',
   },
   header: {
     flexDirection: 'row',
@@ -362,7 +364,7 @@ const styles = StyleSheet.create({
   },
   resetText: {
     fontSize: 16,
-    color: '#3B82F6',
+    color: '#5A7D9A',
     fontWeight: '600',
   },
   content: {
@@ -380,7 +382,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   dateButton: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -405,13 +407,13 @@ const styles = StyleSheet.create({
   },
   clearButtonText: {
     fontSize: 14,
-    color: '#3B82F6',
+    color: '#5A7D9A',
   },
   radioOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 12,
     padding: 16,
     marginBottom: 8,
@@ -419,7 +421,7 @@ const styles = StyleSheet.create({
   radioOptionSelected: {
     backgroundColor: '#334155',
     borderWidth: 2,
-    borderColor: '#3B82F6',
+    borderColor: '#5A7D9A',
   },
   radioLabel: {
     flexDirection: 'row',
@@ -443,18 +445,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   radioSelected: {
-    borderColor: '#3B82F6',
+    borderColor: '#5A7D9A',
   },
   radioInner: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -504,8 +506,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   checkboxChecked: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
+    borderColor: '#5A7D9A',
   },
   checkboxText: {
     fontSize: 15,
@@ -526,7 +528,7 @@ const styles = StyleSheet.create({
     borderTopColor: '#1E293B',
   },
   applyButton: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',

@@ -1,25 +1,25 @@
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useResorts } from '@/hooks/useResorts';
+import { supabase } from '@/lib/supabase';
+import type { SkillLevel } from '@/types';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
   Text,
   TextInput,
-  StyleSheet,
-  ScrollView,
   TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-  Image,
-  Platform,
-  Modal,
+  View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { supabase } from '@/lib/supabase';
-import { useResorts } from '@/hooks/useResorts';
-import type { SkillLevel } from '@/types';
-import { IconSymbol } from '@/components/ui/icon-symbol';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const CATEGORIES = [
   { value: 'event', label: 'イベント' },
@@ -37,6 +37,7 @@ const SKILL_LEVELS: { value: SkillLevel | ''; label: string }[] = [
 ];
 
 export default function CreateEventScreen() {
+  const insets = useSafeAreaInsets();
   const resortsState = useResorts();
 
   // Form states
@@ -414,7 +415,7 @@ export default function CreateEventScreen() {
                         {resort.name}
                       </Text>
                       {resortId === resort.id && (
-                        <IconSymbol name="checkmark" size={16} color="#3B82F6" />
+                        <IconSymbol name="checkmark" size={16} color="#5A7D9A" />
                       )}
                     </TouchableOpacity>
                   ))}
@@ -429,7 +430,7 @@ export default function CreateEventScreen() {
   );
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: Math.max(insets.top, 16) }}>
       <View style={styles.content}>
         <Text style={styles.title}>投稿を作成</Text>
 
@@ -713,7 +714,7 @@ export default function CreateEventScreen() {
           )}
         </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 120 }} />
       </View>
     </ScrollView>
   );
@@ -722,11 +723,11 @@ export default function CreateEventScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A1628',
+    backgroundColor: '#1A202C',
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#0A1628',
+    backgroundColor: '#1A202C',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -735,7 +736,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#334155',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#1A202C',
   },
   modalTitle: {
     fontSize: 18,
@@ -768,7 +769,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     color: '#FFFFFF',
     fontSize: 16,
     padding: 12,
@@ -789,7 +790,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   picker: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
@@ -804,7 +805,7 @@ const styles = StyleSheet.create({
   },
   pickerOptions: {
     marginTop: 8,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#334155',
@@ -820,7 +821,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   pickerOptionTextActive: {
-    color: '#3B82F6',
+    color: '#5A7D9A',
     fontWeight: '600',
   },
   areaSection: {
@@ -833,7 +834,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 16,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderBottomWidth: 1,
     borderBottomColor: '#334155',
   },
@@ -843,7 +844,7 @@ const styles = StyleSheet.create({
     color: '#E5E7EB',
   },
   resortListContainer: {
-    backgroundColor: '#0F172A',
+    backgroundColor: '#1A202C',
   },
   resortItem: {
     flexDirection: 'row',
@@ -874,7 +875,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   tagAddButton: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
     paddingHorizontal: 16,
     borderRadius: 8,
     justifyContent: 'center',
@@ -951,7 +952,7 @@ const styles = StyleSheet.create({
   imagePlaceholder: {
     width: 100,
     height: 100,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#334155',
@@ -967,7 +968,7 @@ const styles = StyleSheet.create({
   createButton: {
     marginTop: 24,
     paddingVertical: 16,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
     borderRadius: 12,
     alignItems: 'center',
   },

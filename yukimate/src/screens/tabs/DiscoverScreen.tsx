@@ -1,32 +1,32 @@
-import React, { useState, useCallback } from 'react';
+import { Colors } from '@/constants/theme';
+import { IconSymbol } from '@components/ui/icon-symbol';
+import { useColorScheme } from '@hooks/use-color-scheme';
+import { applyToEvent, saveEvent, useDiscoverEvents } from '@hooks/useDiscoverEvents';
+import type { DiscoverEvent } from '@types';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
-  TouchableOpacity,
   ActivityIndicator,
+  Dimensions,
   Image,
   Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  runOnJS,
-  interpolate,
   Extrapolate,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { IconSymbol } from '@components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@hooks/use-color-scheme';
-import { useDiscoverEvents, applyToEvent, saveEvent } from '@hooks/useDiscoverEvents';
-import type { DiscoverEvent } from '@types';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 100;
@@ -49,7 +49,7 @@ function ConfirmationModal({ visible, type, event, onConfirm, onCancel }: Confir
     ? `「${event.title}」への参加申請を送信しますか?`
     : `「${event.title}」を保存しますか?`;
   const confirmText = isApply ? '申請する' : '保存する';
-  const confirmColor = isApply ? '#4ADE80' : '#FCD34D';
+  const confirmColor = isApply ? '#4ADE80' : '#D4AF37';
 
   return (
     <Modal
@@ -133,11 +133,10 @@ export default function DiscoverScreen() {
 
   const eventsState = useDiscoverEvents({
     limit: 20,
-    category: 'all',
   });
 
-  // カードの高さを計算（ナビバー + ヘッダー分を除く）
-  const CARD_HEIGHT = SCREEN_HEIGHT - insets.bottom - 200; // bottom inset(ナビバー) + ヘッダー分
+  // フルスクリーン表示
+  const CARD_HEIGHT = SCREEN_HEIGHT;
 
   const handleConfirmAction = useCallback(async () => {
     if (!confirmModal.event) return;
@@ -251,13 +250,13 @@ export default function DiscoverScreen() {
               params: { eventId: evt.id }
             })}
             cardHeight={CARD_HEIGHT}
+            insets={insets}
           />
         ))}
       </View>
 
       {/* Header Overlay */}
       <View style={styles.headerOverlay}>
-        <Text style={styles.headerTitle}>Discover</Text>
       </View>
 
       {/* Confirmation Modal */}
@@ -280,9 +279,10 @@ type SwipeableCardProps = {
   shouldReset: boolean;
   onShowDetail: (event: DiscoverEvent) => void;
   cardHeight: number;
+  insets: { top: number; bottom: number; left: number; right: number };
 };
 
-function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDetail, cardHeight }: SwipeableCardProps) {
+function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDetail, cardHeight, insets }: SwipeableCardProps) {
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
@@ -320,29 +320,44 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
   const panGesture = Gesture.Pan()
     .enabled(isTopCard)
     .onUpdate((e) => {
-      translateX.value = e.translationX;
-      translateY.value = e.translationY;
+      // 横または縦のどちらが優勢かを判定
+      const absX = Math.abs(e.translationX);
+      const absY = Math.abs(e.translationY);
+
+      if (absX > absY) {
+        // 横スワイプが優勢 - 横のみ許可
+        translateX.value = e.translationX;
+        translateY.value = 0;
+      } else {
+        // 縦スワイプが優勢 - 縦のみ許可
+        translateX.value = 0;
+        translateY.value = e.translationY;
+      }
 
       // スケールエフェクト
-      const distance = Math.sqrt(e.translationX ** 2 + e.translationY ** 2);
+      const distance = Math.max(absX, absY);
       scale.value = interpolate(
         distance,
         [0, SCREEN_WIDTH],
-        [1, 0.9],
+        [1, 0.95],
         Extrapolate.CLAMP
       );
     })
     .onEnd((e) => {
-      const shouldSwipeHorizontal = Math.abs(e.translationX) > SWIPE_THRESHOLD;
+      const absX = Math.abs(e.translationX);
+      const absY = Math.abs(e.translationY);
+      const shouldSwipeHorizontal = absX > SWIPE_THRESHOLD;
       const shouldSwipeUp = e.translationY < -VERTICAL_SWIPE_THRESHOLD;
 
-      if (shouldSwipeUp) {
-        // 上スワイプ - スキップ
+      if (shouldSwipeUp && absY > absX) {
+        // 上スワイプ - スキップ（縦が優勢の場合のみ）
+        translateX.value = withSpring(0);
         translateY.value = withSpring(-SCREEN_HEIGHT);
         opacity.value = withSpring(0, {}, () => {
           runOnJS(onSwipe)('up', event);
         });
-      } else if (shouldSwipeHorizontal) {
+      } else if (shouldSwipeHorizontal && absX > absY) {
+        // 横スワイプ（横が優勢の場合のみ）
         const direction = e.translationX > 0 ? 'right' : 'left';
         // 確認ダイアログを表示するためにカードを中途半端な位置で止める
         const targetX = direction === 'right' ? SCREEN_WIDTH * 0.7 : -SCREEN_WIDTH * 0.7;
@@ -359,18 +374,10 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
     });
 
   const cardStyle = useAnimatedStyle(() => {
-    const rotation = interpolate(
-      translateX.value,
-      [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
-      [-15, 0, 15],
-      Extrapolate.CLAMP
-    );
-
     return {
       transform: [
         { translateX: translateX.value },
         { translateY: translateY.value },
-        { rotate: `${rotation}deg` },
         { scale: scale.value },
       ],
       opacity: opacity.value,
@@ -406,7 +413,7 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
               <Image
                 source={{ uri: event.photoUrls[currentImageIndex] }}
                 style={styles.cardImage}
-                resizeMode="contain"
+                resizeMode="cover"
               />
 
               {/* 画像切り替えエリア（左右端タップ） */}
@@ -444,7 +451,8 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
             </View>
           )}
           <LinearGradient
-            colors={['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.4)', 'rgba(0, 0, 0, 0.85)']}
+            colors={['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.3)', 'rgba(0, 0, 0, 0.7)', 'rgba(0, 0, 0, 0.9)']}
+            locations={[0, 0.5, 0.75, 1]}
             style={styles.cardGradient}
           />
         </View>
@@ -457,18 +465,21 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
         </Animated.View>
 
         {/* Content */}
-        <View style={styles.cardContent}>
-          {/* Date Badge - Top Left */}
-          <View style={styles.cardDateBadge}>
-            <IconSymbol name="calendar" size={14} color="#FFFFFF" />
-            <Text style={styles.cardDate}>{formatDate(event.startAt)}</Text>
-          </View>
+        <View style={[styles.cardContent, { paddingTop: insets.top + 80, paddingBottom: insets.bottom + 24 }]}>
+          {/* Top spacer */}
+          <View />
 
           {/* Bottom Section - Tappable */}
           <TouchableOpacity
             style={styles.cardBottomSection}
             onPress={() => onShowDetail(event)}
             activeOpacity={0.9}>
+            {/* Date Badge */}
+            <View style={styles.cardDateBadge}>
+              <IconSymbol name="calendar" size={14} color="#FFFFFF" />
+              <Text style={styles.cardDate}>{formatDate(event.startAt)}</Text>
+            </View>
+
             {/* Host Info */}
             <View style={styles.cardHostRow}>
               <View style={styles.cardHostAvatar}>
@@ -549,13 +560,13 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1B4B73',
+    backgroundColor: '#1A202C',
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1B4B73',
+    backgroundColor: '#1A202C',
     padding: 16,
   },
   loadingText: {
@@ -596,24 +607,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: 60,
     paddingBottom: 20,
-    zIndex: 10,
+    zIndex: 100,
   },
   headerTitle: {
     fontSize: 26,
     fontWeight: 'bold',
     color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   cardContainer: {
     flex: 1,
   },
   card: {
     width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT - 220, // ナビバー(~80px)とヘッダー分を十分に考慮
+    height: SCREEN_HEIGHT,
     position: 'absolute',
-    top: 120, // Discoverヘッダーより下に配置
+    top: 0,
     overflow: 'hidden',
-    backgroundColor: '#1E293B',
-    borderRadius: 20,
+    backgroundColor: '#2D3748',
   },
   cardBackground: {
     ...StyleSheet.absoluteFillObject,
@@ -655,7 +668,7 @@ const styles = StyleSheet.create({
   // 画像インジケーター
   imageIndicatorContainer: {
     position: 'absolute',
-    top: 20,
+    top: 100,
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -688,8 +701,8 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
-    padding: 24,
-    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    justifyContent: 'flex-end',
   },
   cardDateBadge: {
     flexDirection: 'row',
@@ -700,6 +713,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     gap: 6,
     alignSelf: 'flex-start',
+    marginBottom: 12,
   },
   cardDate: {
     fontSize: 14,
@@ -707,17 +721,17 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   cardBottomSection: {
-    gap: 12,
+    gap: 16,
+    marginBottom: 70,
   },
   cardHostRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
   },
   cardHostAvatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#4B5563',
     alignItems: 'center',
     justifyContent: 'center',
@@ -730,7 +744,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   cardHostAvatarText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
@@ -739,35 +753,37 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   cardHostName: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   cardHostTags: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#D1D5DB',
   },
   cardTextSection: {
-    gap: 8,
+    gap: 10,
   },
   cardTitle: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
+    lineHeight: 38,
   },
   cardDescription: {
-    fontSize: 15,
-    color: '#D1D5DB',
-    lineHeight: 22,
+    fontSize: 16,
+    color: '#E5E7EB',
+    lineHeight: 24,
   },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: 20,
+    marginTop: 4,
   },
   cardMetadataItem: {
     flexDirection: 'row',
@@ -775,7 +791,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   cardMetadataText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
     color: '#E5E7EB',
   },
@@ -784,13 +800,13 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
   },
   cardPriceAmount: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: '#FCD34D',
+    color: '#D4AF37',
   },
   cardPriceUnit: {
-    fontSize: 13,
-    color: '#D1D5DB',
+    fontSize: 14,
+    color: '#E5E7EB',
     fontWeight: '500',
   },
   cardActionButtons: {

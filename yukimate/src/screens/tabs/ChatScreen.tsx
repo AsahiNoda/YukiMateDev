@@ -1,24 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
-  SectionList,
-  Image,
-  Alert,
-} from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
-import { IconSymbol } from '@components/ui/icon-symbol';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
-import { spacing, fontSize, borderRadius, fontWeight } from '@/constants/spacing';
-import { useColorScheme } from '@hooks/use-color-scheme';
-import { useEventChats } from '@/hooks/useEventChats';
 import { useEventApplications, type EventApplicationWithDetails } from '@/hooks/useEventApplications';
-import type { EventChat } from '@types';
+import { useEventChats } from '@/hooks/useEventChats';
 import { supabase } from '@/lib/supabase';
+import { IconSymbol } from '@components/ui/icon-symbol';
+import { useColorScheme } from '@hooks/use-color-scheme';
+import type { EventChat } from '@types';
+import { router } from 'expo-router';
+import React, { useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  SectionList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface ChatSection {
   title: string;
@@ -28,6 +29,7 @@ interface ChatSection {
 type TabType = 'chats' | 'requests';
 
 export default function ChatScreen() {
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const [activeTab, setActiveTab] = useState<TabType>('chats');
@@ -42,67 +44,17 @@ export default function ChatScreen() {
   } = useEventApplications();
 
   const [currentUserId, setCurrentUserId] = React.useState<string | null>(null);
-  const hasRefetchedOnFocus = React.useRef(false);
-  const refetchRef = React.useRef(refetch);
 
-  // refetch関数をrefに保存（依存配列の問題を回避）
+  // 現在のユーザーIDを取得（一度だけ）
   React.useEffect(() => {
-    refetchRef.current = refetch;
-  }, [refetch]);
-
-  // Track when screen comes into focus and refresh chat list
-  useFocusEffect(
-    React.useCallback(() => {
-      console.log('🔍 [ChatScreen] Screen came into focus', {
-        hasRefetchedOnFocus: hasRefetchedOnFocus.current,
-      });
-
-      // フォーカス時に一度だけrefetchする（無限ループを防ぐ）
-      if (!hasRefetchedOnFocus.current) {
-        console.log('🔄 [ChatScreen] Refreshing chat list on focus...');
-        hasRefetchedOnFocus.current = true;
-        refetchRef.current();
-      }
-
-      return () => {
-        console.log('🔍 [ChatScreen] Screen lost focus');
-        // フォーカスを失ったら、次回フォーカス時にrefetchできるようにリセット
-        hasRefetchedOnFocus.current = false;
-      };
-    }, [])
-  );
-
-  // 現在のユーザーIDを取得
-  React.useEffect(() => {
-    console.log('🆔 [ChatScreen] Getting current user...');
     async function getCurrentUser() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        console.log('🆔 [ChatScreen] ✅ User ID obtained:', user.id);
         setCurrentUserId(user.id);
-      } else {
-        console.log('🆔 [ChatScreen] ❌ No user found');
       }
     }
     getCurrentUser();
   }, []);
-
-  // Track currentUserId changes
-  React.useEffect(() => {
-    console.log('🆔 [ChatScreen] currentUserId changed:', currentUserId);
-  }, [currentUserId]);
-
-  // デバッグ: 申請の状態をログ出力
-  React.useEffect(() => {
-    if (activeTab === 'requests') {
-      console.log('📋 Current applications:', applications.length, applications.map(app => ({
-        id: app.id,
-        status: app.status,
-        applicant: app.applicant?.profiles?.display_name
-      })));
-    }
-  }, [applications, activeTab]);
-
 
   const loading = activeTab === 'chats' ? chatsLoading : applicationsLoading;
 
@@ -115,12 +67,10 @@ export default function ChatScreen() {
     }
   }, [chatsError, applicationsError, activeTab]);
 
-  // チャットをToday/Upcoming/Earlierに分類
-  function categorizeChats(): ChatSection[] {
+  // チャットをToday/Upcoming/Earlierに分類（メモ化）
+  const sections = useMemo(() => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
 
     const todayChats: EventChat[] = [];
     const upcomingChats: EventChat[] = [];
@@ -143,22 +93,17 @@ export default function ChatScreen() {
       }
     });
 
-    const sections: ChatSection[] = [];
-    if (todayChats.length > 0) sections.push({ title: 'Today', data: todayChats });
-    if (upcomingChats.length > 0) sections.push({ title: 'Upcoming', data: upcomingChats });
-    if (earlierChats.length > 0) sections.push({ title: 'Earlier', data: earlierChats });
+    const result: ChatSection[] = [];
+    if (todayChats.length > 0) result.push({ title: 'Today', data: todayChats });
+    if (upcomingChats.length > 0) result.push({ title: 'Upcoming', data: upcomingChats });
+    if (earlierChats.length > 0) result.push({ title: 'Earlier', data: earlierChats });
 
-    return sections;
-  }
-
-  const sections = categorizeChats();
+    return result;
+  }, [chats]);
 
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { backgroundColor: colors.background }]}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Chats</Text>
-        </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
         </View>
@@ -378,10 +323,8 @@ export default function ChatScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.background }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Chats</Text>
-      </View>
+      {/* Header Spacer */}
+      <View style={{ height: Math.max(insets.top, 16) }} />
 
       {/* Tabs */}
       <View style={[styles.tabsContainer, { borderBottomColor: colors.border }]}>
@@ -507,6 +450,7 @@ const styles = StyleSheet.create({
   },
   chatList: {
     padding: spacing.md,
+    paddingBottom: 120,
     gap: spacing.xs,
   },
   chatItem: {

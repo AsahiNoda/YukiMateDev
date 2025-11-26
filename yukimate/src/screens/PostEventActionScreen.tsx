@@ -1,21 +1,21 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Image,
-  TouchableOpacity,
-  Alert,
-  SafeAreaView,
-  ScrollView,
-} from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { supabase } from '@/lib/supabase';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
-import { spacing, fontSize, borderRadius, fontWeight } from '@/constants/spacing';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { Profile } from '@/lib/database.types';
+import { supabase } from '@/lib/supabase';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useState } from 'react';
+import {
+  Alert,
+  Image,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 interface Participant {
   user: {
@@ -235,7 +235,7 @@ export default function PostEventActionScreen() {
   function getLevelBadgeConfig(level: string | null) {
     const config = {
       beginner: { label: '初級', color: '#10b981', icon: '🟢' },
-      intermediate: { label: '中級', color: '#3b82f6', icon: '🔵' },
+      intermediate: { label: '中級', color: '#5A7D9A', icon: '🔵' },
       advanced: { label: '上級', color: '#ef4444', icon: '🔴' },
     };
 
@@ -411,7 +411,7 @@ export default function PostEventActionScreen() {
       </ScrollView>
 
       {/* 完了ボタン */}
-      <View style={[styles.footer, { borderTopColor: colors.border }]}>
+      <View style={[styles.footer, { borderTopColor: colors.border, paddingBottom: 120 }]}>
         <TouchableOpacity
           style={[styles.finishButton, processing && styles.finishButtonDisabled]}
           onPress={handleFinish}
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
   },
   finishButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: '#5A7D9A',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     borderRadius: borderRadius.lg,

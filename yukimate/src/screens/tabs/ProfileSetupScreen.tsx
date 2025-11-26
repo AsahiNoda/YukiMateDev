@@ -183,7 +183,7 @@ export default function ProfileSetupScreen() {
             ) : (
               <View style={styles.headerImagePlaceholder}>
                 {uploadingHeader ? (
-                  <ActivityIndicator color="#3B82F6" />
+                  <ActivityIndicator color="#5A7D9A" />
                 ) : (
                   <>
                     <Ionicons name="image-outline" size={32} color="#9CA3AF" />
@@ -208,7 +208,7 @@ export default function ProfileSetupScreen() {
             ) : (
               <View style={styles.avatarPlaceholder}>
                 {uploadingAvatar ? (
-                  <ActivityIndicator color="#3B82F6" />
+                  <ActivityIndicator color="#5A7D9A" />
                 ) : (
                   <Ionicons name="person-outline" size={40} color="#9CA3AF" />
                 )}
@@ -375,7 +375,7 @@ export default function ProfileSetupScreen() {
           )}
         </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 120 }} />
       </View>
     </ScrollView>
   );
@@ -384,7 +384,7 @@ export default function ProfileSetupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A1628',
+    backgroundColor: '#1A202C',
   },
   content: {
     padding: 16,
@@ -413,7 +413,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   input: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     color: '#FFFFFF',
     fontSize: 16,
     padding: 16,
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderWidth: 2,
     borderColor: '#334155',
   },
@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     overflow: 'hidden',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderWidth: 3,
     borderColor: '#334155',
     alignSelf: 'center',
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
   },
   avatarHint: {
     fontSize: 12,
@@ -498,13 +498,13 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#334155',
   },
   countryButtonActive: {
-    borderColor: '#3B82F6',
+    borderColor: '#5A7D9A',
     backgroundColor: '#1E3A8A',
   },
   countryFlag: {
@@ -528,14 +528,14 @@ const styles = StyleSheet.create({
   languageButton: {
     flex: 1,
     paddingVertical: 16,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#334155',
     alignItems: 'center',
   },
   languageButtonActive: {
-    borderColor: '#3B82F6',
+    borderColor: '#5A7D9A',
     backgroundColor: '#1E3A8A',
   },
   languageText: {
@@ -550,14 +550,14 @@ const styles = StyleSheet.create({
   skillButton: {
     flex: 1,
     paddingVertical: 16,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#334155',
     alignItems: 'center',
   },
   skillButtonActive: {
-    borderColor: '#3B82F6',
+    borderColor: '#5A7D9A',
     backgroundColor: '#1E3A8A',
   },
   skillText: {
@@ -576,14 +576,14 @@ const styles = StyleSheet.create({
   styleButton: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#334155',
   },
   styleButtonActive: {
     backgroundColor: '#1E3A8A',
-    borderColor: '#3B82F6',
+    borderColor: '#5A7D9A',
   },
   styleText: {
     fontSize: 14,
@@ -597,7 +597,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     paddingVertical: 16,
     borderRadius: 12,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
     alignItems: 'center',
   },
   submitButtonDisabled: {

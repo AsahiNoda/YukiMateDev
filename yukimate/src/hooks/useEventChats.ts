@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { EventChat, EventMessage } from '@types';
+import type { EventChat } from '@types';
+import { useEffect, useState } from 'react';
 
 interface EventChatData {
   id: string;
@@ -37,6 +37,7 @@ export function useEventChats() {
   const [chats, setChats] = useState<EventChat[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [chatIds, setChatIds] = useState<string[]>([]);
 
   useEffect(() => {
     fetchEventChats();
@@ -44,18 +45,16 @@ export function useEventChats() {
 
   // リアルタイムサブスクリプション: 参加状態の変更を監視
   useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let participantsChannel: ReturnType<typeof supabase.channel> | null = null;
 
-    async function setupRealtimeSubscription() {
+    async function setupParticipantsSubscription() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      console.log('[useEventChats] 📡 Setting up realtime subscription for user:', user.id);
-
       // event_participantsテーブルの変更を監視
-      channel = supabase
+      participantsChannel = supabase
         .channel('event-participants-changes')
         .on(
           'postgres_changes',
@@ -74,15 +73,51 @@ export function useEventChats() {
         .subscribe();
     }
 
-    setupRealtimeSubscription();
+    setupParticipantsSubscription();
 
     return () => {
-      if (channel) {
-        console.log('[useEventChats] 🛑 Unsubscribing from realtime channel');
-        supabase.removeChannel(channel);
+      if (participantsChannel) {
+        supabase.removeChannel(participantsChannel);
       }
     };
   }, []);
+
+  // リアルタイムサブスクリプション: メッセージの変更を監視（chatIdsが更新されたときに再設定）
+  useEffect(() => {
+    if (chatIds.length === 0) return;
+
+    let messagesChannel: ReturnType<typeof supabase.channel> | null = null;
+
+    // 各チャットIDに対してメッセージの変更を監視
+    // Supabaseのfilterでは配列を直接使えないため、複数のチャンネルを作成するか、
+    // またはすべてのメッセージを監視してフィルタリングする
+    messagesChannel = supabase
+      .channel('event-messages-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT', // 新しいメッセージの追加のみ監視
+          schema: 'public',
+          table: 'event_messages',
+        },
+        (payload) => {
+          // チャットIDが自分のチャットリストに含まれているかチェック
+          const newMessage = payload.new as { chat_id: string };
+          if (chatIds.includes(newMessage.chat_id)) {
+            console.log('[useEventChats] 💬 New message detected in subscribed chat:', payload);
+            // 新しいメッセージが追加されたらリストを更新
+            fetchEventChats();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (messagesChannel) {
+        supabase.removeChannel(messagesChannel);
+      }
+    };
+  }, [chatIds]);
 
   async function fetchEventChats() {
     console.log('[useEventChats] 🔄 Fetching event chats...');
@@ -160,6 +195,10 @@ export function useEventChats() {
 
       // チャットが存在するイベントのみを処理
       const allChats = chatData || [];
+      
+      // チャットIDのリストを保存（リアルタイムサブスクリプション用）
+      const currentChatIds = allChats.map((chat: any) => chat.id);
+      setChatIds(currentChatIds);
 
       // 各チャットのメッセージと参加者を取得
       const chatsWithMessages = await Promise.all(

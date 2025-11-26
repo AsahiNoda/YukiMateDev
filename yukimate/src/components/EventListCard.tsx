@@ -11,6 +11,14 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { saveEvent } from '@/hooks/useDiscoverEvents';
 import type { DiscoverEvent } from '@types';
 
+// カテゴリアイコンのインポート
+import EventFlagIcon from '../../assets/images/icons/event-flag.svg';
+import CameraIcon from '../../assets/images/icons/camera.svg';
+import LessonIcon from '../../assets/images/icons/lesson.svg';
+import GroupIcon from '../../assets/images/icons/group.svg';
+import MountainIcon from '../../assets/images/icons/mountain.svg';
+import CalendarIcon from '../../assets/images/icons/calendar.svg';
+
 interface EventListCardProps {
   event: DiscoverEvent;
   onPress: () => void;
@@ -24,6 +32,26 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
     const month = date.getMonth() + 1;
     const day = date.getDate();
     return `${month}月${day}日`;
+  };
+
+  const getCategoryLabel = (category: string) => {
+    switch (category) {
+      case 'event': return 'イベント';
+      case 'lesson': return 'レッスン';
+      case 'filming': return '撮影';
+      case 'group': return '仲間';
+      default: return category;
+    }
+  };
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'event': return EventFlagIcon;
+      case 'lesson': return LessonIcon;
+      case 'filming': return CameraIcon;
+      case 'group': return GroupIcon;
+      default: return EventFlagIcon;
+    }
   };
 
   const getLevelLabel = (level: string | null) => {
@@ -40,7 +68,7 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
     if (!level) return '#6B7280';
     switch (level) {
       case 'beginner': return '#10B981';
-      case 'intermediate': return '#3B82F6';
+      case 'intermediate': return '#5A7D9A';
       case 'advanced': return '#EF4444';
       default: return '#6B7280';
     }
@@ -87,7 +115,18 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
           </View>
         )}
 
-        {/* 空き状況バッジ */}
+        {/* カテゴリバッジ（左上） */}
+        <View style={styles.categoryBadge}>
+          {(() => {
+            const IconComponent = getCategoryIcon(event.category);
+            return <IconComponent width={14} height={14} color="#FFFFFF" />;
+          })()}
+          <Text style={styles.categoryBadgeText}>
+            {getCategoryLabel(event.category)}
+          </Text>
+        </View>
+
+        {/* 空き状況バッジ（右上） */}
         <View style={styles.spotsBadge}>
           <Text style={styles.spotsText}>
             {event.spotsTaken}/{event.capacityTotal}
@@ -102,18 +141,18 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
           {event.title}
         </Text>
 
-        {/* 日時とスキー場 */}
+        {/* スキー場と日時 */}
         <View style={styles.infoRow}>
-          <IconSymbol name="calendar" size={14} color="#9CA3AF" />
-          <Text style={styles.infoText}>
-            {event.resortName} · {formatDate(event.startAt)}
-          </Text>
+          <MountainIcon width={14} height={14} color="#9CA3AF" />
+          <Text style={styles.infoText}>{event.resortName}</Text>
+          <CalendarIcon width={14} height={14} color="#9CA3AF" />
+          <Text style={styles.infoText}>{formatDate(event.startAt)}</Text>
         </View>
 
         {/* タグ（最初の3つまで） */}
         {event.tags && event.tags.length > 0 && (
           <View style={styles.tagsRow}>
-            {event.tags.slice(0, 3).map((tag, index) => (
+            {event.tags.slice(0, 10).map((tag, index) => (
               <Text key={index} style={styles.tag}>
                 #{tag}
               </Text>
@@ -181,7 +220,7 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
             <IconSymbol
               name={isSaved ? 'star.fill' : 'star'}
               size={18}
-              color={isSaved ? '#FCD34D' : '#E5E7EB'}
+              color={isSaved ? '#D4AF37' : '#E5E7EB'}
             />
             <Text style={[
               styles.saveButtonText,
@@ -198,7 +237,7 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 16,
     marginHorizontal: 16,
     marginVertical: 8,
@@ -222,6 +261,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  categoryBadge: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+  },
+  categoryBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
   },
   spotsBadge: {
     position: 'absolute',
@@ -256,7 +312,6 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 13,
     color: '#9CA3AF',
-    flex: 1,
   },
   tagsRow: {
     flexDirection: 'row',
@@ -292,7 +347,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   hostAvatarPlaceholder: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -329,7 +384,7 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#D4AF37',
   },
   priceLabel: {
     fontSize: 13,
@@ -354,6 +409,6 @@ const styles = StyleSheet.create({
     color: '#E5E7EB',
   },
   saveButtonTextActive: {
-    color: '#FCD34D',
+    color: '#D4AF37',
   },
 });

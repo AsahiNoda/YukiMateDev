@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    backgroundColor: '#0A1628',
+    backgroundColor: '#1A202C',
   },
   message: {
     marginTop: 16,

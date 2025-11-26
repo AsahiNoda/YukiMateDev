@@ -2,10 +2,10 @@ import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { updateProfile, useProfile } from '@hooks/useProfile';
-import { router } from 'expo-router';
-import type { ProfileData } from '@types';
-import React, { useState } from 'react';
 import { supabase } from '@lib/supabase';
+import type { ProfileData } from '@types';
+import { router } from 'expo-router';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,8 +16,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function ProfileScreen() {
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const profileState = useProfile();
   const [editing, setEditing] = useState(false);
@@ -104,10 +106,13 @@ export default function ProfileScreen() {
   const displayData = editing ? { ...profile, ...editData } : profile;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={[styles.contentContainer, { paddingTop: Math.max(insets.top, 16) }]}
+    >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <View style={{ flex: 1 }} />
         {!editing ? (
           <TouchableOpacity
             style={styles.editButton}
@@ -336,10 +341,10 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A1628',
+    backgroundColor: '#1A202C',
   },
   contentContainer: {
-    paddingBottom: 32,
+    paddingBottom: 120,
   },
   centered: {
     flex: 1,
@@ -399,7 +404,7 @@ const styles = StyleSheet.create({
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 20,
   },
   editActions: {
@@ -410,7 +415,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
   },
   cancelButtonText: {
     color: '#E5E7EB',
@@ -421,7 +426,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
   },
   saveButtonText: {
     color: '#FFFFFF',
@@ -440,7 +445,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 4,
@@ -463,7 +468,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginBottom: 4,
     padding: 8,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 8,
     minWidth: 200,
     textAlign: 'center',
@@ -512,7 +517,7 @@ const styles = StyleSheet.create({
   bioInput: {
     fontSize: 15,
     color: '#E5E7EB',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 8,
     padding: 12,
     minHeight: 100,
@@ -526,13 +531,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderWidth: 1,
     borderColor: '#334155',
   },
   levelChipActive: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
+    borderColor: '#5A7D9A',
   },
   levelChipDisabled: {
     opacity: 1,

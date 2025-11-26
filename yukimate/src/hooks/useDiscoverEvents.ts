@@ -85,7 +85,7 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
           .neq('host_user_id', userId); // 自分がホストのイベントを除外
 
         // カテゴリフィルター適用
-        if (options.category && options.category !== 'all') {
+        if (options.category) {
           query = query.eq('type', options.category);
         }
 
@@ -211,6 +211,7 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
             id: event.id,
             title: event.title,
             description: event.description,
+            category: event.type as 'event' | 'lesson' | 'filming' | 'group',
             hostName: event.profiles?.display_name || 'Unknown',
             hostAvatar: hostAvatarUrl,
             resortName: event.resorts?.name || 'Unknown Resort',

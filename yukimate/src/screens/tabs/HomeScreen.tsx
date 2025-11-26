@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@components/ui/icon-symbol';
@@ -16,6 +17,7 @@ import { useHomeData } from '@hooks/useHomeData';
 import { testSupabaseSetup } from '@lib/testSupabaseSetup';
 
 export default function HomeScreen() {
+  const insets = useSafeAreaInsets();
   const state = useHomeData();
   const colorScheme = useColorScheme();
   const tint = Colors[colorScheme ?? 'light'].tint;
@@ -57,19 +59,24 @@ export default function HomeScreen() {
   const { weather, recommendedEvents, suggestedEvents, trendingPosts } = state.data;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={[styles.contentContainer, { paddingTop: Math.max(insets.top, 16) }]}
+    >
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.logoIcon}>ac_unit</Text>
           <Text style={styles.title}>YukiMate</Text>
         </View>
         <TouchableOpacity
           style={styles.profileButton}
           activeOpacity={0.8}
-          onPress={() => router.push('/(tabs)/profile')}
+          onPress={() => {
+            // TODO: Navigate to settings screen when implemented
+            console.log('Settings button pressed - Not yet implemented');
+          }}
         >
-          <IconSymbol name="person.fill" size={20} color="#E5E7EB" />
+          <IconSymbol name="gearshape" size={20} color="#E5E7EB" />
         </TouchableOpacity>
       </View>
 
@@ -122,13 +129,13 @@ export default function HomeScreen() {
           onPress={() => router.push('/(tabs)/chat')}
         />
         <QuickAction
-          icon="chevron.right"
-          label="Local Info"
+          icon="newspaper"
+          label="Snowfeed"
           tint={tint}
           onPress={() => router.push('/(tabs)/snowfeed')}
         />
         <QuickAction
-          icon="plus.circle.fill"
+          icon="plus.circle"
           label="Post"
           tint={tint}
           onPress={() => router.push('/(tabs)/create')}
@@ -185,11 +192,11 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A1628',
+    backgroundColor: '#1A202C',
   },
   contentContainer: {
     padding: 16,
-    paddingBottom: 32,
+    paddingBottom: 120,
   },
   header: {
     flexDirection: 'row',
@@ -215,7 +222,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#4B5563',
   },
