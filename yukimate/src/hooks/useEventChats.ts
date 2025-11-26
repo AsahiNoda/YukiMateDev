@@ -42,7 +42,50 @@ export function useEventChats() {
     fetchEventChats();
   }, []);
 
+  // リアルタイムサブスクリプション: 参加状態の変更を監視
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    async function setupRealtimeSubscription() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      console.log('[useEventChats] 📡 Setting up realtime subscription for user:', user.id);
+
+      // event_participantsテーブルの変更を監視
+      channel = supabase
+        .channel('event-participants-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // INSERT, UPDATE, DELETE全てを監視
+            schema: 'public',
+            table: 'event_participants',
+            filter: `user_id=eq.${user.id}`, // 自分の参加状態のみ
+          },
+          (payload) => {
+            console.log('[useEventChats] 🔔 Participant change detected:', payload);
+            // 参加状態が変更されたらリストを再取得
+            fetchEventChats();
+          }
+        )
+        .subscribe();
+    }
+
+    setupRealtimeSubscription();
+
+    return () => {
+      if (channel) {
+        console.log('[useEventChats] 🛑 Unsubscribing from realtime channel');
+        supabase.removeChannel(channel);
+      }
+    };
+  }, []);
+
   async function fetchEventChats() {
+    console.log('[useEventChats] 🔄 Fetching event chats...');
     try {
       setLoading(true);
       setError(null);
@@ -53,6 +96,7 @@ export function useEventChats() {
       if (!user) {
         throw new Error('ログインが必要です');
       }
+      console.log('[useEventChats] 👤 User ID:', user.id);
 
       // 1. 参加者として参加しているイベントのIDを取得
       const { data: participantData, error: participantError } = await supabase
@@ -65,8 +109,8 @@ export function useEventChats() {
 
       const participantEventIds = participantData?.map((p) => p.event_id) || [];
 
-      // 2. 自分がホストのイベントを取得（詳細情報含む）
-      const { data: hostEvents, error: hostError } = await supabase
+      // 2. 自分がホストのイベントを取得
+      const { data: hostEventsData, error: hostError } = await supabase
         .from('posts_events')
         .select(
           `
@@ -81,6 +125,7 @@ export function useEventChats() {
 
       if (hostError) throw hostError;
 
+      const hostEvents = hostEventsData || [];
       const hostEventIds = hostEvents?.map((e) => e.id) || [];
 
       // 3. 両方を統合（重複を排除）
@@ -113,60 +158,33 @@ export function useEventChats() {
 
       if (chatError) throw chatError;
 
-      // チャットが存在するイベントIDを記録
-      const eventIdsWithChats = new Set((chatData || []).map((chat: any) => chat.event_id));
-
-      // ホストイベントでチャットが存在しないものを追加
-      const hostEventsWithoutChats = (hostEvents || []).filter(
-        (event: any) => !eventIdsWithChats.has(event.id)
-      );
-
-      // ダミーのチャットデータを作成（チャットルームがまだ存在しないホストイベント用）
-      const dummyChatsForHostEvents = hostEventsWithoutChats.map((event: any) => ({
-        id: `dummy-${event.id}`, // ダミーID
-        event_id: event.id,
-        created_at: event.start_at,
-        posts_events: {
-          id: event.id,
-          title: event.title,
-          start_at: event.start_at,
-          photos: event.photos,
-          resorts: event.resorts,
-        },
-      }));
-
-      // 既存のチャットとダミーチャットを統合
-      const allChats = [...(chatData || []), ...dummyChatsForHostEvents];
+      // チャットが存在するイベントのみを処理
+      const allChats = chatData || [];
 
       // 各チャットのメッセージと参加者を取得
       const chatsWithMessages = await Promise.all(
         allChats.map(async (chat: any) => {
-          // ダミーチャットの場合はメッセージを取得しない
-          const isDummyChat = chat.id.startsWith('dummy-');
-          let messages: any[] = [];
-
-          if (!isDummyChat) {
-            const { data: messagesData } = await supabase
-              .from('event_messages')
-              .select(
-                `
-                id,
-                chat_id,
-                sender_user_id,
-                content_text,
-                created_at,
-                sender:users!event_messages_sender_user_id_fkey(
-                  id,
-                  profiles(user_id, display_name, avatar_url)
-                )
+          // 最新のメッセージを1件取得
+          const { data: messagesData } = await supabase
+            .from('event_messages')
+            .select(
               `
+              id,
+              chat_id,
+              sender_user_id,
+              content_text,
+              created_at,
+              sender:users!event_messages_sender_user_id_fkey(
+                id,
+                profiles(user_id, display_name, avatar_url)
               )
-              .eq('chat_id', chat.id)
-              .order('created_at', { ascending: false })
-              .limit(1);
+            `
+            )
+            .eq('chat_id', chat.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
 
-            messages = messagesData || [];
-          }
+          const messages = messagesData || [];
 
           // イベントのホスト情報を取得
           const { data: hostData } = await supabase
@@ -242,7 +260,28 @@ export function useEventChats() {
         })
       );
 
-      setChats(chatsWithMessages);
+      // 最新のメッセージ順にソート（メッセージがないチャットは最後）
+      const sortedChats = chatsWithMessages.sort((a, b) => {
+        const aLastMessage = a.messages[0];
+        const bLastMessage = b.messages[0];
+
+        // メッセージがない場合は最後に
+        if (!aLastMessage && !bLastMessage) return 0;
+        if (!aLastMessage) return 1;
+        if (!bLastMessage) return -1;
+
+        // 最新のメッセージが新しい順
+        return new Date(bLastMessage.createdAt).getTime() - new Date(aLastMessage.createdAt).getTime();
+      });
+
+      console.log('[useEventChats] ✅ Fetched and sorted chats:', {
+        totalChats: sortedChats.length,
+        chatsWithMessages: sortedChats.filter(c => c.messages.length > 0).length,
+        topChatLastMessage: sortedChats[0]?.messages[0]?.contentText?.substring(0, 30),
+        topChatLastMessageTime: sortedChats[0]?.messages[0]?.createdAt,
+      });
+
+      setChats(sortedChats);
     } catch (err: any) {
       console.error('Fetch event chats error:', err);
       setError(err.message || 'チャットの取得に失敗しました');

@@ -10,7 +10,7 @@ import {
   Image,
   Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { spacing, fontSize, borderRadius, fontWeight } from '@/constants/spacing';
@@ -41,14 +41,56 @@ export default function ChatScreen() {
     rejectApplication,
   } = useEventApplications();
 
-  // タブが切り替わったときにデータをリフレッシュ
+  const [currentUserId, setCurrentUserId] = React.useState<string | null>(null);
+  const hasRefetchedOnFocus = React.useRef(false);
+  const refetchRef = React.useRef(refetch);
+
+  // refetch関数をrefに保存（依存配列の問題を回避）
   React.useEffect(() => {
-    if (activeTab === 'chats') {
-      console.log('📱 Chats tab opened, refreshing data...');
-      refetch();
+    refetchRef.current = refetch;
+  }, [refetch]);
+
+  // Track when screen comes into focus and refresh chat list
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🔍 [ChatScreen] Screen came into focus', {
+        hasRefetchedOnFocus: hasRefetchedOnFocus.current,
+      });
+
+      // フォーカス時に一度だけrefetchする（無限ループを防ぐ）
+      if (!hasRefetchedOnFocus.current) {
+        console.log('🔄 [ChatScreen] Refreshing chat list on focus...');
+        hasRefetchedOnFocus.current = true;
+        refetchRef.current();
+      }
+
+      return () => {
+        console.log('🔍 [ChatScreen] Screen lost focus');
+        // フォーカスを失ったら、次回フォーカス時にrefetchできるようにリセット
+        hasRefetchedOnFocus.current = false;
+      };
+    }, [])
+  );
+
+  // 現在のユーザーIDを取得
+  React.useEffect(() => {
+    console.log('🆔 [ChatScreen] Getting current user...');
+    async function getCurrentUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        console.log('🆔 [ChatScreen] ✅ User ID obtained:', user.id);
+        setCurrentUserId(user.id);
+      } else {
+        console.log('🆔 [ChatScreen] ❌ No user found');
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+    getCurrentUser();
+  }, []);
+
+  // Track currentUserId changes
+  React.useEffect(() => {
+    console.log('🆔 [ChatScreen] currentUserId changed:', currentUserId);
+  }, [currentUserId]);
 
   // デバッグ: 申請の状態をログ出力
   React.useEffect(() => {
@@ -61,34 +103,17 @@ export default function ChatScreen() {
     }
   }, [applications, activeTab]);
 
-  // リアルタイムメッセージング: 新しいメッセージが来たらチャットリストを更新
-  useEffect(() => {
-    if (chatsLoading) return;
-
-    const channel = supabase
-      .channel('chat-list-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'event_messages',
-        },
-        async (payload) => {
-          console.log('💬 New message in chat list:', payload);
-          // 新しいメッセージが来たらチャットリストを再取得
-          refetch();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      channel.unsubscribe();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatsLoading]);
 
   const loading = activeTab === 'chats' ? chatsLoading : applicationsLoading;
+
+  // エラーがある場合は表示
+  React.useEffect(() => {
+    if (activeTab === 'chats' && chatsError) {
+      Alert.alert('エラー', 'チャットの読み込みに失敗しました');
+    } else if (activeTab === 'requests' && applicationsError) {
+      Alert.alert('エラー', '申請の読み込みに失敗しました');
+    }
+  }, [chatsError, applicationsError, activeTab]);
 
   // チャットをToday/Upcoming/Earlierに分類
   function categorizeChats(): ChatSection[] {
@@ -194,6 +219,12 @@ export default function ChatScreen() {
     const messagePreview = lastMessage?.contentText || 'メッセージがありません';
     const firstPhoto = item.eventPhotos?.[0];
 
+    // イベント開始から6時間経過しているかチェック
+    const eventStartTime = new Date(item.eventStartAt);
+    const now = new Date();
+    const hoursSinceStart = (now.getTime() - eventStartTime.getTime()) / (1000 * 60 * 60);
+    const shouldShowDeletionWarning = hoursSinceStart >= 6;
+
     // 時刻のフォーマット
     const formatTime = (dateString: string) => {
       const date = new Date(dateString);
@@ -262,9 +293,15 @@ export default function ChatScreen() {
             })}{' '}
             • {item.eventResortName || 'リゾート未設定'}
           </Text>
-          <Text style={[styles.chatPreview, { color: colors.textSecondary }]} numberOfLines={1}>
-            {messagePreview}
-          </Text>
+          {shouldShowDeletionWarning ? (
+            <Text style={styles.deletionWarning} numberOfLines={1}>
+              ⚠️ 投稿は一定時間後に自動で削除されます
+            </Text>
+          ) : (
+            <Text style={[styles.chatPreview, { color: colors.textSecondary }]} numberOfLines={1}>
+              {messagePreview}
+            </Text>
+          )}
         </View>
       </TouchableOpacity>
     );
@@ -531,6 +568,11 @@ const styles = StyleSheet.create({
   },
   chatPreview: {
     fontSize: fontSize.sm,
+  },
+  deletionWarning: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+    color: '#ef4444',
   },
   chatBadge: {
     alignItems: 'center',

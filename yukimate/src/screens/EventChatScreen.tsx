@@ -61,31 +61,45 @@ export default function EventChatScreen() {
 
   // イベント終了判定
   useEffect(() => {
-    if (!event) return;
+    if (!event) {
+      console.log('[EventChatScreen] ⚠️ Event status useEffect: No event, skipping');
+      return;
+    }
 
+    console.log('[EventChatScreen] 🔄 Event status useEffect: Starting interval check');
     checkEventStatus();
 
     // 5分ごとにチェック
-    const interval = setInterval(checkEventStatus, 300000);
+    const interval = setInterval(() => {
+      console.log('[EventChatScreen] 🔄 Interval: Running checkEventStatus (every 5 min)');
+      checkEventStatus();
+    }, 300000);
 
-    return () => clearInterval(interval);
+    return () => {
+      console.log('[EventChatScreen] 🛑 Event status useEffect: Clearing interval');
+      clearInterval(interval);
+    };
   }, [event]);
 
-  // リアルタイムメッセージング - ブロードキャスト方式
+  // リアルタイムメッセージング - PostgreSQL changes方式
   useEffect(() => {
-    if (!chatRoom || !params.eventId) return;
+    if (!chatRoom || !currentUserId) return;
 
-    const channelName = `event:${params.eventId}:messages`;
-    console.log('📡 Subscribing to channel:', channelName);
+    console.log('📡 Subscribing to message updates for chat:', chatRoom.id);
 
     const channel = supabase
-      .channel(channelName)
+      .channel(`chat:${chatRoom.id}:messages`)
       .on(
-        'broadcast',
-        { event: 'INSERT' },
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'event_messages',
+          filter: `chat_id=eq.${chatRoom.id}`,
+        },
         async (payload) => {
-          console.log('📨 Received broadcast message:', payload);
-          const newMessage = payload.payload;
+          console.log('📨 New message inserted:', payload);
+          const newMessage = payload.new as any;
 
           // 自分のメッセージは既にUIに追加済みなのでスキップ
           if (newMessage.sender_user_id === currentUserId) {
@@ -102,16 +116,20 @@ export default function EventChatScreen() {
 
           console.log('👤 Sender profile:', senderProfile);
 
-          setMessages((prev) => [
-            ...prev,
-            {
-              ...newMessage,
-              sender: {
-                id: newMessage.sender_user_id,
-                profiles: senderProfile,
-              },
+          const messageWithSender: EventMessageWithSender = {
+            id: newMessage.id,
+            chat_id: newMessage.chat_id,
+            sender_user_id: newMessage.sender_user_id,
+            content_text: newMessage.content_text,
+            content_image_url: newMessage.content_image_url,
+            created_at: newMessage.created_at,
+            sender: {
+              id: newMessage.sender_user_id,
+              profiles: senderProfile,
             },
-          ]);
+          };
+
+          setMessages((prev) => [...prev, messageWithSender]);
         }
       )
       .subscribe((status) => {
@@ -119,10 +137,10 @@ export default function EventChatScreen() {
       });
 
     return () => {
-      console.log('🔌 Unsubscribing from channel:', channelName);
+      console.log('🔌 Unsubscribing from channel');
       channel.unsubscribe();
     };
-  }, [chatRoom, currentUserId, params.eventId]);
+  }, [chatRoom, currentUserId]);
 
   // 新しいメッセージが追加されたら最下部にスクロール
   useEffect(() => {
@@ -134,6 +152,7 @@ export default function EventChatScreen() {
   }, [messages.length]);
 
   async function initializeChat() {
+    console.log('[EventChatScreen] 🚀 Initializing chat for event:', params.eventId);
     try {
       setLoading(true);
 
@@ -142,6 +161,7 @@ export default function EventChatScreen() {
       } = await supabase.auth.getUser();
       if (!user) throw new Error('ログインが必要です');
 
+      console.log('[EventChatScreen] 👤 Current user:', user.id);
       setCurrentUserId(user.id);
 
       // 現在のユーザーのプロフィールを取得
@@ -154,6 +174,7 @@ export default function EventChatScreen() {
       setCurrentUserProfile(profile);
 
       // イベント情報取得
+      console.log('[EventChatScreen] 📅 Fetching event data...');
       const { data: eventData, error: eventError } = await supabase
         .from('posts_events')
         .select(
@@ -171,9 +192,19 @@ export default function EventChatScreen() {
         .eq('id', params.eventId)
         .single();
 
-      if (eventError) throw eventError;
+      if (eventError) {
+        console.error('[EventChatScreen] ❌ Event fetch error:', eventError);
+        throw eventError;
+      }
+
+      console.log('[EventChatScreen] ✅ Event data fetched:', {
+        eventId: eventData.id,
+        startAt: eventData.start_at,
+        hostUserId: eventData.host_user_id,
+      });
 
       // 参加者を別途取得
+      console.log('[EventChatScreen] 👥 Fetching participants...');
       const { data: participantsData, error: participantsError } = await supabase
         .from('event_participants')
         .select(
@@ -192,7 +223,7 @@ export default function EventChatScreen() {
         .eq('event_id', params.eventId)
         .is('left_at', null);
 
-      console.log('Participants data:', {
+      console.log('[EventChatScreen] 👥 Participants data:', {
         count: participantsData?.length || 0,
         data: participantsData,
         error: participantsError,
@@ -234,6 +265,13 @@ export default function EventChatScreen() {
         });
       }
 
+      console.log('[EventChatScreen] 🎯 Participants formatted (excluding host):', {
+        hostUserId: eventData.host_user_id,
+        totalParticipants: participantsData?.length || 0,
+        nonHostParticipants: allParticipants.length,
+        participantIds: allParticipants.map((p) => p.user.id),
+      });
+
       // データを整形
       const event = {
         ...eventData,
@@ -245,33 +283,59 @@ export default function EventChatScreen() {
         participants: allParticipants,
       };
 
-      console.log('Event data:', {
+      console.log('[EventChatScreen] 📦 Event object created:', {
+        eventId: event.id,
+        startAt: event.start_at,
         hasPhotos: !!event.photos,
         photosLength: event.photos?.length,
-        firstPhoto: event.photos?.[0],
-        photos: event.photos,
         participantsCount: event.participants.length,
-        participants: event.participants,
+        participantIds: event.participants.map((p: any) => p.user.id),
       });
 
       setEvent(event as any);
 
-      // 現在のユーザーが参加者として登録されているか確認
-      const { data: myParticipation, error: participationError } = await supabase
-        .from('event_participants')
-        .select('id, event_id, user_id')
-        .eq('event_id', params.eventId)
-        .eq('user_id', user.id)
-        .is('left_at', null)
-        .maybeSingle();
+      // ホストかどうかをチェック
+      const isHost = eventData.host_user_id === user.id;
 
-      console.log('My participation status:', {
+      console.log('[EventChatScreen] 👑 Host check:', {
         eventId: params.eventId,
         userId: user.id,
-        isParticipant: !!myParticipation,
-        participationData: myParticipation,
-        error: participationError,
+        hostUserId: eventData.host_user_id,
+        isHost,
       });
+
+      // ホストでない場合のみ、参加者チェックを行う
+      if (!isHost) {
+        // 現在のユーザーが参加者として登録されているか確認（left_at=nullのもののみ）
+        const { data: myParticipation, error: participationError } = await supabase
+          .from('event_participants')
+          .select('id, event_id, user_id, left_at')
+          .eq('event_id', params.eventId)
+          .eq('user_id', user.id)
+          .is('left_at', null)
+          .maybeSingle();
+
+        console.log('[EventChatScreen] 📋 My participation status:', {
+          eventId: params.eventId,
+          userId: user.id,
+          isParticipant: !!myParticipation,
+          participationData: myParticipation,
+          error: participationError,
+        });
+
+        // 退出済み（left_atが設定されている）または参加していない場合はチャットにアクセスできない
+        if (!myParticipation) {
+          console.log('[EventChatScreen] ⚠️ User has left or is not a participant, blocking access to chat');
+          Alert.alert(
+            'アクセスできません',
+            'このイベントは既に終了しているか、参加していません。',
+            [{ text: 'OK', onPress: () => router.replace('/(tabs)/chat') }]
+          );
+          return;
+        }
+      } else {
+        console.log('[EventChatScreen] ✅ User is host, skipping participation check');
+      }
 
       // チャットルーム取得または作成
       let { data: room, error: roomError } = await supabase
@@ -353,27 +417,57 @@ export default function EventChatScreen() {
   }
 
   async function checkEventStatus() {
-    if (!event || !currentUserId) return;
+    console.log('[EventChatScreen] 🕐 Checking event status...');
+
+    if (!event || !currentUserId) {
+      console.log('[EventChatScreen] ⚠️ Event status check skipped:', {
+        hasEvent: !!event,
+        hasCurrentUserId: !!currentUserId,
+      });
+      return;
+    }
 
     const eventStartTime = new Date(event.start_at);
     const now = new Date();
+
+    console.log('[EventChatScreen] ⏰ Time check:', {
+      eventStartTime: eventStartTime.toISOString(),
+      currentTime: now.toISOString(),
+      eventId: event.id,
+      isAfterStart: now > eventStartTime,
+    });
 
     // イベント開始時刻を過ぎているかチェック
     if (now > eventStartTime) {
       const hoursSinceStart =
         (now.getTime() - eventStartTime.getTime()) / (1000 * 60 * 60);
 
+      console.log('[EventChatScreen] ⏱️ Hours since start:', {
+        hoursSinceStart: hoursSinceStart.toFixed(2),
+        requiresPostAction: hoursSinceStart >= 6,
+      });
+
       // イベント開始から6時間経過
       if (hoursSinceStart >= 6) {
-        const hasShownPostAction = await AsyncStorage.getItem(
-          `post_action_shown_${event.id}`
-        );
+        const hasShownPostAction = await AsyncStorage.getItem(`post_action_shown_${event.id}`);
+
+        console.log('[EventChatScreen] 📋 Post action check:', {
+          hasShownPostAction: !!hasShownPostAction,
+          storageKey: `post_action_shown_${event.id}`,
+        });
 
         if (!hasShownPostAction) {
           // ★登録/ブロック画面へ遷移
           const otherParticipants = event.participants.filter(
             (p) => p.user.id !== currentUserId
           );
+
+          console.log('[EventChatScreen] 🚀 Redirecting to post-event-action:', {
+            eventId: event.id,
+            totalParticipants: event.participants?.length || 0,
+            otherParticipantsCount: otherParticipants.length,
+            participantIds: otherParticipants.map((p) => p.user.id),
+          });
 
           await AsyncStorage.setItem(`post_action_shown_${event.id}`, 'true');
 
@@ -384,8 +478,14 @@ export default function EventChatScreen() {
               participants: JSON.stringify(otherParticipants),
             },
           });
+        } else {
+          console.log('[EventChatScreen] ℹ️ Post action already shown for this event');
         }
+      } else {
+        console.log('[EventChatScreen] ⏳ Event not ready for post-action (< 6 hours)');
       }
+    } else {
+      console.log('[EventChatScreen] ⏳ Event has not started yet');
     }
   }
 
@@ -470,25 +570,8 @@ export default function EventChatScreen() {
       // 一時IDを実際のIDに置き換え
       setMessages((prev) => prev.map((msg) => (msg.id === tempId ? sentMessage as any : msg)));
 
-      // ブロードキャストでメッセージを送信
-      const channelName = `event:${params.eventId}:messages`;
-      const broadcastChannel = supabase.channel(channelName);
-
-      await broadcastChannel.send({
-        type: 'broadcast',
-        event: 'INSERT',
-        payload: {
-          id: data.id,
-          chat_id: data.chat_id,
-          sender_user_id: data.sender_user_id,
-          content_text: data.content_text,
-          content_image_url: data.content_image_url,
-          created_at: data.created_at,
-          event_id: params.eventId,
-        },
-      });
-
-      console.log('📡 Broadcast sent to channel:', channelName);
+      // PostgreSQL changesで自動的に他のユーザーに通知されます
+      console.log('✅ Message sent, will be broadcast via PostgreSQL changes');
     } catch (error: any) {
       console.error('Send message error:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
