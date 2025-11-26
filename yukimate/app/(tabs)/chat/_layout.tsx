@@ -9,8 +9,6 @@ export default function ChatLayout() {
       }}
     >
       <Stack.Screen name="index" />
-      <Stack.Screen name="event-chat" />
-      <Stack.Screen name="event-detail" />
     </Stack>
   );
 }

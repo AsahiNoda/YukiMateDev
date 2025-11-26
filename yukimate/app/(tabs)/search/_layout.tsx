@@ -9,7 +9,6 @@ export default function SearchLayout() {
       }}
     >
       <Stack.Screen name="index" />
-      <Stack.Screen name="event-detail" />
       <Stack.Screen name="filter" />
     </Stack>
   );

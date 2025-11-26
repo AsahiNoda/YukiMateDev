@@ -1,4 +1,6 @@
+import { ImageViewer } from '@/components/ImageViewer';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useBookmark } from '@/hooks/useBookmark';
 import { applyToEvent } from '@/hooks/useDiscoverEvents';
 import { supabase } from '@/lib/supabase';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -7,8 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Linking,
-  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,6 +16,8 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import BackArrowIcon from '../../assets/images/icons/back-arrow.svg';
+import BookmarkIcon from '../../assets/images/icons/bookmark.svg';
 
 interface EventDetail {
   id: string;
@@ -48,8 +50,11 @@ export default function EventDetailScreen() {
   const [applying, setApplying] = useState(false);
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [fullscreenVisible, setFullscreenVisible] = useState(false);
+  const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string>('');
+
+  // ブックマークフックを使用
+  const { isBookmarked, loading: bookmarkLoading, toggleBookmark: handleToggleBookmark } = useBookmark(params.eventId || '');
 
   useEffect(() => {
     loadEventDetail();
@@ -83,7 +88,7 @@ export default function EventDetailScreen() {
           type,
           host_user_id,
           resorts(id, name),
-          profiles!posts_events_host_user_id_fkey(
+          profiles(
             user_id,
             display_name,
             avatar_url,
@@ -112,7 +117,6 @@ export default function EventDetailScreen() {
         .single();
 
       // 画像URLを生成
-      console.log('EventDetailScreen - eventData.photos:', eventData.photos);
       const photoUrls: string[] = [];
       if (eventData.photos && eventData.photos.length > 0) {
         eventData.photos.forEach((photoPath: string) => {
@@ -126,7 +130,6 @@ export default function EventDetailScreen() {
           }
         });
       }
-      console.log('EventDetailScreen - Generated photoUrls:', photoUrls);
 
       const detail: EventDetail = {
         id: eventData.id,
@@ -170,29 +173,38 @@ export default function EventDetailScreen() {
 
     if (result.success) {
       Alert.alert('申請完了', 'イベントへの参加申請を送信しました');
-      loadEventDetail(); // 再読み込みして申請状態を更新
+      loadEventDetail();
     } else {
       Alert.alert('エラー', result.error || '申請に失敗しました');
     }
   };
 
-  const openMaps = () => {
-    if (!event) return;
-    const query = encodeURIComponent(
-      `${event.resortName} ${event.meetingPlace || ''}`
-    );
-    Linking.openURL(`https://maps.google.com/?q=${query}`);
+  const toggleBookmark = async () => {
+    const success = await handleToggleBookmark();
+    if (!success) {
+      Alert.alert('エラー', 'ブックマークの更新に失敗しました');
+    }
+  };
+
+  const openImageViewer = (imageUrl: string) => {
+    setSelectedImageUrl(imageUrl);
+    setImageViewerVisible(true);
+  };
+
+  const closeImageViewer = () => {
+    setImageViewerVisible(false);
+    setSelectedImageUrl('');
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('ja-JP', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const weekday = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}年${month}月${day}日 ${weekday} ${hours}:${minutes}`;
   };
 
   if (loading) {
@@ -218,337 +230,185 @@ export default function EventDetailScreen() {
     );
   }
 
-  const hasMultipleImages = event.photos.length > 1;
-
-  console.log('EventDetailScreen - Render:', {
-    photosCount: event.photos.length,
-    hasMultipleImages,
-    currentImageIndex,
-    photos: event.photos,
-  });
-
-  const nextImage = () => {
-    if (hasMultipleImages) {
-      setCurrentImageIndex((prev) => (prev + 1) % event.photos.length);
-    }
-  };
-
-  const prevImage = () => {
-    if (hasMultipleImages) {
-      setCurrentImageIndex((prev) => (prev - 1 + event.photos.length) % event.photos.length);
-    }
-  };
-
   return (
-    <>
-      <ScrollView style={styles.container}>
-        {/* 画像ギャラリー */}
+    <View style={styles.container}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* ヘッダー画像 */}
         {event.photos.length > 0 && (
-          <View style={styles.imageContainer}>
+          <View style={styles.headerImageContainer}>
             <TouchableOpacity
+              onPress={() => openImageViewer(event.photos[0])}
               activeOpacity={0.9}
-              onPress={() => setFullscreenVisible(true)}
-              style={styles.imageWrapper}
             >
               <Image
-                source={{ uri: event.photos[currentImageIndex] }}
-                style={styles.eventImage}
+                source={{ uri: event.photos[0] }}
+                style={styles.headerImage}
                 resizeMode="cover"
               />
             </TouchableOpacity>
 
-            {/* 画像切り替えタップエリア（複数画像の場合のみ） */}
-            {hasMultipleImages && (
-              <>
-                <TouchableOpacity
-                  style={styles.imageTapLeft}
-                  onPress={prevImage}
-                  activeOpacity={1}
-                />
-                <TouchableOpacity
-                  style={styles.imageTapRight}
-                  onPress={nextImage}
-                  activeOpacity={1}
-                />
-              </>
-            )}
-
-            {/* 画像インジケーター（常に表示） */}
-            <View style={styles.imageIndicators}>
-              {event.photos.map((_, idx) => (
-                <View
-                  key={idx}
-                  style={[
-                    styles.indicator,
-                    idx === currentImageIndex && styles.indicatorActive,
-                  ]}
-                />
-              ))}
-            </View>
-
-            {/* 閉じるボタン */}
+            {/* 戻るボタン */}
             <TouchableOpacity
-              style={styles.closeButton}
+              style={[styles.backButtonIcon, { top: insets.top + 16 }]}
               onPress={() => router.back()}
               activeOpacity={0.7}
             >
-              <IconSymbol name="xmark" size={28} color="#FFFFFF" />
+              <BackArrowIcon width={24} height={24} stroke="#FFFFFF" />
+            </TouchableOpacity>
+
+            {/* ブックマークボタン */}
+            <TouchableOpacity
+              style={[styles.bookmarkButton, { top: insets.top + 16 }]}
+              onPress={toggleBookmark}
+              activeOpacity={0.7}
+              disabled={bookmarkLoading}
+            >
+              <BookmarkIcon
+                width={24}
+                height={24}
+                stroke={isBookmarked ? "#FFD700" : "#FFFFFF"}
+                fill={isBookmarked ? "#FFD700" : "none"}
+              />
             </TouchableOpacity>
           </View>
         )}
 
-      <View style={styles.content}>
-        {/* タイトル & レベル */}
-        <View style={styles.titleRow}>
+        {/* コンテンツカード */}
+        <View style={styles.contentCard}>
+          {/* タイトル */}
           <Text style={styles.title}>{event.title}</Text>
-          {event.levelRequired && (
-            <View style={styles.levelBadge}>
-              <Text style={styles.levelText}>
-                {event.levelRequired === 'beginner' ? '初級' :
-                 event.levelRequired === 'intermediate' ? '中級' : '上級'}
-              </Text>
+
+          {/* 詳細説明 */}
+          {event.description && (
+            <View style={styles.descriptionSection}>
+              <Text style={styles.descriptionTitle}>詳細:</Text>
+              <Text style={styles.descriptionText}>{event.description}</Text>
             </View>
           )}
-        </View>
 
-        {/* カテゴリバッジ */}
-        <View style={styles.categoryBadge}>
-          <Text style={styles.categoryText}>{event.category}</Text>
-        </View>
+          {/* 詳細グリッド（3列グリッド） */}
+          <View style={styles.detailsGrid}>
+            {/* 日時 */}
+            <View style={styles.gridItemWide}>
+              <View style={styles.gridIconContainer}>
+                <IconSymbol name="calendar" size={20} color="#5A7D9A" />
+              </View>
+              <View style={styles.gridTextContainer}>
+                <Text style={styles.gridValue}>{formatDate(event.startAt)}</Text>
+              </View>
+            </View>
 
-        {/* イベント詳細カード */}
-        <View style={styles.detailCard}>
-          {/* 日時 */}
-          <View style={[styles.detailRow, styles.detailRowWithBorder]}>
-            <View style={styles.detailIconContainer}>
-              <IconSymbol name="calendar" size={20} color="#5A7D9A" />
+            {/* スキー場 */}
+            <View style={styles.gridItemWide}>
+              <View style={styles.gridIconContainer}>
+                <IconSymbol name="mountain.2.fill" size={20} color="#10B981" />
+              </View>
+              <View style={styles.gridTextContainer}>
+                <Text style={styles.gridValue}>{event.resortName}</Text>
+              </View>
             </View>
-            <View style={styles.detailTextContainer}>
-              <Text style={styles.detailLabel}>日時</Text>
-              <Text style={styles.detailValue}>{formatDate(event.startAt)}</Text>
-            </View>
-          </View>
 
-          {/* スキー場 */}
-          <View style={[styles.detailRow, styles.detailRowWithBorder]}>
-            <View style={styles.detailIconContainer}>
-              <IconSymbol name="mountain.2.fill" size={20} color="#10B981" />
+            {/* 参加人数 */}
+            <View style={styles.gridItem}>
+              <View style={styles.gridIconContainer}>
+                <IconSymbol name="person.2.fill" size={20} color="#8B5CF6" />
+              </View>
+              <View style={styles.gridTextContainer}>
+                <Text style={styles.gridValue}>{event.spotsTaken}/{event.capacityTotal}人</Text>
+              </View>
             </View>
-            <View style={styles.detailTextContainer}>
-              <Text style={styles.detailLabel}>スキー場</Text>
-              <Text style={styles.detailValue}>{event.resortName}</Text>
-            </View>
-          </View>
 
-          {/* 集合場所 */}
-          {event.meetingPlace && (
-            <TouchableOpacity
-              style={[styles.detailRow, styles.detailRowWithBorder]}
-              onPress={openMaps}
-            >
-              <View style={styles.detailIconContainer}>
+            {/* 集合場所 */}
+            <View style={styles.gridItemWide}>
+              <View style={styles.gridIconContainer}>
                 <IconSymbol name="mappin.circle.fill" size={20} color="#F59E0B" />
               </View>
-              <View style={styles.detailTextContainer}>
-                <Text style={styles.detailLabel}>集合場所</Text>
-                <Text style={[styles.detailValue, styles.linkText]}>
-                  {event.meetingPlace} →
+              <View style={styles.gridTextContainer}>
+                <Text style={styles.gridValue} numberOfLines={1}>
+                  {event.meetingPlace || '未設定'}
                 </Text>
               </View>
-            </TouchableOpacity>
-          )}
+            </View>
 
-          {/* 参加人数 */}
-          <View style={[styles.detailRow, styles.detailRowWithBorder]}>
-            <View style={styles.detailIconContainer}>
-              <IconSymbol name="person.3.fill" size={20} color="#8B5CF6" />
-            </View>
-            <View style={styles.detailTextContainer}>
-              <Text style={styles.detailLabel}>参加人数</Text>
-              <Text style={styles.detailValue}>
-                {event.spotsTaken}/{event.capacityTotal}人
-              </Text>
-            </View>
-          </View>
-
-          {/* 価格 - 最後の行なのでボーダーなし */}
-          <View style={styles.detailRow}>
-            <View style={styles.detailIconContainer}>
-              <IconSymbol name="yensign.circle.fill" size={20} color="#D4AF37" />
-            </View>
-            <View style={styles.detailTextContainer}>
-              <Text style={styles.detailLabel}>参加費</Text>
-              <Text style={styles.detailValue}>
-                {event.pricePerPersonJpy !== null
-                  ? `¥${event.pricePerPersonJpy.toLocaleString()}`
-                  : '無料'}
-              </Text>
+            {/* 価格 */}
+            <View style={styles.gridItem}>
+              <View style={styles.gridIconContainer}>
+                <IconSymbol name="yensign.circle.fill" size={20} color="#D4AF37" />
+              </View>
+              <View style={styles.gridTextContainer}>
+                <Text style={styles.gridValue}>
+                  {event.pricePerPersonJpy !== null && event.pricePerPersonJpy > 0
+                    ? `¥${event.pricePerPersonJpy.toLocaleString()}`
+                    : '無料'}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
 
-        {/* 説明 */}
-        {event.description && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>詳細</Text>
-            <Text style={styles.descriptionText}>{event.description}</Text>
-          </View>
-        )}
+        {/* フッター用のスペース */}
+        <View style={{ height: 100 }} />
+      </ScrollView>
 
-        {/* タグ */}
-        {event.tags.length > 0 && (
-          <View style={styles.section}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.tagsContainer}
-            >
-              {event.tags.map((tag, index) => (
-                <View key={index} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
+      {/* 固定フッター */}
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
         {/* ホスト情報 */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ホスト</Text>
-          <View style={styles.hostCard}>
-            {event.hostAvatar ? (
-              <Image
-                source={{ uri: event.hostAvatar }}
-                style={styles.hostAvatar}
-              />
-            ) : (
-              <View style={[styles.hostAvatar, styles.hostAvatarPlaceholder]}>
-                <Text style={styles.hostAvatarText}>
-                  {event.hostName.charAt(0).toUpperCase()}
-                </Text>
-              </View>
-            )}
-            <View style={styles.hostInfo}>
-              <Text style={styles.hostName}>{event.hostName}</Text>
-              {event.hostLevel && (
-                <Text style={styles.hostLevel}>
-                  {event.hostLevel === 'beginner' ? '初級' :
-                   event.hostLevel === 'intermediate' ? '中級' : '上級'}
-                </Text>
-              )}
+        <View style={styles.footerHostSection}>
+          {event.hostAvatar ? (
+            <Image
+              source={{ uri: event.hostAvatar }}
+              style={styles.footerHostAvatar}
+            />
+          ) : (
+            <View style={[styles.footerHostAvatar, styles.hostAvatarPlaceholder]}>
+              <Text style={styles.footerHostAvatarText}>
+                {event.hostName.charAt(0).toUpperCase()}
+              </Text>
             </View>
+          )}
+          <View style={styles.footerHostInfo}>
+            <Text style={styles.footerHostLabel}>ホスト</Text>
+            <Text style={styles.footerHostName}>{event.hostName}</Text>
           </View>
         </View>
 
         {/* アクションボタン */}
-        <View style={styles.actionSection}>
-          {event.isHost ? (
-            <>
-              <TouchableOpacity
-                style={styles.manageButton}
-                onPress={() => {
-                  // TODO: 申請管理画面へ遷移
-                  Alert.alert('開発中', '申請管理機能は開発中です');
-                }}
-              >
-                <Text style={styles.manageButtonText}>申請を管理</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.chatButton}
-                onPress={() => router.push({
-                  pathname: '/event-chat/[eventId]' as any,
-                  params: { eventId: event.id }
-                })}
-              >
-                <IconSymbol name="message" size={20} color="#5A7D9A" />
-                <Text style={styles.chatButtonText}>チャット</Text>
-              </TouchableOpacity>
-            </>
-          ) : event.hasApplied && event.applicationStatus === 'approved' ? (
-            <TouchableOpacity
-              style={styles.chatButton}
-              onPress={() => router.push({
-                pathname: '/event-chat/[eventId]' as any,
-                params: { eventId: event.id }
-              })}
-            >
-              <IconSymbol name="message" size={20} color="#3B82F6" />
-              <Text style={styles.chatButtonText}>チャットを開く</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity
-              style={[
-                styles.applyButton,
-                (event.hasApplied || applying) && styles.applyButtonDisabled,
-              ]}
-              onPress={handleApply}
-              disabled={event.hasApplied || applying}
-            >
-              {applying ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.applyButtonText}>
-                  {event.hasApplied
-                    ? `申請中 (${event.applicationStatus})`
-                    : '参加申請'}
-                </Text>
-              )}
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
-    </ScrollView>
-
-    {/* 全画面画像モーダル */}
-    <Modal
-      visible={fullscreenVisible}
-      transparent={false}
-      animationType="fade"
-      onRequestClose={() => setFullscreenVisible(false)}
-      statusBarTranslucent={true}
-    >
-      <View style={[styles.fullscreenContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-        <TouchableOpacity
-          style={[styles.fullscreenCloseButton, { top: insets.top + 20 }]}
-          onPress={() => setFullscreenVisible(false)}
-        >
-          <IconSymbol name="xmark" size={28} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Image
-          source={{ uri: event.photos[currentImageIndex] }}
-          style={styles.fullscreenImage}
-          resizeMode="cover"
-        />
-        {/* 全画面でも画像切り替え可能 */}
-        {hasMultipleImages && (
-          <>
-            <TouchableOpacity
-              style={styles.fullscreenTapLeft}
-              onPress={prevImage}
-              activeOpacity={1}
-            />
-            <TouchableOpacity
-              style={styles.fullscreenTapRight}
-              onPress={nextImage}
-              activeOpacity={1}
-            />
-          </>
+        {event.isHost ? (
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              Alert.alert('開発中', '申請管理機能は開発中です');
+            }}
+          >
+            <Text style={styles.actionButtonText}>投稿を管理</Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              (event.hasApplied || applying) && styles.actionButtonDisabled,
+            ]}
+            onPress={handleApply}
+            disabled={event.hasApplied || applying}
+          >
+            {applying ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.actionButtonText}>
+                {event.hasApplied ? '申請済み' : '参加申請'}
+              </Text>
+            )}
+          </TouchableOpacity>
         )}
-        {/* インジケーター */}
-        <View style={styles.fullscreenIndicators}>
-          {event.photos.map((_, idx) => (
-            <View
-              key={idx}
-              style={[
-                styles.indicator,
-                idx === currentImageIndex && styles.indicatorActive,
-              ]}
-            />
-          ))}
-        </View>
       </View>
-    </Modal>
-  </>
+
+      {/* 画像ビューアー */}
+      <ImageViewer
+        visible={imageViewerVisible}
+        imageUrl={selectedImageUrl}
+        onClose={closeImageViewer}
+      />
+    </View>
   );
 }
 
@@ -556,6 +416,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1A202C',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 20,
   },
   centered: {
     flex: 1,
@@ -586,327 +452,166 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  imageContainer: {
+  headerImageContainer: {
     width: '100%',
-    height: 300,
+    height: 400,
     position: 'relative',
-    backgroundColor: '#000',
   },
-  imageWrapper: {
+  headerImage: {
     width: '100%',
     height: '100%',
   },
-  eventImage: {
-    width: '100%',
-    height: '100%',
-  },
-  imageTapLeft: {
+  backButtonIcon: {
     position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 50,
-    zIndex: 2,
-  },
-  imageTapRight: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 50,
-    zIndex: 2,
-  },
-  imageIndicators: {
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    zIndex: 3,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
-  indicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.6)',
-  },
-  indicatorActive: {
-    backgroundColor: '#FFFFFF',
-    width: 24,
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 50,
-    right: 20,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#5A7D9A',
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 4,
-    shadowColor: '#5A7D9A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 5,
+    zIndex: 10,
   },
-  content: {
-    padding: 20,
-  },
-  titleRow: {
-    flexDirection: 'row',
+  bookmarkButton: {
+    position: 'absolute',
+    right: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
+    justifyContent: 'center',
+    zIndex: 10,
   },
-  // 詳細カード
-  detailCard: {
-    backgroundColor: '#2D3748',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-  },
-  detailRowWithBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-  },
-  detailIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  contentCard: {
     backgroundColor: '#1A202C',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  detailTextContainer: {
-    flex: 1,
-  },
-  detailLabel: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginBottom: 2,
-    fontWeight: '500',
-  },
-  detailValue: {
-    fontSize: 15,
-    color: '#FFFFFF',
-    fontWeight: '600',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: -24,
+    padding: 24,
+    position: 'relative',
+    zIndex: 1,
   },
   title: {
-    flex: 1,
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginRight: 12,
-  },
-  levelBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#5A7D9A',
-    borderRadius: 12,
-  },
-  levelText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#2D3748',
-    borderRadius: 12,
     marginBottom: 16,
   },
-  categoryText: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    fontWeight: '600',
+  descriptionSection: {
+    marginBottom: 24,
   },
-  linkText: {
-    color: '#60A5FA',
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-  },
-  tag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: '#1E3A8A',
-    borderRadius: 12,
-    marginRight: 8,
-  },
-  tagText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-  },
-  section: {
-    marginTop: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
+  descriptionTitle: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   descriptionText: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#E5E7EB',
-    lineHeight: 24,
+    lineHeight: 22,
   },
-  hostCard: {
+  detailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: 24,
+    marginHorizontal: -6,
+  },
+  gridItem: {
+    width: '50%',
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#2D3748',
-    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
   },
-  hostAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  gridItemWide: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 6,
   },
   hostAvatarPlaceholder: {
     backgroundColor: '#5A7D9A',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  hostAvatarText: {
-    fontSize: 24,
+  gridIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#2D3748',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  gridTextContainer: {
+    flex: 1,
+  },
+  gridValue: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#1A202C',
+    borderTopWidth: 1,
+    borderTopColor: '#2D3748',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  footerHostSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  footerHostAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
+  footerHostAvatarText: {
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#FFFFFF',
   },
-  hostInfo: {
-    marginLeft: 16,
+  footerHostInfo: {
+    flex: 1,
   },
-  hostName: {
-    fontSize: 18,
+  footerHostLabel: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    marginBottom: 2,
+  },
+  footerHostName: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
-    marginBottom: 4,
   },
-  hostLevel: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
-  actionSection: {
-    marginTop: 32,
-    marginBottom: 24,
-  },
-  applyButton: {
-    paddingVertical: 16,
+  actionButton: {
+    paddingVertical: 14,
+    paddingHorizontal: 32,
     backgroundColor: '#5A7D9A',
-    borderRadius: 12,
+    borderRadius: 24,
+    minWidth: 140,
     alignItems: 'center',
-    marginBottom: 90,
   },
-  applyButtonDisabled: {
+  actionButtonDisabled: {
     backgroundColor: '#475569',
   },
-  applyButtonText: {
+  actionButtonText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-  },
-  manageButton: {
-    paddingVertical: 16,
-    backgroundColor: '#8B5CF6',
-    borderRadius: 12,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  manageButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  chatButton: {
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#5A7D9A',
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 90,
-  },
-  chatButtonText: {
-    color: '#5A7D9A',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  fullscreenContainer: {
-    flex: 1,
-    backgroundColor: '#000000',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fullscreenImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
-  },
-  fullscreenCloseButton: {
-    position: 'absolute',
-    right: 20,
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-    elevation: 5,
-  },
-  fullscreenTapLeft: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: 50,
-    zIndex: 5,
-  },
-  fullscreenTapRight: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 50,
-    zIndex: 5,
-  },
-  fullscreenIndicators: {
-    position: 'absolute',
-    bottom: 40,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    zIndex: 6,
-    paddingBottom: 0,
   },
 });

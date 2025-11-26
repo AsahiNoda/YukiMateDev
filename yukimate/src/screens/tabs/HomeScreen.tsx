@@ -7,6 +7,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Dimensions, // 画面幅取得のために追加
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -16,11 +17,15 @@ import { useColorScheme } from '@hooks/use-color-scheme';
 import { useHomeData } from '@hooks/useHomeData';
 import { testSupabaseSetup } from '@lib/testSupabaseSetup';
 
+// SVGコンポーネント
+import HomeBgMountain from '../../../assets/images/home-bg-mountain.svg';
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const state = useHomeData();
   const colorScheme = useColorScheme();
   const tint = Colors[colorScheme ?? 'light'].tint;
+  const { width: screenWidth } = Dimensions.get('window');
 
   // Supabase connection test: runs once when HomeScreen mounts
   useEffect(() => {
@@ -62,6 +67,7 @@ export default function HomeScreen() {
     <ScrollView 
       style={styles.container} 
       contentContainerStyle={[styles.contentContainer, { paddingTop: Math.max(insets.top, 16) }]}
+      overflow="visible" // スクロールビュー自体のクリッピングを解除（念の為）
     >
       {/* Header */}
       <View style={styles.header}>
@@ -80,35 +86,56 @@ export default function HomeScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Weather card */}
+      {/* Weather Section (Container for Image + Card) */}
       {weather && (
-        <View style={styles.weatherCard}>
-          <Text style={styles.weatherResort}>{weather.resortName}</Text>
-
-          <View style={styles.weatherTopRow}>
-            <Text style={styles.weatherTemp}>{weather.temperatureC}°C</Text>
-            <View style={styles.weatherSnowRow}>
-              <Text style={styles.weatherSnowIcon}>❄️</Text>
-              <Text style={styles.weatherBody}>{weather.snowDepthCm}cm</Text>
-            </View>
-            <Text style={styles.weatherBody}>New Snow: {weather.newSnowCm}cm</Text>
+        <View style={styles.weatherSectionWrapper}>
+          
+          {/* 1. 背景画像レイヤー (カードからはみ出すように配置) */}
+          <View style={styles.mountainBackgroundContainer}>
+            <HomeBgMountain 
+              width={screenWidth} // 画面幅いっぱいに
+              height={300}        // 高さを指定
+              preserveAspectRatio="xMidYMid meet"
+              style={{ opacity: 0.6 }} // 画像自体の透明度調整があればここで
+            />
           </View>
 
-          <View style={styles.weatherChipRow}>
-            <WeatherChip label="Today" active />
-            <WeatherChip label="7-Day Forecast" />
-            <WeatherChip label="Historical Data" />
-            <WeatherChip label="Depth Chart" />
-          </View>
+          {/* 2. Weather Card レイヤー (半透明のガラス表現) */}
+          <View style={styles.weatherCard}>
+            
+            {/* カード内の半透明背景色 */}
+            <View style={[StyleSheet.absoluteFill, styles.weatherCardGlass]} />
 
-          <View style={styles.weatherBottomRow}>
-            <View style={styles.metaColumn}>
-              <Text style={styles.metaText}>Wind: {weather.windSpeedMs} m/s</Text>
-              <Text style={styles.metaText}>Humidity: 85%</Text>
-            </View>
-            <View style={styles.metaColumn}>
-              <Text style={styles.metaText}>Visibility: Good</Text>
-              <Text style={styles.metaText}>Snow Quality: Powder</Text>
+            {/* コンテンツ */}
+            <View style={styles.weatherCardContent}>
+              <Text style={styles.weatherResort}>{weather.resortName}</Text>
+
+              <View style={styles.weatherTopRow}>
+                <Text style={styles.weatherTemp}>{weather.temperatureC}°C</Text>
+                <View style={styles.weatherSnowRow}>
+                  <Text style={styles.weatherSnowIcon}>❄️</Text>
+                  <Text style={styles.weatherBody}>{weather.snowDepthCm}cm</Text>
+                </View>
+                <Text style={styles.weatherBody}>New Snow: {weather.newSnowCm}cm</Text>
+              </View>
+
+              <View style={styles.weatherChipRow}>
+                <WeatherChip label="Today" active />
+                <WeatherChip label="7-Day Forecast" />
+                <WeatherChip label="Historical Data" />
+                <WeatherChip label="Depth Chart" />
+              </View>
+
+              <View style={styles.weatherBottomRow}>
+                <View style={styles.metaColumn}>
+                  <Text style={styles.metaText}>Wind: {weather.windSpeedMs} m/s</Text>
+                  <Text style={styles.metaText}>Humidity: 85%</Text>
+                </View>
+                <View style={styles.metaColumn}>
+                  <Text style={styles.metaText}>Visibility: Good</Text>
+                  <Text style={styles.metaText}>Snow Quality: Powder</Text>
+                </View>
+              </View>
             </View>
           </View>
         </View>
@@ -192,7 +219,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A202C',
+    backgroundColor: '#1A202C', // 1. 一番下の背景色
   },
   contentContainer: {
     padding: 16,
@@ -204,17 +231,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
     marginTop: 8,
-  },
-  logoIcon: {
-    fontSize: 20,
-    color: '#E5E7EB',
-    marginBottom: 4,
+    zIndex: 10, // ヘッダーを画像より手前に
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 4,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   profileButton: {
     width: 36,
@@ -226,28 +252,62 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#4B5563',
   },
-  weatherCard: {
+  // 新しいラッパー: 画像とカードの配置基準
+  weatherSectionWrapper: {
     marginBottom: 24,
-    padding: 20,
+    position: 'relative',
+    // overflow: 'visible' がデフォルトなので、画像がこの領域からはみ出ても表示される
+  },
+  // 画像コンテナ: カードの背後に絶対配置し、左右にはみ出させる
+  mountainBackgroundContainer: {
+    paddingTop: 20,
+    position: 'absolute',
+    top: -40, // カードの上にはみ出す
+    left: -16, // 親(padding:16)を打ち消して画面端まで
+    right: -16, // 親(padding:16)を打ち消して画面端まで
+    bottom: -40, // カードの下にはみ出す
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 0, // カードより後ろ
+  },
+  weatherCard: {
+    // position: 'relative'でzIndexコンテキストを作る
+    zIndex: 1, // 画像より前
     borderRadius: 12,
-    backgroundColor: '#ffffff30',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#ffffff33',
+    borderColor: 'rgba(255, 255, 255, 0.3)', // 薄い境界線
+    overflow: 'hidden', // カード内の角丸用
+    minHeight: 200,
+  },
+  weatherCardGlass: {
+    backgroundColor: 'rgba(20, 30, 50, 0.4)', // カードの背景色（半透明）
+  },
+  weatherCardContent: {
+    padding: 20,
   },
   weatherResort: {
     fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   weatherBody: {
     fontSize: 14,
     color: '#E5E7EB',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   weatherTemp: {
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   weatherTopRow: {
     flexDirection: 'row',
@@ -282,6 +342,9 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 12,
     color: '#E5E7EB',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   section: {
     marginBottom: 24,
@@ -299,6 +362,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 24,
+    zIndex: 1, // 画像の上に表示されるように
   },
   quickAction: {
     flex: 1,
@@ -397,4 +461,3 @@ function WeatherChip({ label, active }: WeatherChipProps) {
     </View>
   );
 }
-

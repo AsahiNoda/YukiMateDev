@@ -9,7 +9,6 @@ export default function DiscoverLayout() {
       }}
     >
       <Stack.Screen name="index" />
-      <Stack.Screen name="event-detail" />
     </Stack>
   );
 }

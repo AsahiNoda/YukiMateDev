@@ -2,7 +2,7 @@ import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
 
 import { supabase } from '@lib/supabase';
-import { Slot, useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -159,7 +159,18 @@ export default function RootLayout() {
             <ActivityIndicator size="large" color="#5A7D9A" />
           </View>
         ) : (
-          <Slot />
+          <Stack
+            screenOptions={{
+              headerShown: false,
+            }}
+          >
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
+            <Stack.Screen name="event-detail" options={{ presentation: 'card' }} />
+            <Stack.Screen name="event-chat/[eventId]" options={{ presentation: 'card' }} />
+            <Stack.Screen name="post-event-action/[eventId]" options={{ presentation: 'card' }} />
+            <Stack.Screen name="profile-setup" options={{ headerShown: false }} />
+          </Stack>
         )}
       </AuthProvider>
     </GestureHandlerRootView>

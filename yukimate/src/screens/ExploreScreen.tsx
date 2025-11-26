@@ -90,7 +90,7 @@ export default function ExploreScreen() {
 
   const handleEventPress = (eventId: string) => {
     router.push({
-      pathname: '/(tabs)/search/event-detail',
+      pathname: '/event-detail',
       params: { eventId },
     } as any);
   };

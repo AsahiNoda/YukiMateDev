@@ -195,7 +195,7 @@ export default function ChatScreen() {
       <TouchableOpacity
         style={[styles.chatItem, { backgroundColor: colors.card }]}
         onPress={() => router.push({
-          pathname: '/(tabs)/chat/event-chat',
+          pathname: '/event-chat/[eventId]',
           params: { eventId: item.eventId },
         } as any)}>
         {firstPhoto ? (

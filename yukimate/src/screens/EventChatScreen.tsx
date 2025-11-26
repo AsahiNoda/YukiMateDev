@@ -750,7 +750,7 @@ export default function EventChatScreen() {
           <TouchableOpacity
             style={[styles.actionButton, { borderColor: colors.border }]}
             onPress={() => router.push({
-              pathname: '/(tabs)/chat/event-detail',
+              pathname: '/event-detail',
               params: { eventId: params.eventId },
             } as any)}
           >
