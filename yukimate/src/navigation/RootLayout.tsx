@@ -156,7 +156,7 @@ export default function RootLayout() {
       <AuthProvider>
         {!isReady ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#3B82F6" />
+            <ActivityIndicator size="large" color="#5A7D9A" />
           </View>
         ) : (
           <Slot />
@@ -171,6 +171,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0A1628',
+    backgroundColor: '#1A202C',
   },
 });

@@ -187,7 +187,7 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A1628',
+    backgroundColor: '#1A202C',
   },
   content: {
     flex: 1,
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   input: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderWidth: 1,
     borderColor: '#334155',
     borderRadius: 12,
@@ -241,12 +241,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   primaryButton: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
   },
   secondaryButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#3B82F6',
+    borderColor: '#5A7D9A',
   },
   buttonDisabled: {
     opacity: 0.5,
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   secondaryButtonText: {
-    color: '#3B82F6',
+    color: '#5A7D9A',
     fontSize: 16,
     fontWeight: '600',
   },

@@ -1,21 +1,21 @@
-import React, { useEffect, useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  Linking,
-  Modal,
-  Dimensions,
-} from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { supabase } from '@/lib/supabase';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { applyToEvent } from '@/hooks/useDiscoverEvents';
+import { supabase } from '@/lib/supabase';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Linking,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface EventDetail {
   id: string;
@@ -43,6 +43,7 @@ interface EventDetail {
 
 export default function EventDetailScreen() {
   const params = useLocalSearchParams<{ eventId: string }>();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [event, setEvent] = useState<EventDetail | null>(null);
@@ -197,7 +198,7 @@ export default function EventDetailScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#3B82F6" />
+        <ActivityIndicator size="large" color="#5A7D9A" />
         <Text style={styles.loadingText}>読み込み中...</Text>
       </View>
     );
@@ -320,7 +321,7 @@ export default function EventDetailScreen() {
           {/* 日時 */}
           <View style={[styles.detailRow, styles.detailRowWithBorder]}>
             <View style={styles.detailIconContainer}>
-              <IconSymbol name="calendar" size={20} color="#3B82F6" />
+              <IconSymbol name="calendar" size={20} color="#5A7D9A" />
             </View>
             <View style={styles.detailTextContainer}>
               <Text style={styles.detailLabel}>日時</Text>
@@ -373,7 +374,7 @@ export default function EventDetailScreen() {
           {/* 価格 - 最後の行なのでボーダーなし */}
           <View style={styles.detailRow}>
             <View style={styles.detailIconContainer}>
-              <IconSymbol name="yensign.circle.fill" size={20} color="#EC4899" />
+              <IconSymbol name="yensign.circle.fill" size={20} color="#D4AF37" />
             </View>
             <View style={styles.detailTextContainer}>
               <Text style={styles.detailLabel}>参加費</Text>
@@ -442,14 +443,37 @@ export default function EventDetailScreen() {
         {/* アクションボタン */}
         <View style={styles.actionSection}>
           {event.isHost ? (
+            <>
+              <TouchableOpacity
+                style={styles.manageButton}
+                onPress={() => {
+                  // TODO: 申請管理画面へ遷移
+                  Alert.alert('開発中', '申請管理機能は開発中です');
+                }}
+              >
+                <Text style={styles.manageButtonText}>申請を管理</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.chatButton}
+                onPress={() => router.push({
+                  pathname: '/event-chat/[eventId]' as any,
+                  params: { eventId: event.id }
+                })}
+              >
+                <IconSymbol name="message" size={20} color="#5A7D9A" />
+                <Text style={styles.chatButtonText}>チャット</Text>
+              </TouchableOpacity>
+            </>
+          ) : event.hasApplied && event.applicationStatus === 'approved' ? (
             <TouchableOpacity
-              style={styles.manageButton}
-              onPress={() => {
-                // TODO: 申請管理画面へ遷移
-                Alert.alert('開発中', '申請管理機能は開発中です');
-              }}
+              style={styles.chatButton}
+              onPress={() => router.push({
+                pathname: '/event-chat/[eventId]' as any,
+                params: { eventId: event.id }
+              })}
             >
-              <Text style={styles.manageButtonText}>申請を管理</Text>
+              <IconSymbol name="message" size={20} color="#3B82F6" />
+              <Text style={styles.chatButtonText}>チャットを開く</Text>
             </TouchableOpacity>
           ) : (
             <TouchableOpacity
@@ -478,13 +502,14 @@ export default function EventDetailScreen() {
     {/* 全画面画像モーダル */}
     <Modal
       visible={fullscreenVisible}
-      transparent={true}
+      transparent={false}
       animationType="fade"
       onRequestClose={() => setFullscreenVisible(false)}
+      statusBarTranslucent={true}
     >
-      <View style={styles.fullscreenContainer}>
+      <View style={[styles.fullscreenContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <TouchableOpacity
-          style={styles.fullscreenCloseButton}
+          style={[styles.fullscreenCloseButton, { top: insets.top + 20 }]}
           onPress={() => setFullscreenVisible(false)}
         >
           <IconSymbol name="xmark" size={28} color="#FFFFFF" />
@@ -492,7 +517,7 @@ export default function EventDetailScreen() {
         <Image
           source={{ uri: event.photos[currentImageIndex] }}
           style={styles.fullscreenImage}
-          resizeMode="contain"
+          resizeMode="cover"
         />
         {/* 全画面でも画像切り替え可能 */}
         {hasMultipleImages && (
@@ -530,13 +555,13 @@ export default function EventDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A1628',
+    backgroundColor: '#1A202C',
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0A1628',
+    backgroundColor: '#1A202C',
     padding: 16,
   },
   loadingText: {
@@ -553,7 +578,7 @@ const styles = StyleSheet.create({
   backButton: {
     paddingVertical: 12,
     paddingHorizontal: 24,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 8,
   },
   backButtonText: {
@@ -621,11 +646,11 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 4,
-    shadowColor: '#3B82F6',
+    shadowColor: '#5A7D9A',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.5,
     shadowRadius: 6,
@@ -642,7 +667,7 @@ const styles = StyleSheet.create({
   },
   // 詳細カード
   detailCard: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 12,
     padding: 16,
     marginTop: 16,
@@ -665,7 +690,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#1A202C',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -694,7 +719,7 @@ const styles = StyleSheet.create({
   levelBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
     borderRadius: 12,
   },
   levelText: {
@@ -706,7 +731,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 12,
     marginBottom: 16,
   },
@@ -750,7 +775,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 12,
   },
   hostAvatar: {
@@ -759,7 +784,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
   hostAvatarPlaceholder: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -787,9 +812,10 @@ const styles = StyleSheet.create({
   },
   applyButton: {
     paddingVertical: 16,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
     borderRadius: 12,
     alignItems: 'center',
+    marginBottom: 90,
   },
   applyButtonDisabled: {
     backgroundColor: '#475569',
@@ -804,36 +830,54 @@ const styles = StyleSheet.create({
     backgroundColor: '#8B5CF6',
     borderRadius: 12,
     alignItems: 'center',
+    marginBottom: 12,
   },
   manageButtonText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
   },
+  chatButton: {
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#5A7D9A',
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 90,
+  },
+  chatButtonText: {
+    color: '#5A7D9A',
+    fontSize: 18,
+    fontWeight: '600',
+  },
   fullscreenContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
   },
   fullscreenImage: {
-    width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height,
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
   fullscreenCloseButton: {
     position: 'absolute',
-    top: 50,
     right: 20,
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#3B82F6',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
-    shadowColor: '#3B82F6',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.8,
     shadowRadius: 6,
     elevation: 5,
   },
@@ -863,5 +907,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     zIndex: 6,
+    paddingBottom: 0,
   },
 });

@@ -1,27 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import { EventListCard } from '@/components/EventListCard';
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { useExplore, type ExploreFilters, type SortOptions } from '@/hooks/useExplore';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
-  StyleSheet,
-  Text,
-  View,
-  FlatList,
-  TextInput,
-  TouchableOpacity,
   ActivityIndicator,
-  RefreshControl,
-  ScrollView,
+  FlatList,
   Modal,
   Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { EventListCard } from '@/components/EventListCard';
-import { useExplore, type ExploreFilters, type SortOptions } from '@/hooks/useExplore';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// カテゴリアイコンのインポート
+import EventFlagIcon from '../../assets/images/icons/event-flag.svg';
+import CameraIcon from '../../assets/images/icons/camera.svg';
+import LessonIcon from '../../assets/images/icons/lesson.svg';
+import GroupIcon from '../../assets/images/icons/group.svg';
 
 const CATEGORIES = [
-  { key: 'event', label: 'イベント', icon: 'person.3.fill' },
-  { key: 'lesson', label: 'レッスン', icon: 'graduationcap.fill' },
-  { key: 'filming', label: '撮影', icon: 'camera.fill' },
-  { key: 'group', label: '仲間', icon: 'person.2.fill' },
+  { key: 'event', label: 'イベント', IconComponent: EventFlagIcon },
+  { key: 'lesson', label: 'レッスン', IconComponent: LessonIcon },
+  { key: 'filming', label: '撮影', IconComponent: CameraIcon },
+  { key: 'group', label: '仲間', IconComponent: GroupIcon },
 ];
 
 const SORT_OPTIONS = [
@@ -31,6 +37,7 @@ const SORT_OPTIONS = [
 ];
 
 export default function ExploreScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ filters?: string }>();
 
   // 検索とフィルター状態
@@ -116,8 +123,8 @@ export default function ExploreScreen() {
   return (
     <View style={styles.container}>
       {/* ヘッダー */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Explore</Text>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
+        <View style={{ flex: 1 }} />
         <TouchableOpacity
           style={styles.filterButton}
           onPress={handleFilterPress}
@@ -166,9 +173,9 @@ export default function ExploreScreen() {
               }
             }}
           >
-            <IconSymbol
-              name={category.icon as any}
-              size={16}
+            <category.IconComponent
+              width={16}
+              height={16}
               color={selectedCategory === category.key ? '#FFFFFF' : '#9CA3AF'}
             />
             <Text
@@ -211,7 +218,7 @@ export default function ExploreScreen() {
       {/* イベントリスト */}
       {status === 'loading' && (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#3B82F6" />
+          <ActivityIndicator size="large" color="#5A7D9A" />
           <Text style={styles.loadingText}>読み込み中...</Text>
         </View>
       )}
@@ -255,7 +262,7 @@ export default function ExploreScreen() {
             <RefreshControl
               refreshing={false}
               onRefresh={refetch}
-              tintColor="#3B82F6"
+              tintColor="#5A7D9A"
             />
           }
           contentContainerStyle={styles.listContent}
@@ -290,7 +297,7 @@ export default function ExploreScreen() {
                   {option.label}
                 </Text>
                 {sortOption.sortBy === option.key && (
-                  <IconSymbol name="checkmark" size={20} color="#3B82F6" />
+                  <IconSymbol name="checkmark" size={20} color="#5A7D9A" />
                 )}
               </TouchableOpacity>
             ))}
@@ -312,20 +319,13 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A1628',
+    backgroundColor: '#1A202C',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#FFFFFF',
   },
   filterButton: {
     position: 'relative',
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
     borderRadius: 10,
     minWidth: 18,
     height: 18,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     marginHorizontal: 20,
     marginBottom: 16,
     paddingHorizontal: 16,
@@ -378,11 +378,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 8,
     borderRadius: 16,
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     gap: 4,
   },
   categoryButtonActive: {
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
   },
   categoryText: {
     fontSize: 12,
@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
   },
   viewControls: {
     flexDirection: 'row',
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderRadius: 8,
     padding: 2,
   },
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   listContent: {
-    paddingBottom: 100,
+    paddingBottom: 150,
   },
   centered: {
     flex: 1,
@@ -448,7 +448,7 @@ const styles = StyleSheet.create({
   retryButton: {
     paddingVertical: 12,
     paddingHorizontal: 24,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
     borderRadius: 8,
   },
   retryButtonText: {
@@ -482,14 +482,15 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#3B82F6',
+    shadowColor: '#5A7D9A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
+    marginBottom: 90,
   },
   modalOverlay: {
     flex: 1,
@@ -497,7 +498,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#1E293B',
+    backgroundColor: '#2D3748',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,

@@ -36,7 +36,7 @@ export function WeatherCard({ resortName, weather }: WeatherCardProps) {
     if (weather.newSnowCm && weather.newSnowCm >= 30) {
       return { text: '🎿 Powder Day!', color: '#10B981', emoji: '✨' }; // Green
     } else if (weather.newSnowCm && weather.newSnowCm >= 10) {
-      return { text: '❄️ Fresh Snow', color: '#3B82F6', emoji: '🎉' }; // Blue
+      return { text: '❄️ Fresh Snow', color: '#5A7D9A', emoji: '🎉' }; // Blue
     } else if (weather.snowQuality === 'powder') {
       return { text: '⛷️ Good Powder', color: '#8B5CF6', emoji: '👍' }; // Purple
     } else if (weather.snowQuality === 'packed') {

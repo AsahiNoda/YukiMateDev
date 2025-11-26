@@ -3,8 +3,8 @@ import React from 'react';
 import 'react-native-url-polyfill/auto';
 import 'react-native-get-random-values';
 
-import { HapticTab } from '@components/haptic-tab';
 import { IconSymbol } from '@components/ui/icon-symbol';
+import { GlassmorphicTabBar } from '@components/glassmorphic-tab-bar';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@hooks/use-color-scheme';
 
@@ -13,10 +13,11 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <GlassmorphicTabBar {...props} />}
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
+        tabBarStyle: { position: 'absolute' },
       }}>
       <Tabs.Screen
         name="home"
@@ -43,7 +44,7 @@ export default function TabLayout() {
         name="snowfeed"
         options={{
           title: 'Snowfeed',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="safari" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="newspaper" color={color} />,
         }}
       />
       <Tabs.Screen

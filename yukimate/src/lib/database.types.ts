@@ -141,6 +141,39 @@ export interface EventApplication {
   updated_at: string | null; // timestamptz
 }
 
+// Phase 7: Chat-related types
+export type MessageType = 'text' | 'image';
+
+export interface EventChat {
+  id: string; // uuid
+  event_id: string; // uuid
+  created_at: string; // timestamptz
+  updated_at: string | null; // timestamptz
+}
+
+export interface EventMessage {
+  id: string; // uuid
+  chat_id: string; // uuid
+  sender_user_id: string; // uuid
+  content_text: string | null;
+  content_image_url: string | null;
+  created_at: string; // timestamptz
+}
+
+export interface Star {
+  id: string; // uuid
+  user_id: string; // uuid
+  target_user_id: string; // uuid
+  created_at: string; // timestamptz
+}
+
+export interface Block {
+  id: string; // uuid
+  user_id: string; // uuid
+  blocked_user_id: string; // uuid
+  created_at: string; // timestamptz
+}
+
 // ==========================================
 // Supabase Response Types (with relations)
 // ==========================================
@@ -158,6 +191,19 @@ export interface EventWithDetails extends Event {
 export interface FeedPostWithDetails extends FeedPost {
   resorts: Pick<Resort, 'id' | 'name'> | null;
   profiles: Pick<Profile, 'user_id' | 'display_name' | 'avatar_url'> | null;
+}
+
+export interface EventMessageWithSender extends EventMessage {
+  sender: {
+    id: string;
+    profiles: Pick<Profile, 'user_id' | 'display_name' | 'avatar_url'>;
+  } | null;
+}
+
+export interface EventChatWithDetails extends EventChat {
+  posts_events: Pick<Event, 'id' | 'title' | 'start_at'> & {
+    resorts: Pick<Resort, 'id' | 'name'> | null;
+  } | null;
 }
 
 // ==========================================

@@ -7,7 +7,7 @@ import type { DiscoverEvent } from '@types';
  */
 export interface ExploreFilters {
   keyword?: string;
-  category?: 'all' | 'event' | 'carpool' | 'photo' | 'lesson' | 'mate';
+  category?: 'event' | 'lesson' | 'filming' | 'group';
   resortIds?: number[];
   skillLevel?: 'beginner' | 'intermediate' | 'advanced';
   dateRange?: {
@@ -66,6 +66,15 @@ export function useExplore(
 
       const blockedUserIds = blocks?.map(b => b.blocked_user_id) || [];
 
+      // 自分がapprovedされたイベントIDリストを取得
+      const { data: approvedApplications } = await supabase
+        .from('event_applications')
+        .select('event_id')
+        .eq('applicant_user_id', userId)
+        .eq('status', 'approved');
+
+      const approvedEventIds = approvedApplications?.map(a => a.event_id) || [];
+
       // ベースクエリ
       let query = supabase
         .from('posts_events')
@@ -96,11 +105,17 @@ export function useExplore(
           )
         `)
         .eq('status', 'open')
-        .gte('start_at', new Date().toISOString());
+        .gte('start_at', new Date().toISOString())
+        .neq('host_user_id', userId); // 自分がホストのイベントを除外
 
       // ブロックユーザー除外
       if (blockedUserIds.length > 0) {
         query = query.not('host_user_id', 'in', `(${blockedUserIds.join(',')})`);
+      }
+
+      // approvedされたイベント除外
+      if (approvedEventIds.length > 0) {
+        query = query.not('id', 'in', `(${approvedEventIds.join(',')})`);
       }
 
       // キーワード検索
@@ -112,7 +127,7 @@ export function useExplore(
       }
 
       // カテゴリフィルター
-      if (filters.category && filters.category !== 'all') {
+      if (filters.category) {
         query = query.eq('type', filters.category);
       }
 
@@ -232,6 +247,7 @@ export function useExplore(
           id: event.id,
           title: event.title,
           description: event.description,
+          category: event.type as 'event' | 'lesson' | 'filming' | 'group',
           hostName: event.profiles?.display_name || 'Unknown',
           hostAvatar: hostAvatarUrl,
           resortName: event.resorts?.name || 'Unknown Resort',

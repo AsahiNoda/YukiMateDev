@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    backgroundColor: '#0A1628',
+    backgroundColor: '#1A202C',
   },
   title: {
     fontSize: 18,
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#5A7D9A',
   },
   retryButtonText: {
     color: '#FFFFFF',
