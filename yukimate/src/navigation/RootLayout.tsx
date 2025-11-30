@@ -1,12 +1,13 @@
 import 'react-native-get-random-values';
 import 'react-native-url-polyfill/auto';
 
+import { AuthProvider } from '@/contexts/AuthContext';
+import { checkPendingEventActions } from '@/utils/event-checker';
 import { supabase } from '@lib/supabase';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { AuthProvider } from '@/contexts/AuthContext';
 
 // グローバル変数で初期化状態を管理（再マウント時もリセットされない）
 let globalInitialized = false;
@@ -67,6 +68,25 @@ export default function RootLayout() {
             return;
           } else if (profile) {
             console.log('✅ Profile exists');
+
+            // ペンディング中のイベントアクションをチェック
+            console.log('🔍 Checking for pending event actions...');
+            const pendingEvent = await checkPendingEventActions(session.user.id);
+
+            if (pendingEvent) {
+              console.log('🚀 Found pending event action, redirecting to post-event-action');
+              if (mounted) {
+                setIsReady(true);
+                router.replace({
+                  pathname: '/post-event-action/[eventId]',
+                  params: {
+                    eventId: pendingEvent.eventId,
+                    participants: JSON.stringify(pendingEvent.participants),
+                  },
+                } as any);
+              }
+              return;
+            }
           }
         }
 
