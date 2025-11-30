@@ -245,7 +245,11 @@ function ProfileScreen() {
             <Image source={{ uri: headerUrl }} style={styles.headerImage} />
             {/* Gradient overlay for blur effect at bottom */}
             <LinearGradient
-              colors={['transparent', 'rgba(26, 32, 44, 0.4)', 'rgba(26, 32, 44, 1)']}
+              colors={
+                colorScheme === 'dark'
+                  ? ['transparent', 'rgba(26, 32, 44, 0.4)', 'rgba(26, 32, 44, 1)']
+                  : ['transparent', 'rgba(255, 255, 255, 0.4)', 'rgba(255, 255, 255, 1)']
+              }
               style={styles.headerGradientOverlay}
             />
           </>

@@ -4,7 +4,6 @@ import { saveEvent } from '@/hooks/useDiscoverEvents';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import type { DiscoverEvent } from '@types';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
   Alert,
@@ -109,12 +108,7 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
       activeOpacity={0.8}
     >
       <BlurView intensity={95} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.blurContainer}>
-        <LinearGradient
-          colors={['rgba(219, 240, 250, 0.7)', 'rgba(181, 228, 255, 0.68)', 'rgba(210, 235, 248, 0.7)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradientOverlay}
-        >
+        <View style={[styles.gradientOverlay, { backgroundColor: colors.card }]}>
           {/* イベント画像 */}
           <View style={styles.imageContainer}>
             {event.photoUrl ? (
@@ -246,7 +240,7 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
               </TouchableOpacity>
             </View>
           </View>
-        </LinearGradient>
+        </View>
       </BlurView>
     </TouchableOpacity>
   );
@@ -273,7 +267,6 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: 'rgba(158, 210, 255, 0.68)',
   },
   gradientOverlay: {
     borderRadius: 16,

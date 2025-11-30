@@ -7,7 +7,6 @@ import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import type { EventChat } from '@types';
 import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
@@ -201,13 +200,8 @@ export default function ChatScreen() {
           pathname: '/event-chat/[eventId]',
           params: { eventId: item.eventId },
         } as any)}>
-        <BlurView intensity={95} tint="dark" style={styles.blurContainer}>
-          <LinearGradient
-            colors={['rgba(40, 60, 80, 0.45)', 'rgba(30, 50, 70, 0.5)', 'rgba(40, 60, 80, 0.48)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.chatItemGradient}
-          >
+        <BlurView intensity={95} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.blurContainer}>
+          <View style={[styles.chatItemGradient, { backgroundColor: colors.card }]}>
             {firstPhoto ? (
               <Image source={{ uri: firstPhoto }} style={styles.chatImage} />
             ) : (
@@ -258,7 +252,7 @@ export default function ChatScreen() {
                 </Text>
               )}
             </View>
-          </LinearGradient>
+          </View>
         </BlurView>
       </TouchableOpacity>
     );

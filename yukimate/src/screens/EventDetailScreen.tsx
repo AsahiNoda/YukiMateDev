@@ -1,5 +1,7 @@
 import { ImageViewer } from '@/components/ImageViewer';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useBookmark } from '@/hooks/useBookmark';
 import { applyToEvent } from '@/hooks/useDiscoverEvents';
 import { supabase } from '@/lib/supabase';
@@ -45,6 +47,8 @@ interface EventDetail {
 export default function EventDetailScreen() {
   const params = useLocalSearchParams<{ eventId: string }>();
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [event, setEvent] = useState<EventDetail | null>(null);
@@ -208,22 +212,22 @@ export default function EventDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#5A7D9A" />
-        <Text style={styles.loadingText}>読み込み中...</Text>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.tint} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>読み込み中...</Text>
       </View>
     );
   }
 
   if (error || !event) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{error || 'イベントが見つかりません'}</Text>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.error }]}>{error || 'イベントが見つかりません'}</Text>
         <TouchableOpacity
-          style={styles.backButton}
+          style={[styles.backButton, { backgroundColor: colors.backgroundSecondary }]}
           onPress={() => router.back()}
         >
-          <Text style={styles.backButtonText}>戻る</Text>
+          <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>戻る</Text>
         </TouchableOpacity>
       </View>
     );
@@ -232,15 +236,15 @@ export default function EventDetailScreen() {
   const { width: screenWidth } = Dimensions.get('window');
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* ヘッダーバー */}
-      <View style={[styles.headerBar, { paddingTop: insets.top + 8 }]}>
+      <View style={[styles.headerBar, { paddingTop: insets.top + 8, backgroundColor: colors.background }]}>
         <TouchableOpacity
           style={styles.headerButton}
           onPress={() => router.back()}
           activeOpacity={0.7}
         >
-          <IconSymbol name="chevron.left" size={24} color="#E5E7EB" />
+          <IconSymbol name="chevron.left" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
 
         {/* ブックマークボタン（自分の投稿以外のみ表示） */}
@@ -254,7 +258,7 @@ export default function EventDetailScreen() {
             <IconSymbol
               name={isBookmarked ? "bookmark.fill" : "bookmark"}
               size={24}
-              color={isBookmarked ? "#FFD700" : "#E5E7EB"}
+              color={isBookmarked ? colors.warning : colors.textSecondary}
             />
           </TouchableOpacity>
         ) : (
@@ -300,15 +304,15 @@ export default function EventDetailScreen() {
         )}
 
         {/* コンテンツカード */}
-        <View style={styles.contentCard}>
+        <View style={[styles.contentCard, { backgroundColor: colors.background }]}>
           {/* タイトル */}
-          <Text style={styles.title}>{event.title}</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{event.title}</Text>
 
           {/* 詳細説明 */}
           {event.description && (
             <View style={styles.descriptionSection}>
-              <Text style={styles.descriptionTitle}>詳細:</Text>
-              <Text style={styles.descriptionText}>{event.description}</Text>
+              <Text style={[styles.descriptionTitle, { color: colors.text }]}>詳細:</Text>
+              <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>{event.description}</Text>
             </View>
           )}
 
@@ -320,7 +324,7 @@ export default function EventDetailScreen() {
                 <IconSymbol name="calendar" size={20} color="#5A7D9A" />
               </View>
               <View style={styles.gridTextContainer}>
-                <Text style={styles.gridValue}>{formatDate(event.startAt)}</Text>
+                <Text style={[styles.gridValue, { color: colors.text }]}>{formatDate(event.startAt)}</Text>
               </View>
             </View>
 
@@ -330,7 +334,7 @@ export default function EventDetailScreen() {
                 <IconSymbol name="mountain.2.fill" size={20} color="#10B981" />
               </View>
               <View style={styles.gridTextContainer}>
-                <Text style={styles.gridValue}>{event.resortName}</Text>
+                <Text style={[styles.gridValue, { color: colors.text }]}>{event.resortName}</Text>
               </View>
             </View>
 
@@ -340,7 +344,7 @@ export default function EventDetailScreen() {
                 <IconSymbol name="person.2.fill" size={20} color="#8B5CF6" />
               </View>
               <View style={styles.gridTextContainer}>
-                <Text style={styles.gridValue}>{event.spotsTaken}/{event.capacityTotal}人</Text>
+                <Text style={[styles.gridValue, { color: colors.text }]}>{event.spotsTaken}/{event.capacityTotal}人</Text>
               </View>
             </View>
 
@@ -350,7 +354,7 @@ export default function EventDetailScreen() {
                 <IconSymbol name="mappin.circle.fill" size={20} color="#F59E0B" />
               </View>
               <View style={styles.gridTextContainer}>
-                <Text style={styles.gridValue} numberOfLines={1}>
+                <Text style={[styles.gridValue, { color: colors.text }]} numberOfLines={1}>
                   {event.meetingPlace || '未設定'}
                 </Text>
               </View>
@@ -374,10 +378,10 @@ export default function EventDetailScreen() {
           {/* タグセクション */}
           {event.tags && event.tags.length > 0 && (
             <View style={styles.tagsSection}>
-              <Text style={styles.tagsSectionTitle}>タグ</Text>
+              <Text style={[styles.tagsSectionTitle, { color: colors.text }]}>タグ</Text>
               <View style={styles.tagsContainer}>
                 {event.tags.map((tag, index) => (
-                  <Text style={styles.tagText} key={index}>#{tag}</Text>
+                  <Text style={[styles.tagText, { color: colors.tint }]} key={index}>#{tag}</Text>
                 ))}
               </View>
             </View>
@@ -389,7 +393,7 @@ export default function EventDetailScreen() {
       </ScrollView>
 
       {/* 固定フッター */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 16, backgroundColor: colors.background, borderTopColor: colors.border }]}>
         {/* ホスト情報 */}
         <View style={styles.footerHostSection}>
           {event.hostAvatar ? (
@@ -405,8 +409,8 @@ export default function EventDetailScreen() {
             </View>
           )}
           <View style={styles.footerHostInfo}>
-            <Text style={styles.footerHostLabel}>ホスト</Text>
-            <Text style={styles.footerHostName}>{event.hostName}</Text>
+            <Text style={[styles.footerHostLabel, { color: colors.icon }]}>ホスト</Text>
+            <Text style={[styles.footerHostName, { color: colors.text }]}>{event.hostName}</Text>
           </View>
         </View>
 
@@ -418,13 +422,14 @@ export default function EventDetailScreen() {
               router.push(`/create?eventId=${event.id}`);
             }}
           >
-            <Text style={styles.actionButtonText}>投稿を編集</Text>
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>投稿を編集</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
             style={[
               styles.actionButton,
-              (event.hasApplied || applying) && styles.actionButtonDisabled,
+              { backgroundColor: colors.tint },
+              (event.hasApplied || applying) && [styles.actionButtonDisabled, { backgroundColor: colors.backgroundTertiary }],
             ]}
             onPress={handleApply}
             disabled={event.hasApplied || applying}
@@ -432,7 +437,7 @@ export default function EventDetailScreen() {
             {applying ? (
               <ActivityIndicator color="#FFFFFF" />
             ) : (
-              <Text style={styles.actionButtonText}>
+              <Text style={[styles.actionButtonText, { color: colors.text }]}>
                 {event.hasApplied ? '申請済み' : '参加申請'}
               </Text>
             )}

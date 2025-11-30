@@ -35,11 +35,11 @@ export const Colors = {
     error: '#EF4444',
     success: '#10B981',
     warning: '#F59E0B',
-    card: '#FFFFFF',
+    card: '#F7FAFC',
   },
   dark: {
     text: '#F7FAFC', // オフホワイト
-    background: '#1A202C', // 深みのあるチャコールネイビー
+    background: 'rgba(26, 32, 44, 1)', // 深みのあるチャコールネイビー
     tint: tintColorLight, // スレートブルー
     icon: '#d3f1ffe0',
     tabIconDefault: '#9BA1A6',
@@ -54,7 +54,7 @@ export const Colors = {
     error: '#EF4444',
     success: '#10B981',
     warning: '#fae631ff',
-    card: 'rgba(188, 234, 255, 0.84)', // カード背景
+    card: '#242B38', // カード背景
   },
 };
 
