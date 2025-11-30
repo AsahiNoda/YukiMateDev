@@ -1,7 +1,7 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import type { UserRole, UserGear } from '@/types';
+import type { UserGear, UserRole } from '@/types';
+import { Session, User } from '@supabase/supabase-js';
+import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 // AppUser type for AuthContext
 interface AppUser {
@@ -24,10 +24,12 @@ interface AuthContextType {
   profile: AppUser | null;
   userRole: UserRole | null;
   loading: boolean;
+  isGuest: boolean;
   signUp: (email: string, password: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  enableGuestMode: () => void;
   isDeveloper: () => boolean;
   isOfficial: () => boolean;
   isUser: () => boolean;
@@ -41,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<AppUser | null>(null);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
     // セッション確認
@@ -172,6 +175,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signOut() {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+    setIsGuest(false); // サインアウト時にゲストモードを解除
   }
 
   async function refreshProfile() {
@@ -179,6 +183,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await fetchProfile(user.id);
       await fetchUserRole(user.id);
     }
+  }
+
+  function enableGuestMode() {
+    setIsGuest(true);
+    setLoading(false);
   }
 
   // ロール確認のヘルパー関数
@@ -200,10 +209,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profile,
     userRole,
     loading,
+    isGuest,
     signUp,
     signIn,
     signOut,
     refreshProfile,
+    enableGuestMode,
     isDeveloper,
     isOfficial,
     isUser,

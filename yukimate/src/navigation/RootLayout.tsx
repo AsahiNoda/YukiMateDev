@@ -36,10 +36,10 @@ export default function RootLayout() {
       try {
         console.log('🔄 Checking session...');
 
-        // 初期セッションチェック（タイムアウト付き）
+        // 初期セッションチェック（タイムアウト付き - 3秒に短縮）
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout')), 5000)
+          setTimeout(() => reject(new Error('Timeout')), 3000)
         );
 
         const { data: { session } } = await Promise.race([
@@ -48,6 +48,16 @@ export default function RootLayout() {
         ]) as any;
 
         console.log('✅ Session check done:', session ? 'Logged in' : 'Guest');
+
+        // セッションがない場合、サインイン画面へリダイレクト
+        if (!session) {
+          console.log('⚠️  No session found, redirecting to sign-in...');
+          if (mounted) {
+            setIsReady(true);
+            router.replace('/(auth)/sign-in');
+          }
+          return;
+        }
 
         // セッションがある場合、プロフィールの存在を確認
         if (session?.user) {

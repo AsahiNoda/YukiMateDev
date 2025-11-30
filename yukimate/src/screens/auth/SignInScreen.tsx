@@ -12,12 +12,14 @@ import {
 } from 'react-native';
 
 import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '@lib/supabase';
 
 export default function SignInScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { enableGuestMode } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -174,10 +176,13 @@ export default function SignInScreen() {
             <Text style={[styles.secondaryButtonText, { color: colors.tint }]}>マジックリンクで{mode === 'signin' ? 'ログイン' : '登録'}</Text>
           </TouchableOpacity>
 
-          {/* デバッグ用：ゲストとして続行 */}
+          {/* ゲストとして続行 */}
           <TouchableOpacity
             style={styles.linkButton}
-            onPress={() => router.replace('/(tabs)/home')}
+            onPress={() => {
+              enableGuestMode();
+              router.replace('/(tabs)/home');
+            }}
             disabled={loading}
           >
             <Text style={[styles.linkText, { color: colors.textSecondary }]}>ゲストとして続行</Text>
