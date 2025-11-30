@@ -18,6 +18,8 @@ import type { SkillLevel } from '@/types';
 import { pickAndUploadImage } from '@/lib/imageUpload';
 import { Ionicons } from '@expo/vector-icons';
 import { COUNTRIES, getFlagSource } from '@/constants/countries';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Colors } from '@/constants/theme';
 
 type RidingStyle = 'Freeride' | 'Powder' | 'Carving' | 'Park' | 'Backcountry';
 
@@ -31,8 +33,285 @@ const RIDING_STYLES: RidingStyle[] = [
   'Backcountry',
 ];
 
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    content: {
+      padding: 16,
+    },
+    header: {
+      marginBottom: 24,
+      marginTop: 48,
+    },
+    title: {
+      fontSize: 32,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    subtitle: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    section: {
+      marginBottom: 24,
+    },
+    label: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    input: {
+      backgroundColor: colors.backgroundSecondary,
+      color: colors.text,
+      fontSize: 16,
+      padding: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    bioInput: {
+      minHeight: 100,
+      paddingTop: 16,
+    },
+    hint: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      marginTop: 8,
+    },
+    // ヘッダー画像スタイル
+    headerImageContainer: {
+      width: '100%',
+      height: 180,
+      borderRadius: 12,
+      overflow: 'hidden',
+      backgroundColor: colors.backgroundSecondary,
+      borderWidth: 2,
+      borderColor: colors.border,
+    },
+    headerImage: {
+      width: '100%',
+      height: '100%',
+      resizeMode: 'cover',
+    },
+    headerImagePlaceholder: {
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+    },
+    placeholderText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+      marginTop: 8,
+    },
+    // アバター画像スタイル
+    avatarContainer: {
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      overflow: 'hidden',
+      backgroundColor: colors.backgroundSecondary,
+      borderWidth: 3,
+      borderColor: colors.border,
+      alignSelf: 'center',
+    },
+    avatar: {
+      width: '100%',
+      height: '100%',
+      resizeMode: 'cover',
+    },
+    avatarPlaceholder: {
+      width: '100%',
+      height: '100%',
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundSecondary,
+    },
+    avatarHint: {
+      fontSize: 12,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 8,
+    },
+    // 国籍セレクタースタイル
+    countrySelector: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      borderWidth: 2,
+      borderColor: colors.border,
+      gap: 12,
+    },
+    selectedFlag: {
+      width: 32,
+      height: 22,
+      resizeMode: 'contain',
+    },
+    selectedCountryText: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.text,
+    },
+    // ピッカーモーダルスタイル
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'flex-end',
+    },
+    pickerModal: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: '80%',
+      borderWidth: 2,
+      borderColor: colors.border,
+    },
+    pickerHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    pickerTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    pickerList: {
+      maxHeight: 400,
+    },
+    pickerItem: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      padding: 16,
+      gap: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    pickerItemActive: {
+      backgroundColor: colors.backgroundSecondary,
+    },
+    pickerFlag: {
+      width: 32,
+      height: 22,
+      resizeMode: 'contain',
+    },
+    pickerItemText: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    pickerItemTextActive: {
+      color: colors.text,
+      fontWeight: '600',
+    },
+    buttonGroup: {
+      flexDirection: 'row',
+      gap: 12,
+    },
+    // 言語スタイル
+    languageButton: {
+      flex: 1,
+      paddingVertical: 16,
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: colors.border,
+      alignItems: 'center',
+    },
+    languageButtonActive: {
+      borderColor: colors.tint,
+      backgroundColor: colors.tint,
+    },
+    languageText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    languageTextActive: {
+      color: colors.text,
+      fontWeight: 'bold',
+    },
+    // スキルレベルスタイル
+    skillButton: {
+      flex: 1,
+      paddingVertical: 16,
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: colors.border,
+      alignItems: 'center',
+    },
+    skillButtonActive: {
+      borderColor: colors.tint,
+      backgroundColor: colors.tint,
+    },
+    skillText: {
+      fontSize: 16,
+      color: colors.textSecondary,
+    },
+    skillTextActive: {
+      color: colors.text,
+      fontWeight: 'bold',
+    },
+    styleGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+    },
+    styleButton: {
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 20,
+      borderWidth: 2,
+      borderColor: colors.border,
+    },
+    styleButtonActive: {
+      backgroundColor: colors.tint,
+      borderColor: colors.tint,
+    },
+    styleText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    styleTextActive: {
+      color: colors.text,
+      fontWeight: '600',
+    },
+    submitButton: {
+      marginTop: 24,
+      paddingVertical: 16,
+      borderRadius: 12,
+      backgroundColor: colors.tint,
+      alignItems: 'center',
+    },
+    submitButtonDisabled: {
+      opacity: 0.6,
+    },
+    submitButtonText: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+  });
+}
+
 export default function ProfileSetupScreen() {
   const { user, refreshProfile } = useAuth();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
   const [loading, setLoading] = useState(false);
 
   // フォーム状態
@@ -180,10 +459,10 @@ export default function ProfileSetupScreen() {
             ) : (
               <View style={styles.headerImagePlaceholder}>
                 {uploadingHeader ? (
-                  <ActivityIndicator color="#5A7D9A" />
+                  <ActivityIndicator color={colors.tint} />
                 ) : (
                   <>
-                    <Ionicons name="image-outline" size={32} color="#9CA3AF" />
+                    <Ionicons name="image-outline" size={32} color={colors.icon} />
                     <Text style={styles.placeholderText}>タップしてヘッダー画像を選択</Text>
                   </>
                 )}
@@ -205,9 +484,9 @@ export default function ProfileSetupScreen() {
             ) : (
               <View style={styles.avatarPlaceholder}>
                 {uploadingAvatar ? (
-                  <ActivityIndicator color="#5A7D9A" />
+                  <ActivityIndicator color={colors.tint} />
                 ) : (
-                  <Ionicons name="person-outline" size={40} color="#9CA3AF" />
+                  <Ionicons name="person-outline" size={40} color={colors.icon} />
                 )}
               </View>
             )}
@@ -221,7 +500,7 @@ export default function ProfileSetupScreen() {
           <TextInput
             style={styles.input}
             placeholder="雪山　太郎"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textSecondary}
             value={displayName}
             onChangeText={setDisplayName}
           />
@@ -238,7 +517,7 @@ export default function ProfileSetupScreen() {
             <Text style={styles.selectedCountryText}>
               {COUNTRIES.find(c => c.code === countryCode)?.nameJa || '選択してください'}
             </Text>
-            <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+            <Ionicons name="chevron-down" size={20} color={colors.icon} />
           </TouchableOpacity>
 
           {/* Country Picker Modal */}
@@ -261,7 +540,7 @@ export default function ProfileSetupScreen() {
                   <View style={styles.pickerHeader}>
                     <Text style={styles.pickerTitle}>国籍を選択</Text>
                     <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
-                      <Ionicons name="close" size={24} color="#fff" />
+                      <Ionicons name="close" size={24} color={colors.text} />
                     </TouchableOpacity>
                   </View>
                   <ScrollView style={styles.pickerList}>
@@ -287,7 +566,7 @@ export default function ProfileSetupScreen() {
                           {country.nameJa}
                         </Text>
                         {countryCode === country.code && (
-                          <Ionicons name="checkmark" size={20} color="#5A7D9A" />
+                          <Ionicons name="checkmark" size={20} color={colors.tint} />
                         )}
                       </TouchableOpacity>
                     ))}
@@ -395,7 +674,7 @@ export default function ProfileSetupScreen() {
           <TextInput
             style={[styles.input, styles.bioInput]}
             placeholder="スノーボードについて、自分について..."
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textSecondary}
             value={bio}
             onChangeText={setBio}
             multiline
@@ -410,7 +689,7 @@ export default function ProfileSetupScreen() {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colors.text} />
           ) : (
             <Text style={styles.submitButtonText}>プロフィールを作成</Text>
           )}
@@ -421,275 +700,3 @@ export default function ProfileSetupScreen() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1A202C',
-  },
-  content: {
-    padding: 16,
-  },
-  header: {
-    marginBottom: 24,
-    marginTop: 48,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#9CA3AF',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 12,
-  },
-  input: {
-    backgroundColor: '#2D3748',
-    color: '#FFFFFF',
-    fontSize: 16,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  bioInput: {
-    minHeight: 100,
-    paddingTop: 16,
-  },
-  hint: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 8,
-  },
-  // ヘッダー画像スタイル
-  headerImageContainer: {
-    width: '100%',
-    height: 180,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#2D3748',
-    borderWidth: 2,
-    borderColor: '#334155',
-  },
-  headerImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  headerImagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  placeholderText: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginTop: 8,
-  },
-  // アバター画像スタイル
-  avatarContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    overflow: 'hidden',
-    backgroundColor: '#2D3748',
-    borderWidth: 3,
-    borderColor: '#334155',
-    alignSelf: 'center',
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#2D3748',
-  },
-  avatarHint: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  // 国籍セレクタースタイル
-  countrySelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2D3748',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 2,
-    borderColor: '#334155',
-    gap: 12,
-  },
-  selectedFlag: {
-    width: 32,
-    height: 22,
-    resizeMode: 'contain',
-  },
-  selectedCountryText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-  // ピッカーモーダルスタイル
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  pickerModal: {
-    backgroundColor: '#1A202C',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
-    borderWidth: 2,
-    borderColor: '#334155',
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-  },
-  pickerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  pickerList: {
-    maxHeight: 400,
-  },
-  pickerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2D3748',
-  },
-  pickerItemActive: {
-    backgroundColor: '#2D3748',
-  },
-  pickerFlag: {
-    width: 32,
-    height: 22,
-    resizeMode: 'contain',
-  },
-  pickerItemText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#CBD5E1',
-  },
-  pickerItemTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  buttonGroup: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  // 言語スタイル
-  languageButton: {
-    flex: 1,
-    paddingVertical: 16,
-    backgroundColor: '#2D3748',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#334155',
-    alignItems: 'center',
-  },
-  languageButtonActive: {
-    borderColor: '#5A7D9A',
-    backgroundColor: '#1E3A8A',
-  },
-  languageText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-  },
-  languageTextActive: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  // スキルレベルスタイル
-  skillButton: {
-    flex: 1,
-    paddingVertical: 16,
-    backgroundColor: '#2D3748',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#334155',
-    alignItems: 'center',
-  },
-  skillButtonActive: {
-    borderColor: '#5A7D9A',
-    backgroundColor: '#1E3A8A',
-  },
-  skillText: {
-    fontSize: 16,
-    color: '#9CA3AF',
-  },
-  skillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  styleGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  styleButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#2D3748',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#334155',
-  },
-  styleButtonActive: {
-    backgroundColor: '#1E3A8A',
-    borderColor: '#5A7D9A',
-  },
-  styleText: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
-  styleTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  submitButton: {
-    marginTop: 24,
-    paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: '#5A7D9A',
-    alignItems: 'center',
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-});

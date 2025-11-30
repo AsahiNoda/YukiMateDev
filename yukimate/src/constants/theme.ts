@@ -20,7 +20,7 @@ const accentGold = '#D4AF37'; // シャンパンゴールド
 export const Colors = {
   light: {
     text: '#11181C',
-    background: '#fff',
+    background: 'rgba(236, 250, 255, 1)',
     tint: tintColorLight,
     icon: '#687076',
     tabIconDefault: '#687076',

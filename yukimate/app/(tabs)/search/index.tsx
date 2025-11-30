@@ -1,1 +1,3 @@
-export { default } from '@/screens/tabs/SearchScreen';
+// Re-export ExploreScreen directly
+export { default } from '@/screens/ExploreScreen';
+

@@ -1,4 +1,6 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useResorts } from '@/hooks/useResorts';
 import { supabase } from '@/lib/supabase';
 import type { SkillLevel } from '@/types';
@@ -38,6 +40,9 @@ const SKILL_LEVELS: { value: SkillLevel | ''; label: string }[] = [
 
 export default function CreateEventScreen() {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
   const resortsState = useResorts();
   const params = useLocalSearchParams<{ eventId?: string }>();
   const isEditMode = !!params.eventId;
@@ -487,83 +492,6 @@ export default function CreateEventScreen() {
   const selectedLevelLabel =
     SKILL_LEVELS.find((l) => l.value === level)?.label || '指定なし';
 
-  const renderResortModal = () => (
-    <Modal
-      visible={showResortPicker}
-      animationType="slide"
-      transparent={false}
-      onRequestClose={() => setShowResortPicker(false)}
-    >
-      <SafeAreaView style={styles.modalContainer}>
-        {/* モーダルヘッダー */}
-        <View style={styles.modalHeader}>
-          <Text style={styles.modalTitle}>スキー場を選択</Text>
-          <TouchableOpacity
-            onPress={() => setShowResortPicker(false)}
-            style={styles.closeButton}
-          >
-            <IconSymbol name="xmark" size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
-        {/* スキー場リスト（エリア別トグル） */}
-        <ScrollView style={styles.modalContent}>
-          {Object.entries(resortsByArea).map(([area, resorts]) => (
-            <View key={area} style={styles.areaSection}>
-              {/* Area Header (Toggle) */}
-              <TouchableOpacity
-                style={styles.areaHeader}
-                onPress={() => setExpandedArea(expandedArea === area ? null : area)}
-              >
-                <Text style={styles.areaHeaderText}>
-                  {area} ({resorts.length})
-                </Text>
-                <IconSymbol
-                  name={expandedArea === area ? 'chevron.up' : 'chevron.down'}
-                  size={20}
-                  color="#9CA3AF"
-                />
-              </TouchableOpacity>
-
-              {/* Resort List (Collapsible) */}
-              {expandedArea === area && (
-                <View style={styles.resortListContainer}>
-                  {resorts.map((resort) => (
-                    <TouchableOpacity
-                      key={resort.id}
-                      style={[
-                        styles.resortItem,
-                        resortId === resort.id && styles.resortItemActive,
-                      ]}
-                      onPress={() => {
-                        setResortId(resort.id);
-                        setShowResortPicker(false);
-                        setExpandedArea(null);
-                      }}
-                    >
-                      <Text
-                        style={[
-                          styles.resortItemText,
-                          resortId === resort.id && styles.resortItemTextActive,
-                        ]}
-                      >
-                        {resort.name}
-                      </Text>
-                      {resortId === resort.id && (
-                        <IconSymbol name="checkmark" size={16} color="#5A7D9A" />
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </View>
-          ))}
-          <View style={{ height: 40 }} />
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
-  );
-
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: Math.max(insets.top, 16) }}>
       <View style={styles.content}>
@@ -574,19 +502,19 @@ export default function CreateEventScreen() {
           <Text style={styles.label}>タイトル *</Text>
           <TextInput
             style={styles.input}
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textSecondary}
             value={title}
             onChangeText={setTitle}
           />
         </View>
 
         {/* Description */}
-        <View style={styles.section}>
+        < View style={styles.section} >
           <Text style={styles.label}>説明</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
             placeholder="投稿の詳細を入力してください"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textSecondary}
             value={description}
             onChangeText={setDescription}
             multiline
@@ -602,7 +530,7 @@ export default function CreateEventScreen() {
             onPress={() => setShowCategoryPicker(!showCategoryPicker)}
           >
             <Text style={styles.pickerText}>{selectedCategoryLabel}</Text>
-            <IconSymbol name="chevron.down" size={20} color="#9CA3AF" />
+            <IconSymbol name="chevron.down" size={20} color={colors.icon} />
           </TouchableOpacity>
           {showCategoryPicker && (
             <View style={styles.pickerOptions}>
@@ -634,7 +562,7 @@ export default function CreateEventScreen() {
           <Text style={styles.label}>スキー場 *</Text>
           {resortsState.status === 'loading' ? (
             <View style={styles.picker}>
-              <ActivityIndicator size="small" color="#9CA3AF" />
+              <ActivityIndicator size="small" color={colors.icon} />
             </View>
           ) : resortsState.status === 'error' ? (
             <Text style={styles.errorText}>リゾート読み込みエラー</Text>
@@ -645,11 +573,84 @@ export default function CreateEventScreen() {
                 onPress={() => setShowResortPicker(true)} // モーダルを開く
               >
                 <Text style={styles.pickerText}>{selectedResortName}</Text>
-                <IconSymbol name="chevron.down" size={20} color="#9CA3AF" />
+                <IconSymbol name="chevron.down" size={20} color={colors.icon} />
               </TouchableOpacity>
-              
-              {/* ここでモーダルコンポーネントを呼び出す */}
-              {renderResortModal()}
+
+              {/* リゾート選択モーダル */}
+              <Modal
+                visible={showResortPicker}
+                animationType="slide"
+                transparent={false}
+                onRequestClose={() => setShowResortPicker(false)}
+              >
+                <SafeAreaView style={styles.modalContainer}>
+                  {/* モーダルヘッダー */}
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>スキー場を選択</Text>
+                    <TouchableOpacity
+                      onPress={() => setShowResortPicker(false)}
+                      style={styles.closeButton}
+                    >
+                      <IconSymbol name="xmark" size={24} color={colors.text} />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* スキー場リスト（エリア別トグル） */}
+                  <ScrollView style={styles.modalContent}>
+                    {Object.entries(resortsByArea).map(([area, resorts]) => (
+                      <View key={area} style={styles.areaSection}>
+                        {/* Area Header (Toggle) */}
+                        <TouchableOpacity
+                          style={styles.areaHeader}
+                          onPress={() => setExpandedArea(expandedArea === area ? null : area)}
+                        >
+                          <Text style={styles.areaHeaderText}>
+                            {area} ({resorts.length})
+                          </Text>
+                          <IconSymbol
+                            name={expandedArea === area ? 'chevron.up' : 'chevron.down'}
+                            size={20}
+                            color={colors.icon}
+                          />
+                        </TouchableOpacity>
+
+                        {/* Resort List (Collapsible) */}
+                        {expandedArea === area && (
+                          <View style={styles.resortListContainer}>
+                            {resorts.map((resort) => (
+                              <TouchableOpacity
+                                key={resort.id}
+                                style={[
+                                  styles.resortItem,
+                                  resortId === resort.id && styles.resortItemActive,
+                                ]}
+                                onPress={() => {
+                                  setResortId(resort.id);
+                                  setShowResortPicker(false);
+                                  setExpandedArea(null);
+                                }}
+                              >
+                                <Text
+                                  style={[
+                                    styles.resortItemText,
+                                    resortId === resort.id && styles.resortItemTextActive,
+                                  ]}
+                                >
+                                  {resort.name}
+                                </Text>
+                                {resortId === resort.id && (
+                                  <IconSymbol name="checkmark" size={16} color={colors.tint} />
+                                )}
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                    ))}
+                    <View style={{ height: 40 }} />
+                  </ScrollView>
+                </SafeAreaView>
+              </Modal>
             </>
           )}
         </View>
@@ -664,7 +665,7 @@ export default function CreateEventScreen() {
             <Text style={[styles.pickerText, !date && styles.placeholderText]}>
               {formatDisplayDate(date)}
             </Text>
-            <IconSymbol name="calendar" size={20} color="#9CA3AF" />
+            <IconSymbol name="calendar" size={20} color={colors.icon} />
           </TouchableOpacity>
           {showDatePicker && (
             <DateTimePicker
@@ -673,7 +674,7 @@ export default function CreateEventScreen() {
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={handleDateChange}
               minimumDate={new Date()}
-              textColor="#FFFFFF"
+              textColor={colors.text}
             />
           )}
         </View>
@@ -684,7 +685,7 @@ export default function CreateEventScreen() {
             <TextInput
               style={styles.input}
               placeholder="HH:MM (例: 10:00)"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.textSecondary}
               value={startTime}
               onChangeText={setStartTime}
             />
@@ -694,7 +695,7 @@ export default function CreateEventScreen() {
             <TextInput
               style={styles.input}
               placeholder="HH:MM (例: 15:00)"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.textSecondary}
               value={endTime}
               onChangeText={setEndTime}
             />
@@ -706,7 +707,7 @@ export default function CreateEventScreen() {
           <Text style={styles.label}>定員 *</Text>
           <TextInput
             style={styles.input}
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textSecondary}
             value={capacity}
             onChangeText={setCapacity}
             keyboardType="number-pad"
@@ -721,7 +722,7 @@ export default function CreateEventScreen() {
             onPress={() => setShowLevelPicker(!showLevelPicker)}
           >
             <Text style={styles.pickerText}>{selectedLevelLabel}</Text>
-            <IconSymbol name="chevron.down" size={20} color="#9CA3AF" />
+            <IconSymbol name="chevron.down" size={20} color={colors.icon} />
           </TouchableOpacity>
           {showLevelPicker && (
             <View style={styles.pickerOptions}>
@@ -754,7 +755,7 @@ export default function CreateEventScreen() {
           <TextInput
             style={styles.input}
             placeholder="0 (無料の場合は空欄)"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textSecondary}
             value={price}
             onChangeText={setPrice}
             keyboardType="number-pad"
@@ -767,7 +768,7 @@ export default function CreateEventScreen() {
           <TextInput
             style={styles.input}
             placeholder="ゴンドラ山頂駅前"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textSecondary}
             value={meetingPlace}
             onChangeText={setMeetingPlace}
           />
@@ -780,7 +781,7 @@ export default function CreateEventScreen() {
             <TextInput
               style={[styles.input, styles.tagInput]}
               placeholder="タグを入力"
-              placeholderTextColor="#9CA3AF"
+              placeholderTextColor={colors.textSecondary}
               value={tagInput}
               onChangeText={setTagInput}
               onSubmitEditing={addTag}
@@ -800,7 +801,7 @@ export default function CreateEventScreen() {
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                   >
                     <View style={styles.tagRemoveIcon}>
-                      <IconSymbol name="xmark" size={14} color="#FFFFFF" />
+                      <IconSymbol name="xmark" size={14} color={colors.text} />
                     </View>
                   </TouchableOpacity>
                 </View>
@@ -822,14 +823,14 @@ export default function CreateEventScreen() {
                   hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                 >
                   <View style={styles.imageRemoveButtonInner}>
-                    <IconSymbol name="xmark" size={16} color="#FFFFFF" />
+                    <IconSymbol name="xmark" size={16} color={colors.text} />
                   </View>
                 </TouchableOpacity>
               </View>
             ))}
             {selectedImages.length < 3 && (
               <TouchableOpacity style={styles.imagePlaceholder} onPress={pickImage}>
-                <IconSymbol name="photo" size={32} color="#9CA3AF" />
+                <IconSymbol name="photo" size={32} color={colors.icon} />
                 <Text style={styles.imagePlaceholderText}>画像を追加</Text>
               </TouchableOpacity>
             )}
@@ -843,7 +844,7 @@ export default function CreateEventScreen() {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color={colors.text} />
           ) : (
             <Text style={styles.createButtonText}>
               {isEditMode ? '編集を保存' : '投稿する'}
@@ -864,289 +865,292 @@ export default function CreateEventScreen() {
 
         <View style={{ height: 120 }} />
       </View>
-    </ScrollView>
+    </ScrollView >
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1A202C',
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#1A202C',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-    backgroundColor: '#1A202C',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  modalContent: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 24,
-    marginTop: 16,
-  },
-  section: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#E5E7EB',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#2D3748',
-    color: '#FFFFFF',
-    fontSize: 16,
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 20,
-  },
-  rowItem: {
-    flex: 1,
-  },
-  picker: {
-    backgroundColor: '#2D3748',
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  pickerText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-  },
-  pickerOptions: {
-    marginTop: 8,
-    backgroundColor: '#2D3748',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-    maxHeight: 200,
-  },
-  pickerOption: {
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-  },
-  pickerOptionText: {
-    color: '#9CA3AF',
-    fontSize: 16,
-  },
-  pickerOptionTextActive: {
-    color: '#5A7D9A',
-    fontWeight: '600',
-  },
-  areaSection: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-  },
-  areaHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#2D3748',
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-  },
-  areaHeaderText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#E5E7EB',
-  },
-  resortListContainer: {
-    backgroundColor: '#1A202C',
-  },
-  resortItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B',
-  },
-  resortItemActive: {
-    backgroundColor: '#1E3A8A',
-  },
-  resortItemText: {
-    fontSize: 14,
-    color: '#D1D5DB',
-  },
-  resortItemTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  tagInputRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  tagInput: {
-    flex: 1,
-    marginBottom: 0,
-  },
-  tagAddButton: {
-    backgroundColor: '#5A7D9A',
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    justifyContent: 'center',
-  },
-  tagAddButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  tagsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 12,
-  },
-  tag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#1E3A8A',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  tagText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-  },
-  tagRemoveButton: {
-    marginLeft: 4,
-  },
-  tagRemoveIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#EF4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  imagesContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  imageWrapper: {
-    position: 'relative',
-    width: 100,
-    height: 100,
-  },
-  image: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-  },
-  imageRemoveButton: {
-    position: 'absolute',
-    top: -10,
-    right: -10,
-    zIndex: 10,
-  },
-  imageRemoveButtonInner: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#EF4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 4,
-  },
-  imagePlaceholder: {
-    width: 100,
-    height: 100,
-    backgroundColor: '#2D3748',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  imagePlaceholderText: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  createButton: {
-    marginTop: 24,
-    paddingVertical: 16,
-    backgroundColor: '#5A7D9A',
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  createButtonDisabled: {
-    opacity: 0.6,
-  },
-  createButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    marginTop: 16,
-    paddingVertical: 16,
-    backgroundColor: 'transparent',
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#EF4444',
-    alignItems: 'center',
-  },
-  deleteButtonText: {
-    color: '#EF4444',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  errorText: {
-    color: '#F87171',
-    fontSize: 14,
-  },
-  placeholderText: {
-    color: '#9CA3AF',
-  },
-});
+// スタイルは動的に生成する必要があるため、コンポーネント内に移動
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    modalContainer: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    modalHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      backgroundColor: colors.background,
+    },
+    modalTitle: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    closeButton: {
+      padding: 4,
+    },
+    modalContent: {
+      flex: 1,
+    },
+    content: {
+      padding: 16,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 24,
+      marginTop: 16,
+    },
+    section: {
+      marginBottom: 20,
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.textSecondary,
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: colors.backgroundSecondary,
+      color: colors.text,
+      fontSize: 16,
+      padding: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    textArea: {
+      minHeight: 100,
+      textAlignVertical: 'top',
+    },
+    row: {
+      flexDirection: 'row',
+      gap: 12,
+      marginBottom: 20,
+    },
+    rowItem: {
+      flex: 1,
+    },
+    picker: {
+      backgroundColor: colors.backgroundSecondary,
+      padding: 12,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    pickerText: {
+      color: colors.text,
+      fontSize: 16,
+    },
+    pickerOptions: {
+      marginTop: 8,
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      maxHeight: 200,
+    },
+    pickerOption: {
+      padding: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    pickerOptionText: {
+      color: colors.textSecondary,
+      fontSize: 16,
+    },
+    pickerOptionTextActive: {
+      color: colors.tint,
+      fontWeight: '600',
+    },
+    areaSection: {
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    areaHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 16,
+      backgroundColor: colors.backgroundSecondary,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    areaHeaderText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.textSecondary,
+    },
+    resortListContainer: {
+      backgroundColor: colors.background,
+    },
+    resortItem: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 24,
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.borderLight,
+    },
+    resortItemActive: {
+      backgroundColor: colors.tint,
+    },
+    resortItemText: {
+      fontSize: 14,
+      color: colors.textSecondary,
+    },
+    resortItemTextActive: {
+      color: colors.text,
+      fontWeight: '600',
+    },
+    tagInputRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    tagInput: {
+      flex: 1,
+      marginBottom: 0,
+    },
+    tagAddButton: {
+      backgroundColor: colors.tint,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      justifyContent: 'center',
+    },
+    tagAddButtonText: {
+      color: colors.text,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    tagsList: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 12,
+    },
+    tag: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: colors.tint,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderRadius: 16,
+    },
+    tagText: {
+      color: colors.text,
+      fontSize: 14,
+    },
+    tagRemoveButton: {
+      marginLeft: 4,
+    },
+    tagRemoveIcon: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: colors.error,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    imagesContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+    },
+    imageWrapper: {
+      position: 'relative',
+      width: 100,
+      height: 100,
+    },
+    image: {
+      width: 100,
+      height: 100,
+      borderRadius: 8,
+    },
+    imageRemoveButton: {
+      position: 'absolute',
+      top: -10,
+      right: -10,
+      zIndex: 10,
+    },
+    imageRemoveButtonInner: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.error,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 3,
+      elevation: 4,
+    },
+    imagePlaceholder: {
+      width: 100,
+      height: 100,
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderStyle: 'dashed',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    imagePlaceholderText: {
+      color: colors.textSecondary,
+      fontSize: 12,
+      marginTop: 4,
+    },
+    createButton: {
+      marginTop: 24,
+      paddingVertical: 16,
+      backgroundColor: colors.tint,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    createButtonDisabled: {
+      opacity: 0.6,
+    },
+    createButtonText: {
+      color: colors.text,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    deleteButton: {
+      marginTop: 16,
+      paddingVertical: 16,
+      backgroundColor: 'transparent',
+      borderRadius: 12,
+      borderWidth: 2,
+      borderColor: colors.error,
+      alignItems: 'center',
+    },
+    deleteButtonText: {
+      color: colors.error,
+      fontSize: 18,
+      fontWeight: '600',
+    },
+    errorText: {
+      color: colors.error,
+      fontSize: 14,
+    },
+    placeholderText: {
+      color: colors.textSecondary,
+    },
+  });
+}

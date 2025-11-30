@@ -22,6 +22,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { COUNTRIES, getFlagSource } from '@/constants/countries';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type RidingStyle = 'Freeride' | 'Powder' | 'Carving' | 'Park' | 'Backcountry';
 
@@ -37,6 +39,8 @@ const RIDING_STYLES: RidingStyle[] = [
 
 export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
   const profileState = useProfile();
 
@@ -166,37 +170,37 @@ export default function EditProfileScreen() {
 
   if (profileState.status === 'loading') {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#06b6d4" />
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.tint} />
       </View>
     );
   }
 
   if (profileState.status === 'error') {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>{profileState.error}</Text>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.error }]}>{profileState.error}</Text>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
         >
-          <IconSymbol name="chevron.left" size={24} color="#FFFFFF" />
+          <IconSymbol name="chevron.left" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>プロフィール編集</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>プロフィール編集</Text>
         <TouchableOpacity
           style={styles.saveButton}
           onPress={handleSave}
           disabled={isSaving}
         >
-          <Text style={[styles.saveButtonText, isSaving && styles.saveButtonTextDisabled]}>
+          <Text style={[styles.saveButtonText, { color: colors.tint }, isSaving && { color: colors.icon }]}>
             {isSaving ? '保存中...' : '保存'}
           </Text>
         </TouchableOpacity>
@@ -205,7 +209,7 @@ export default function EditProfileScreen() {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
         {/* ヘッダー画像 */}
         <View style={styles.section}>
-          <Text style={styles.label}>ヘッダー</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>ヘッダー</Text>
           <TouchableOpacity
             style={styles.headerImageContainer}
             onPress={handleHeaderUpload}
@@ -216,11 +220,11 @@ export default function EditProfileScreen() {
             ) : (
               <View style={styles.headerImagePlaceholder}>
                 {uploadingHeader ? (
-                  <ActivityIndicator color="#06b6d4" />
+                  <ActivityIndicator color={colors.tint} />
                 ) : (
                   <>
-                    <Ionicons name="image-outline" size={32} color="#64748b" />
-                    <Text style={styles.placeholderText}>タップしてヘッダー画像を選択</Text>
+                    <Ionicons name="image-outline" size={32} color={colors.icon} />
+                    <Text style={[styles.placeholderText, { color: colors.icon }]}>タップしてヘッダー画像を選択</ Text>
                   </>
                 )}
               </View>
@@ -230,7 +234,7 @@ export default function EditProfileScreen() {
 
         {/* アバター画像 */}
         <View style={styles.section}>
-          <Text style={styles.label}>アイコン</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>アイコン</Text>
           <TouchableOpacity
             style={styles.avatarContainer}
             onPress={handleAvatarUpload}
@@ -241,58 +245,58 @@ export default function EditProfileScreen() {
             ) : (
               <View style={styles.avatarPlaceholder}>
                 {uploadingAvatar ? (
-                  <ActivityIndicator color="#06b6d4" />
+                  <ActivityIndicator color={colors.tint} />
                 ) : (
-                  <Ionicons name="person-outline" size={40} color="#64748b" />
+                  <Ionicons name="person-outline" size={40} color={colors.icon} />
                 )}
               </View>
             )}
           </TouchableOpacity>
-          <Text style={styles.avatarHint}>タップしてアイコン画像を選択</Text>
+          <Text style={[styles.avatarHint, { color: colors.icon }]}>タップしてアイコン画像を選択</Text>
         </View>
 
         {/* Display Name */}
         <View style={styles.section}>
-          <Text style={styles.label}>表示名 *</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>表示名 *</Text>
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
             value={displayName}
             onChangeText={setDisplayName}
             placeholder="表示名を入力"
-            placeholderTextColor="#6B7280"
+            placeholderTextColor={colors.textSecondary}
             maxLength={50}
           />
         </View>
 
         {/* Bio */}
         <View style={styles.section}>
-          <Text style={styles.label}>自己紹介</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>自己紹介</Text>
           <TextInput
-            style={[styles.input, styles.textArea]}
+            style={[styles.input, styles.textArea, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
             value={bio}
             onChangeText={setBio}
             placeholder="自己紹介を入力"
-            placeholderTextColor="#6B7280"
+            placeholderTextColor={colors.textSecondary}
             multiline
             numberOfLines={4}
             maxLength={500}
             textAlignVertical="top"
           />
-          <Text style={styles.charCount}>{bio.length}/500</Text>
+          <Text style={[styles.charCount, { color: colors.icon }]}>{bio.length}/500</Text>
         </View>
 
         {/* 国籍 */}
         <View style={styles.section}>
-          <Text style={styles.label}>国籍 *</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>国籍 *</Text>
           <TouchableOpacity
-            style={styles.countrySelector}
+            style={[styles.countrySelector, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
             onPress={() => setShowCountryPicker(true)}
           >
             <Image source={getFlagSource(countryCode)} style={styles.selectedFlag} />
-            <Text style={styles.selectedCountryText}>
+            <Text style={[styles.selectedCountryText, { color: colors.text }]}>
               {COUNTRIES.find(c => c.code === countryCode)?.nameJa || '選択してください'}
             </Text>
-            <Ionicons name="chevron-down" size={20} color="#94a3b8" />
+            <Ionicons name="chevron-down" size={20} color={colors.icon} />
           </TouchableOpacity>
 
           {/* Country Picker Modal */}
@@ -311,11 +315,11 @@ export default function EditProfileScreen() {
                 activeOpacity={1}
                 onPress={(e) => e.stopPropagation()}
               >
-                <View style={styles.pickerModal}>
-                  <View style={styles.pickerHeader}>
-                    <Text style={styles.pickerTitle}>国籍を選択</Text>
+                <View style={[styles.pickerModal, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
+                  <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
+                    <Text style={[styles.pickerTitle, { color: colors.text }]}>国籍を選択</Text>
                     <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
-                      <Ionicons name="close" size={24} color="#fff" />
+                      <Ionicons name="close" size={24} color={colors.text} />
                     </TouchableOpacity>
                   </View>
                   <ScrollView style={styles.pickerList}>
@@ -324,7 +328,8 @@ export default function EditProfileScreen() {
                         key={country.code}
                         style={[
                           styles.pickerItem,
-                          countryCode === country.code && styles.pickerItemActive,
+                          { borderBottomColor: colors.border },
+                          countryCode === country.code && { backgroundColor: colors.backgroundSecondary },
                         ]}
                         onPress={() => {
                           setCountryCode(country.code);
@@ -335,13 +340,14 @@ export default function EditProfileScreen() {
                         <Text
                           style={[
                             styles.pickerItemText,
-                            countryCode === country.code && styles.pickerItemTextActive,
+                            { color: colors.textSecondary },
+                            countryCode === country.code && { color: colors.text, fontWeight: '600' },
                           ]}
                         >
                           {country.nameJa}
                         </Text>
                         {countryCode === country.code && (
-                          <Ionicons name="checkmark" size={20} color="#06b6d4" />
+                          <Ionicons name="checkmark" size={20} color={colors.tint} />
                         )}
                       </TouchableOpacity>
                     ))}
@@ -354,19 +360,21 @@ export default function EditProfileScreen() {
 
         {/* 言語 */}
         <View style={styles.section}>
-          <Text style={styles.label}>言語 * (複数選択可)</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>言語 * (複数選択可)</Text>
           <View style={styles.buttonGroup}>
             <TouchableOpacity
               style={[
                 styles.languageButton,
-                languages.includes('Japanese') && styles.languageButtonActive,
+                { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
+                languages.includes('Japanese') && { backgroundColor: colors.tint, borderColor: colors.tint },
               ]}
               onPress={() => toggleLanguage('Japanese')}
             >
               <Text
                 style={[
                   styles.languageText,
-                  languages.includes('Japanese') && styles.languageTextActive,
+                  { color: colors.icon },
+                  languages.includes('Japanese') && { color: colors.text, fontWeight: 'bold' },
                 ]}
               >
                 日本語
@@ -375,14 +383,16 @@ export default function EditProfileScreen() {
             <TouchableOpacity
               style={[
                 styles.languageButton,
-                languages.includes('English') && styles.languageButtonActive,
+                { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
+                languages.includes('English') && { backgroundColor: colors.tint, borderColor: colors.tint },
               ]}
               onPress={() => toggleLanguage('English')}
             >
               <Text
                 style={[
                   styles.languageText,
-                  languages.includes('English') && styles.languageTextActive,
+                  { color: colors.icon },
+                  languages.includes('English') && { color: colors.text, fontWeight: 'bold' },
                 ]}
               >
                 English
@@ -393,20 +403,22 @@ export default function EditProfileScreen() {
 
         {/* Skill Level */}
         <View style={styles.section}>
-          <Text style={styles.label}>スキルレベル</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>スキルレベル</Text>
           <View style={styles.buttonGroup}>
             {SKILL_LEVELS.map((lvl) => (
               <TouchableOpacity
                 key={lvl}
                 style={[
                   styles.levelButton,
-                  level === lvl && styles.levelButtonActive,
+                  { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
+                  level === lvl && { backgroundColor: colors.tint, borderColor: colors.tint },
                 ]}
                 onPress={() => setLevel(lvl)}
               >
                 <Text style={[
                   styles.levelButtonText,
-                  level === lvl && styles.levelButtonTextActive,
+                  { color: colors.icon },
+                  level === lvl && { color: colors.text },
                 ]}>
                   {lvl === 'beginner' ? '初心者' : lvl === 'intermediate' ? '中級者' : '上級者'}
                 </Text>
@@ -417,21 +429,23 @@ export default function EditProfileScreen() {
 
         {/* ライディングスタイル */}
         <View style={styles.section}>
-          <Text style={styles.label}>ライディングスタイル (複数選択可)</Text>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>ライディングスタイル (複数選択可)</Text>
           <View style={styles.styleGrid}>
             {RIDING_STYLES.map((style) => (
               <TouchableOpacity
                 key={style}
                 style={[
                   styles.styleButton,
-                  ridingStyle.includes(style) && styles.styleButtonActive,
+                  { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
+                  ridingStyle.includes(style) && { backgroundColor: colors.tint, borderColor: colors.tint },
                 ]}
                 onPress={() => toggleRidingStyle(style)}
               >
                 <Text
                   style={[
                     styles.styleText,
-                    ridingStyle.includes(style) && styles.styleTextActive,
+                    { color: colors.icon },
+                    ridingStyle.includes(style) && { color: colors.text, fontWeight: '600' },
                   ]}
                 >
                   {style}
@@ -450,16 +464,16 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    // backgroundColor is set dynamically
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0f172a',
+    // backgroundColor is set dynamically
   },
   errorText: {
-    color: '#ef4444',
+    // color is set dynamically
     fontSize: 16,
   },
   header: {
@@ -469,7 +483,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    // borderBottomColor is set dynamically
   },
   backButton: {
     width: 40,
@@ -480,7 +494,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    // color is set dynamically
   },
   saveButton: {
     paddingHorizontal: 16,
@@ -489,10 +503,10 @@ const styles = StyleSheet.create({
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#06b6d4',
+    // color is set dynamically
   },
   saveButtonTextDisabled: {
-    color: '#64748b',
+    // color is set dynamically
   },
   scrollView: {
     flex: 1,
@@ -506,18 +520,16 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#e2e8f0',
+    // color is set dynamically
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#1e293b',
+    // backgroundColor, borderColor, color are set dynamically
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#334155',
   },
   textArea: {
     height: 100,
@@ -525,7 +537,7 @@ const styles = StyleSheet.create({
   },
   charCount: {
     fontSize: 12,
-    color: '#64748b',
+    // color is set dynamically
     textAlign: 'right',
     marginTop: 4,
   },
@@ -553,7 +565,7 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     fontSize: 14,
-    color: '#64748b',
+    // color is set dynamically
     marginTop: 8,
   },
   // アバター画像スタイル
@@ -581,7 +593,7 @@ const styles = StyleSheet.create({
   },
   avatarHint: {
     fontSize: 12,
-    color: '#64748b',
+    // color is set dynamically
     textAlign: 'center',
     marginTop: 8,
   },

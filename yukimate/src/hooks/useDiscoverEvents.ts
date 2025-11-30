@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { DiscoverEvent, EventFilterOptions } from '@types';
+import { useEffect, useState } from 'react';
 
 type DiscoverEventsState =
   | { status: 'loading' }
@@ -141,7 +141,7 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
 
           // スタイル一致 +5 × 一致数
           if (userProfile?.styles && event.tags) {
-            const matchingStyles = userProfile.styles.filter(style =>
+            const matchingStyles = userProfile.styles.filter((style: string) =>
               event.tags?.includes(style)
             );
             score += matchingStyles.length * 5;
@@ -343,6 +343,41 @@ export async function saveEvent(
     return { success: true };
   } catch (error) {
     console.error('Error saving event:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * イベント保存解除
+ * - saved_eventsテーブルからDELETE
+ */
+export async function unsaveEvent(
+  eventId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // 現在のユーザーを取得
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) {
+      return { success: false, error: 'ユーザーがログインしていません' };
+    }
+
+    // 保存を削除
+    const { error } = await supabase
+      .from('saved_events')
+      .delete()
+      .eq('event_id', eventId)
+      .eq('user_id', session.user.id);
+
+    if (error) {
+      throw error;
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error unsaving event:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error',

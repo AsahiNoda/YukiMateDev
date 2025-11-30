@@ -11,9 +11,13 @@ import {
   View,
 } from 'react-native';
 
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '@lib/supabase';
 
 export default function SignInScreen() {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -89,27 +93,27 @@ export default function SignInScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.content}>
         {/* ロゴ */}
         <View style={styles.logoContainer}>
           <Text style={styles.logoIcon}>❄️</Text>
-          <Text style={styles.logoText}>YukiMate</Text>
-          <Text style={styles.tagline}>スキー・スノーボード愛好者のためのSNS</Text>
+          <Text style={[styles.logoText, { color: colors.text }]}>YukiMate</Text>
+          <Text style={[styles.tagline, { color: colors.textSecondary }]}>スキー・スノーボード愛好者のためのSNS</Text>
         </View>
 
         {/* フォーム */}
         <View style={styles.form}>
-          <Text style={styles.title}>
+          <Text style={[styles.title, { color: colors.text }]}>
             {mode === 'signin' ? 'ログイン' : '新規登録'}
           </Text>
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
             placeholder="メールアドレス"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textSecondary}
             value={email}
             onChangeText={setEmail}
             autoCapitalize="none"
@@ -119,9 +123,9 @@ export default function SignInScreen() {
           />
 
           <TextInput
-            style={styles.input}
+            style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
             placeholder="パスワード"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor={colors.textSecondary}
             value={password}
             onChangeText={setPassword}
             secureTextEntry
@@ -132,11 +136,11 @@ export default function SignInScreen() {
 
           {/* メインボタン */}
           <TouchableOpacity
-            style={[styles.button, styles.primaryButton, loading && styles.buttonDisabled]}
+            style={[styles.button, styles.primaryButton, { backgroundColor: colors.tint }, loading && styles.buttonDisabled]}
             onPress={handleEmailPasswordAuth}
             disabled={loading}
           >
-            <Text style={styles.buttonText}>
+            <Text style={[styles.buttonText, { color: colors.text }]}>
               {loading ? '処理中...' : mode === 'signin' ? 'ログイン' : '新規登録'}
             </Text>
           </TouchableOpacity>
@@ -147,7 +151,7 @@ export default function SignInScreen() {
             onPress={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
             disabled={loading}
           >
-            <Text style={styles.linkText}>
+            <Text style={[styles.linkText, { color: colors.textSecondary }]}>
               {mode === 'signin'
                 ? 'アカウントをお持ちでない方はこちら'
                 : '既にアカウントをお持ちの方はこちら'}
@@ -156,18 +160,18 @@ export default function SignInScreen() {
 
           {/* 区切り線 */}
           <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>または</Text>
-            <View style={styles.dividerLine} />
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+            <Text style={[styles.dividerText, { color: colors.textSecondary }]}>または</Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
           </View>
 
           {/* マジックリンクボタン */}
           <TouchableOpacity
-            style={[styles.button, styles.secondaryButton, loading && styles.buttonDisabled]}
+            style={[styles.button, styles.secondaryButton, { borderColor: colors.tint }, loading && styles.buttonDisabled]}
             onPress={handleMagicLink}
             disabled={loading}
           >
-            <Text style={styles.secondaryButtonText}>マジックリンクで{mode === 'signin' ? 'ログイン' : '登録'}</Text>
+            <Text style={[styles.secondaryButtonText, { color: colors.tint }]}>マジックリンクで{mode === 'signin' ? 'ログイン' : '登録'}</Text>
           </TouchableOpacity>
 
           {/* デバッグ用：ゲストとして続行 */}
@@ -176,7 +180,7 @@ export default function SignInScreen() {
             onPress={() => router.replace('/(tabs)/home')}
             disabled={loading}
           >
-            <Text style={styles.linkText}>ゲストとして続行</Text>
+            <Text style={[styles.linkText, { color: colors.textSecondary }]}>ゲストとして続行</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -187,7 +191,7 @@ export default function SignInScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A202C',
+    // backgroundColor is set dynamically
   },
   content: {
     flex: 1,
@@ -205,12 +209,12 @@ const styles = StyleSheet.create({
   logoText: {
     fontSize: 32,
     fontWeight: '700',
-    color: '#FFFFFF',
+    // color is set dynamically
     marginBottom: 8,
   },
   tagline: {
     fontSize: 14,
-    color: '#9CA3AF',
+    // color is set dynamically
     textAlign: 'center',
   },
   form: {
@@ -219,18 +223,16 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '600',
-    color: '#FFFFFF',
+    // color is set dynamically
     marginBottom: 24,
     textAlign: 'center',
   },
   input: {
-    backgroundColor: '#2D3748',
+    // backgroundColor, borderColor, color are set dynamically
     borderWidth: 1,
-    borderColor: '#334155',
     borderRadius: 12,
     padding: 16,
     fontSize: 16,
-    color: '#FFFFFF',
     marginBottom: 16,
   },
   button: {
@@ -241,23 +243,23 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   primaryButton: {
-    backgroundColor: '#5A7D9A',
+    // backgroundColor is set dynamically
   },
   secondaryButton: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#5A7D9A',
+    // borderColor is set dynamically
   },
   buttonDisabled: {
     opacity: 0.5,
   },
   buttonText: {
-    color: '#FFFFFF',
+    // color is set dynamically
     fontSize: 16,
     fontWeight: '600',
   },
   secondaryButtonText: {
-    color: '#5A7D9A',
+    // color is set dynamically
     fontSize: 16,
     fontWeight: '600',
   },
@@ -266,7 +268,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#9CA3AF',
+    // color is set dynamically
     fontSize: 14,
   },
   divider: {
@@ -277,10 +279,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#334155',
+    // backgroundColor is set dynamically
   },
   dividerText: {
-    color: '#9CA3AF',
+    // color is set dynamically
     paddingHorizontal: 16,
     fontSize: 14,
   },

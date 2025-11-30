@@ -248,7 +248,7 @@ function ProfileScreen() {
               colors={
                 colorScheme === 'dark'
                   ? ['transparent', 'rgba(26, 32, 44, 0.4)', 'rgba(26, 32, 44, 1)']
-                  : ['transparent', 'rgba(255, 255, 255, 0.4)', 'rgba(255, 255, 255, 1)']
+                  : ['transparent', 'rgba(255, 255, 255, 0.4)', 'rgba(236, 250, 255, 1)']
               }
               style={styles.headerGradientOverlay}
             />

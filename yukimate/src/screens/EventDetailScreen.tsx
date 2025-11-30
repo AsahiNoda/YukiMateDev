@@ -44,11 +44,276 @@ interface EventDetail {
   applicationStatus: string | null;
 }
 
+function createStyles(colors: typeof Colors.light) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    headerBar: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingBottom: 8,
+      backgroundColor: colors.background,
+      zIndex: 10,
+    },
+    headerButton: {
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingBottom: 20,
+    },
+    centered: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.background,
+      padding: 16,
+    },
+    loadingText: {
+      marginTop: 16,
+      color: colors.textSecondary,
+      fontSize: 16,
+    },
+    errorText: {
+      color: colors.error,
+      fontSize: 18,
+      textAlign: 'center',
+      marginBottom: 24,
+    },
+    backButton: {
+      paddingVertical: 12,
+      paddingHorizontal: 24,
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 8,
+    },
+    backButtonText: {
+      color: colors.textSecondary,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+    headerImageContainer: {
+      width: '100%',
+      height: 400,
+      position: 'relative',
+    },
+    imageScrollView: {
+      width: '100%',
+      height: '100%',
+    },
+    headerImage: {
+      width: '100%',
+      height: '100%',
+    },
+    imageIndicatorContainer: {
+      position: 'absolute',
+      bottom: 16,
+      left: 0,
+      right: 0,
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      gap: 8,
+    },
+    imageIndicatorDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    },
+    backButtonIcon: {
+      position: 'absolute',
+      left: 16,
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10,
+    },
+    bookmarkButton: {
+      position: 'absolute',
+      right: 16,
+      width: 40,
+      height: 40,
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10,
+    },
+    contentCard: {
+      backgroundColor: colors.background,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      marginTop: -24,
+      padding: 24,
+      position: 'relative',
+      zIndex: 1,
+    },
+    title: {
+      fontSize: 26,
+      fontWeight: 'bold',
+      color: colors.text,
+      marginBottom: 16,
+    },
+    descriptionSection: {
+      marginBottom: 24,
+    },
+    descriptionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 8,
+    },
+    descriptionText: {
+      fontSize: 15,
+      color: colors.textSecondary,
+      lineHeight: 22,
+    },
+    detailsGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginBottom: 24,
+      marginHorizontal: -6,
+    },
+    gridItem: {
+      width: '50%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 6,
+    },
+    gridItemWide: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 6,
+    },
+    hostAvatarPlaceholder: {
+      backgroundColor: colors.tint,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    gridIconContainer: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.backgroundSecondary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    gridTextContainer: {
+      flex: 1,
+    },
+    gridValue: {
+      fontSize: 14,
+      color: colors.text,
+      fontWeight: '500',
+    },
+    tagsSection: {
+      marginTop: 8,
+    },
+    tagsSectionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    tagsContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+    },
+    tag: {
+      backgroundColor: colors.backgroundSecondary,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: colors.tint,
+    },
+    tagText: {
+      fontSize: 13,
+      color: colors.tint,
+      fontWeight: '500',
+    },
+    footer: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: colors.background,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingHorizontal: 20,
+      paddingTop: 16,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    footerHostSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+      marginRight: 12,
+    },
+    footerHostAvatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      marginRight: 10,
+    },
+    footerHostAvatarText: {
+      fontSize: 16,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    footerHostInfo: {
+      flex: 1,
+    },
+    footerHostLabel: {
+      fontSize: 11,
+      color: colors.icon,
+      marginBottom: 2,
+    },
+    footerHostName: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: colors.text,
+    },
+    actionButton: {
+      paddingVertical: 14,
+      paddingHorizontal: 32,
+      backgroundColor: colors.tint,
+      borderRadius: 24,
+      minWidth: 140,
+      alignItems: 'center',
+    },
+    actionButtonDisabled: {
+      backgroundColor: colors.backgroundTertiary,
+    },
+    actionButtonText: {
+      color: colors.text,
+      fontSize: 16,
+      fontWeight: '600',
+    },
+  });
+}
+
 export default function EventDetailScreen() {
   const params = useLocalSearchParams<{ eventId: string }>();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const styles = React.useMemo(() => createStyles(colors), [colors]);
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [event, setEvent] = useState<EventDetail | null>(null);
@@ -321,7 +586,7 @@ export default function EventDetailScreen() {
             {/* 日時 */}
             <View style={styles.gridItemWide}>
               <View style={styles.gridIconContainer}>
-                <IconSymbol name="calendar" size={20} color="#5A7D9A" />
+                <IconSymbol name="calendar" size={20} color={colors.tint} />
               </View>
               <View style={styles.gridTextContainer}>
                 <Text style={[styles.gridValue, { color: colors.text }]}>{formatDate(event.startAt)}</Text>
@@ -331,7 +596,7 @@ export default function EventDetailScreen() {
             {/* スキー場 */}
             <View style={styles.gridItemWide}>
               <View style={styles.gridIconContainer}>
-                <IconSymbol name="mountain.2.fill" size={20} color="#10B981" />
+                <IconSymbol name="mountain.2.fill" size={20} color={colors.success} />
               </View>
               <View style={styles.gridTextContainer}>
                 <Text style={[styles.gridValue, { color: colors.text }]}>{event.resortName}</Text>
@@ -341,7 +606,7 @@ export default function EventDetailScreen() {
             {/* 参加人数 */}
             <View style={styles.gridItem}>
               <View style={styles.gridIconContainer}>
-                <IconSymbol name="person.2.fill" size={20} color="#8B5CF6" />
+                <IconSymbol name="person.2.fill" size={20} color={colors.tint} />
               </View>
               <View style={styles.gridTextContainer}>
                 <Text style={[styles.gridValue, { color: colors.text }]}>{event.spotsTaken}/{event.capacityTotal}人</Text>
@@ -351,7 +616,7 @@ export default function EventDetailScreen() {
             {/* 集合場所 */}
             <View style={styles.gridItemWide}>
               <View style={styles.gridIconContainer}>
-                <IconSymbol name="mappin.circle.fill" size={20} color="#F59E0B" />
+                <IconSymbol name="mappin.circle.fill" size={20} color={colors.warning} />
               </View>
               <View style={styles.gridTextContainer}>
                 <Text style={[styles.gridValue, { color: colors.text }]} numberOfLines={1}>
@@ -363,10 +628,10 @@ export default function EventDetailScreen() {
             {/* 価格 */}
             <View style={styles.gridItem}>
               <View style={styles.gridIconContainer}>
-                <IconSymbol name="yensign.circle.fill" size={20} color="#D4AF37" />
+                <IconSymbol name="yensign.circle.fill" size={20} color={colors.accent} />
               </View>
               <View style={styles.gridTextContainer}>
-                <Text style={styles.gridValue}>
+                <Text style={[styles.gridValue, { color: colors.text }]}>
                   {event.pricePerPersonJpy !== null && event.pricePerPersonJpy > 0
                     ? `¥${event.pricePerPersonJpy.toLocaleString()}`
                     : '無料'}
@@ -435,7 +700,7 @@ export default function EventDetailScreen() {
             disabled={event.hasApplied || applying}
           >
             {applying ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color={colors.text} />
             ) : (
               <Text style={[styles.actionButtonText, { color: colors.text }]}>
                 {event.hasApplied ? '申請済み' : '参加申請'}
@@ -454,265 +719,3 @@ export default function EventDetailScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#1A202C',
-  },
-  headerBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-    backgroundColor: '#1A202C',
-    zIndex: 10,
-  },
-  headerButton: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 20,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1A202C',
-    padding: 16,
-  },
-  loadingText: {
-    marginTop: 16,
-    color: '#E5E7EB',
-    fontSize: 16,
-  },
-  errorText: {
-    color: '#F87171',
-    fontSize: 18,
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  backButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    backgroundColor: '#2D3748',
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: '#E5E7EB',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  headerImageContainer: {
-    width: '100%',
-    height: 400,
-    position: 'relative',
-  },
-  imageScrollView: {
-    width: '100%',
-    height: '100%',
-  },
-  headerImage: {
-    width: '100%',
-    height: '100%',
-  },
-  imageIndicatorContainer: {
-    position: 'absolute',
-    bottom: 16,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  imageIndicatorDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-  },
-  backButtonIcon: {
-    position: 'absolute',
-    left: 16,
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  bookmarkButton: {
-    position: 'absolute',
-    right: 16,
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-  },
-  contentCard: {
-    backgroundColor: '#1A202C',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: -24,
-    padding: 24,
-    position: 'relative',
-    zIndex: 1,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 16,
-  },
-  descriptionSection: {
-    marginBottom: 24,
-  },
-  descriptionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  descriptionText: {
-    fontSize: 15,
-    color: '#E5E7EB',
-    lineHeight: 22,
-  },
-  detailsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 24,
-    marginHorizontal: -6,
-  },
-  gridItem: {
-    width: '50%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-  },
-  gridItemWide: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-  },
-  hostAvatarPlaceholder: {
-    backgroundColor: '#5A7D9A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  gridIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2D3748',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  gridTextContainer: {
-    flex: 1,
-  },
-  gridValue: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '500',
-  },
-  tagsSection: {
-    marginTop: 8,
-  },
-  tagsSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 12,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  tag: {
-    backgroundColor: '#2D3748',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#5A7D9A',
-  },
-  tagText: {
-    fontSize: 13,
-    color: '#5A7D9A',
-    fontWeight: '500',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#1A202C',
-    borderTopWidth: 1,
-    borderTopColor: '#2D3748',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  footerHostSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 12,
-  },
-  footerHostAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 10,
-  },
-  footerHostAvatarText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  footerHostInfo: {
-    flex: 1,
-  },
-  footerHostLabel: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    marginBottom: 2,
-  },
-  footerHostName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  actionButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    backgroundColor: '#5A7D9A',
-    borderRadius: 24,
-    minWidth: 140,
-    alignItems: 'center',
-  },
-  actionButtonDisabled: {
-    backgroundColor: '#475569',
-  },
-  actionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

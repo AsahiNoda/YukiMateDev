@@ -1,6 +1,6 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
-import { saveEvent } from '@/hooks/useDiscoverEvents';
+import { saveEvent, unsaveEvent } from '@/hooks/useDiscoverEvents';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import type { DiscoverEvent } from '@types';
 import { BlurView } from 'expo-blur';
@@ -71,12 +71,12 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
   };
 
   const getLevelColor = (level: string | null) => {
-    if (!level) return '#6B7280';
+    if (!level) return colors.textSecondary;
     switch (level) {
-      case 'beginner': return '#10B981';
-      case 'intermediate': return '#5A7D9A';
-      case 'advanced': return '#EF4444';
-      default: return '#6B7280';
+      case 'beginner': return colors.success;
+      case 'intermediate': return colors.tint;
+      case 'advanced': return colors.error;
+      default: return colors.textSecondary;
     }
   };
 
@@ -87,17 +87,25 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
   const handleSave = async (e: any) => {
     e.stopPropagation(); // カードのonPressを発火させない
 
-    if (isSaving || isSaved) return;
+    if (isSaving) return;
 
     setIsSaving(true);
-    const result = await saveEvent(event.id);
+
+    // 保存済みの場合は保存解除、未保存の場合は保存
+    const result = isSaved
+      ? await unsaveEvent(event.id)
+      : await saveEvent(event.id);
+
     setIsSaving(false);
 
     if (result.success) {
-      setIsSaved(true);
-      Alert.alert('保存完了', 'イベントを保存しました');
+      setIsSaved(!isSaved);
+      Alert.alert(
+        isSaved ? '保存解除' : '保存完了',
+        isSaved ? 'イベントの保存を解除しました' : 'イベントを保存しました'
+      );
     } else {
-      Alert.alert('エラー', result.error || '保存に失敗しました');
+      Alert.alert('エラー', result.error || '操作に失敗しました');
     }
   };
 
@@ -124,7 +132,7 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
             )}
 
             {/* カテゴリバッジ（左上） */}
-            <View style={styles.categoryBadge}>
+            <View style={[styles.categoryBadge, { backgroundColor: `${colors.backgroundSecondary}CC` }]}>
               {(() => {
                 const IconComponent = getCategoryIcon(event.category);
                 return <IconComponent width={14} height={14} color={colors.text} />;
@@ -135,7 +143,7 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
             </View>
 
             {/* 空き状況バッジ（右上） */}
-            <View style={styles.spotsBadge}>
+            <View style={[styles.spotsBadge, { backgroundColor: `${colors.backgroundSecondary}CC` }]}>
               <Text style={[styles.spotsText, { color: colors.text }]}>
                 {event.spotsTaken}/{event.capacityTotal}
               </Text>
@@ -161,7 +169,7 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
             {event.tags && event.tags.length > 0 && (
               <View style={styles.tagsRow}>
                 {event.tags.slice(0, 10).map((tag, index) => (
-                  <Text key={index} style={[styles.tag, { color: colors.accent }]}>
+                  <Text key={index} style={[styles.tag, { color: colors.tint }]}>
                     #{tag}
                   </Text>
                 ))}
@@ -169,7 +177,7 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
             )}
 
             {/* 仕切り線 */}
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
             {/* ホスト情報とレベル */}
             <View style={styles.footer}>
@@ -177,10 +185,10 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
                 {event.hostAvatar ? (
                   <Image
                     source={{ uri: event.hostAvatar }}
-                    style={styles.hostAvatar}
+                    style={[styles.hostAvatar, { borderColor: colors.border }]}
                   />
                 ) : (
-                  <View style={[styles.hostAvatar, styles.hostAvatarPlaceholder, { backgroundColor: colors.tint }]}>
+                  <View style={[styles.hostAvatar, styles.hostAvatarPlaceholder, { backgroundColor: colors.tint, borderColor: colors.border }]}>
                     <Text style={[styles.hostAvatarText, { color: colors.text }]}>
                       {event.hostName.charAt(0).toUpperCase()}
                     </Text>
@@ -219,10 +227,11 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
               <TouchableOpacity
                 style={[
                   styles.saveButton,
-                  isSaved && [styles.saveButtonActive, { borderColor: colors.accent }],
+                  { backgroundColor: `${colors.backgroundSecondary}1A`, borderColor: `${colors.border}1A` },
+                  isSaved && { backgroundColor: `${colors.tint}99`, borderColor: colors.accent },
                 ]}
                 onPress={handleSave}
-                disabled={isSaving || isSaved}
+                disabled={isSaving}
                 activeOpacity={0.7}
               >
                 <IconSymbol
@@ -250,10 +259,10 @@ const styles = StyleSheet.create({
   cardContainer: {
     marginHorizontal: 16,
     marginVertical: 8,
-    borderRadius: 16,
+    borderRadius: 10,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: '#161618ff',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.3,
         shadowRadius: 8,
@@ -266,7 +275,6 @@ const styles = StyleSheet.create({
   blurContainer: {
     borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 2,
   },
   gradientOverlay: {
     borderRadius: 16,
@@ -291,7 +299,7 @@ const styles = StyleSheet.create({
     left: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    // backgroundColor is set dynamically in the component
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
@@ -306,7 +314,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 12,
     right: 12,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    // backgroundColor is set dynamically in the component
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
@@ -320,8 +328,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '600',
     // color is set dynamically in the component
     marginBottom: 8,
     lineHeight: 24,
@@ -352,7 +360,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)', // More subtle divider
+    // backgroundColor is set dynamically in the component
     marginVertical: 12,
   },
   footer: {
@@ -372,14 +380,14 @@ const styles = StyleSheet.create({
     height: 45,
     borderRadius: 22,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    // borderColor is set dynamically in the component
   },
   hostAvatarPlaceholder: {
     // backgroundColor is set dynamically in the component
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
+    // borderColor is set dynamically in the component
   },
   hostAvatarText: {
     fontSize: 12,
@@ -430,14 +438,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)', // Glassy button
+    // backgroundColor is set dynamically in the component
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    // borderColor is set dynamically in the component
     gap: 6,
   },
   saveButtonActive: {
-    backgroundColor: 'rgba(30, 58, 95, 0.6)',
-    borderColor: '#D4AF37',
+    // backgroundColor is set dynamically in the component
   },
   saveButtonText: {
     fontSize: 13,

@@ -28,6 +28,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// アイコンのインポート
+import YenIcon from '../../../assets/images/icons/yen.svg';
+
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 100;
 const VERTICAL_SWIPE_THRESHOLD = 100;
@@ -41,6 +44,9 @@ type ConfirmationModalProps = {
 };
 
 function ConfirmationModal({ visible, type, event, onConfirm, onCancel }: ConfirmationModalProps) {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+
   if (!event) return null;
 
   const isApply = type === 'apply';
@@ -49,7 +55,7 @@ function ConfirmationModal({ visible, type, event, onConfirm, onCancel }: Confir
     ? `「${event.title}」への参加申請を送信しますか?`
     : `「${event.title}」を保存しますか?`;
   const confirmText = isApply ? '申請する' : '保存する';
-  const confirmColor = isApply ? '#4ADE80' : '#D4AF37';
+  const confirmColor = isApply ? colors.success : colors.accent;
 
   return (
     <Modal
@@ -58,21 +64,21 @@ function ConfirmationModal({ visible, type, event, onConfirm, onCancel }: Confir
       animationType="fade"
       onRequestClose={onCancel}>
       <BlurView intensity={40} style={styles.modalOverlay}>
-        <View style={styles.modalContent}>
+        <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
           <View style={styles.modalHeader}>
             <IconSymbol
               name={isApply ? 'checkmark.circle.fill' : 'star.fill'}
               size={48}
               color={confirmColor}
             />
-            <Text style={styles.modalTitle}>{title}</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
           </View>
 
           <View style={styles.modalBody}>
-            <Text style={styles.modalMessage}>{message}</Text>
+            <Text style={[styles.modalMessage, { color: colors.textSecondary }]}>{message}</Text>
 
             {/* Event Preview */}
-            <View style={styles.modalEventPreview}>
+            <View style={[styles.modalEventPreview, { backgroundColor: colors.backgroundSecondary }]}>
               {event.photoUrls.length > 0 ? (
                 <Image
                   source={{ uri: event.photoUrls[0] }}
@@ -80,31 +86,31 @@ function ConfirmationModal({ visible, type, event, onConfirm, onCancel }: Confir
                   resizeMode="contain"
                 />
               ) : (
-                <View style={styles.modalEventImagePlaceholder}>
+                <View style={[styles.modalEventImagePlaceholder, { backgroundColor: colors.backgroundTertiary }]}>
                   <Text style={styles.modalEventEmoji}>🏔️</Text>
                 </View>
               )}
               <View style={styles.modalEventInfo}>
-                <Text style={styles.modalEventTitle} numberOfLines={2}>
+                <Text style={[styles.modalEventTitle, { color: colors.text }]} numberOfLines={2}>
                   {event.title}
                 </Text>
-                <Text style={styles.modalEventHost}>by {event.hostName}</Text>
+                <Text style={[styles.modalEventHost, { color: colors.textSecondary }]}>by {event.hostName}</Text>
               </View>
             </View>
           </View>
 
           <View style={styles.modalActions}>
             <TouchableOpacity
-              style={styles.modalButtonCancel}
+              style={[styles.modalButtonCancel, { backgroundColor: colors.backgroundTertiary }]}
               onPress={onCancel}
               activeOpacity={0.8}>
-              <Text style={styles.modalButtonCancelText}>キャンセル</Text>
+              <Text style={[styles.modalButtonCancelText, { color: colors.textSecondary }]}>キャンセル</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.modalButtonConfirm, { backgroundColor: confirmColor }]}
               onPress={onConfirm}
               activeOpacity={0.8}>
-              <Text style={styles.modalButtonConfirmText}>{confirmText}</Text>
+              <Text style={[styles.modalButtonConfirmText, { color: colors.text }]}>{confirmText}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -284,6 +290,8 @@ type SwipeableCardProps = {
 };
 
 function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDetail, cardHeight, insets }: SwipeableCardProps) {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
@@ -406,7 +414,7 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
 
   return (
     <GestureDetector gesture={panGesture}>
-      <Animated.View style={[styles.card, { height: cardHeight }, cardStyle]}>
+      <Animated.View style={[styles.card, { height: cardHeight, backgroundColor: colors.backgroundSecondary }, cardStyle]}>
         {/* Background Image */}
         <View style={styles.cardBackground}>
           {event.photoUrls.length > 0 ? (
@@ -447,7 +455,7 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
               )}
             </>
           ) : (
-            <View style={styles.cardImagePlaceholder}>
+            <View style={[styles.cardImagePlaceholder, { backgroundColor: colors.backgroundTertiary }]}>
               <Text style={styles.cardImageText}>🏔️</Text>
             </View>
           )}
@@ -483,21 +491,21 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
 
             {/* Host Info */}
             <View style={styles.cardHostRow}>
-              <View style={styles.cardHostAvatar}>
+              <View style={[styles.cardHostAvatar, { backgroundColor: colors.backgroundTertiary, borderColor: colors.text }]}>
                 {event.hostAvatar ? (
                   <Image
                     source={{ uri: event.hostAvatar }}
                     style={styles.cardHostAvatarImage}
                   />
                 ) : (
-                  <Text style={styles.cardHostAvatarText}>
+                  <Text style={[styles.cardHostAvatarText, { color: colors.text }]}>
                     {event.hostName.charAt(0).toUpperCase()}
                   </Text>
                 )}
               </View>
               <View style={styles.cardHostInfo}>
                 <Text style={styles.cardHostName}>{event.hostName}</Text>
-                <Text style={styles.cardHostTags}>
+                <Text style={[styles.cardHostTags, { color: colors.textSecondary }]}>
                   {event.tags.slice(0, 2).map((tag) => `#${tag}`).join(' ')}
                 </Text>
               </View>
@@ -505,10 +513,10 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
 
             {/* Title & Description */}
             <View style={styles.cardTextSection}>
-              <Text style={styles.cardTitle} numberOfLines={2}>
+              <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
                 {event.title}
               </Text>
-              <Text style={styles.cardDescription} numberOfLines={3}>
+              <Text style={[styles.cardDescription, { color: colors.textSecondary }]} numberOfLines={3}>
                 {event.description || 'Looking for experienced riders to explore the legendary backcountry... Let\'s chase some fresh tracks!'}
               </Text>
             </View>
@@ -516,20 +524,20 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
             {/* Metadata Footer */}
             <View style={styles.cardFooter}>
               <View style={styles.cardMetadataItem}>
-                <IconSymbol name="person.2.fill" size={16} color="#E5E7EB" />
-                <Text style={styles.cardMetadataText}>
+                <IconSymbol name="person.2.fill" size={16} color={colors.textSecondary} />
+                <Text style={[styles.cardMetadataText, { color: colors.textSecondary }]}>
                   {event.spotsTaken}/{event.capacityTotal} 人
                 </Text>
               </View>
               <View style={styles.cardMetadataItem}>
-                <IconSymbol name="mountain.2.fill" size={16} color="#E5E7EB" />
-                <Text style={styles.cardMetadataText}>レベル: {levelText}</Text>
+                <IconSymbol name="mountain.2.fill" size={16} color={colors.textSecondary} />
+                <Text style={[styles.cardMetadataText, { color: colors.textSecondary }]}>レベル: {levelText}</Text>
               </View>
               <View style={styles.cardPriceContainer}>
-                <Text style={styles.cardPriceAmount}>
-                  {formatPrice(event.pricePerPersonJpy)}
+                <YenIcon width={18} height={18} color={colors.accent} />
+                <Text style={[styles.cardPriceAmount, { color: colors.accent }]}>
+                  {event.pricePerPersonJpy === null || event.pricePerPersonJpy === 0 ? 'Free' : event.pricePerPersonJpy.toLocaleString()}
                 </Text>
-                <Text style={styles.cardPriceUnit}></Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -561,42 +569,35 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor is set dynamically in the component
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    // backgroundColor is set dynamically in the component
     padding: 16,
   },
   loadingText: {
     marginTop: 16,
-    // color is set dynamically in the component
     fontSize: 16,
   },
   errorText: {
     fontSize: 18,
     fontWeight: '600',
-    // color is set dynamically in the component
     marginBottom: 8,
     textAlign: 'center',
   },
   errorSubText: {
     fontSize: 14,
-    // color is set dynamically in the component
     textAlign: 'center',
   },
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    // color is set dynamically in the component
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubText: {
     fontSize: 14,
-    // color is set dynamically in the component
     textAlign: 'center',
   },
   headerOverlay: {
@@ -627,7 +628,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0,
     overflow: 'hidden',
-    backgroundColor: '#2D3748',
   },
   cardBackground: {
     ...StyleSheet.absoluteFillObject,
@@ -639,7 +639,6 @@ const styles = StyleSheet.create({
   },
   cardImagePlaceholder: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#334155',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -733,11 +732,9 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#4B5563',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#FFFFFF',
     overflow: 'hidden',
   },
   cardHostAvatarImage: {
@@ -747,7 +744,6 @@ const styles = StyleSheet.create({
   cardHostAvatarText: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
   },
   cardHostInfo: {
     marginLeft: 12,
@@ -761,7 +757,6 @@ const styles = StyleSheet.create({
   },
   cardHostTags: {
     fontSize: 13,
-    color: '#D1D5DB',
   },
   cardTextSection: {
     gap: 10,
@@ -769,19 +764,17 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#FFFFFF',
     letterSpacing: 0.5,
     lineHeight: 38,
   },
   cardDescription: {
     fontSize: 16,
-    color: '#E5E7EB',
     lineHeight: 24,
   },
   cardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     flexWrap: 'wrap',
     gap: 20,
     marginTop: 4,
@@ -794,20 +787,18 @@ const styles = StyleSheet.create({
   cardMetadataText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#E5E7EB',
   },
   cardPriceContainer: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
+    gap: 6,
   },
   cardPriceAmount: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#D4AF37',
   },
   cardPriceUnit: {
     fontSize: 14,
-    color: '#E5E7EB',
     fontWeight: '500',
   },
   cardActionButtons: {
@@ -841,7 +832,6 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: SCREEN_WIDTH * 0.85,
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 24,
     shadowColor: '#000',
@@ -858,21 +848,18 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#1F2937',
   },
   modalBody: {
     marginBottom: 24,
   },
   modalMessage: {
     fontSize: 16,
-    color: '#4B5563',
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 24,
   },
   modalEventPreview: {
     flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
     borderRadius: 12,
     padding: 12,
     gap: 12,
@@ -886,7 +873,6 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 8,
-    backgroundColor: '#E5E7EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -901,11 +887,9 @@ const styles = StyleSheet.create({
   modalEventTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1F2937',
   },
   modalEventHost: {
     fontSize: 14,
-    color: '#6B7280',
   },
   modalActions: {
     flexDirection: 'row',
@@ -915,13 +899,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: '#E5E7EB',
     alignItems: 'center',
   },
   modalButtonCancelText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#4B5563',
   },
   modalButtonConfirm: {
     flex: 1,
@@ -932,6 +914,5 @@ const styles = StyleSheet.create({
   modalButtonConfirmText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
 });
