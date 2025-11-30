@@ -1,339 +1,389 @@
 import { Colors } from '@/constants/theme';
-import { IconSymbol } from '@components/ui/icon-symbol';
+import { useAuth } from '@contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@hooks/use-color-scheme';
-import { updateProfile, useProfile } from '@hooks/useProfile';
+import { useProfile } from '@hooks/useProfile';
 import { supabase } from '@lib/supabase';
-import type { ProfileData } from '@types';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
+  Dimensions,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
-export default function ProfileScreen() {
-  const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
+const { width } = Dimensions.get('window');
+
+// Official badge component
+const OfficialBadge = ({ color, size = 20 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M10.5213 2.62368C11.3147 1.75255 12.6853 1.75255 13.4787 2.62368L14.4989 3.74391C14.8998 4.18418 15.4761 4.42288 16.071 4.39508L17.5845 4.32435C18.7614 4.26934 19.7307 5.23857 19.6757 6.41554L19.6049 7.92905C19.5771 8.52388 19.8158 9.10016 20.2561 9.50111L21.3763 10.5213C22.2475 11.3147 22.2475 12.6853 21.3763 13.4787L20.2561 14.4989C19.8158 14.8998 19.5771 15.4761 19.6049 16.071L19.6757 17.5845C19.7307 18.7614 18.7614 19.7307 17.5845 19.6757L16.071 19.6049C15.4761 19.5771 14.8998 19.8158 14.4989 20.2561L13.4787 21.3763C12.6853 22.2475 11.3147 22.2475 10.5213 21.3763L9.50111 20.2561C9.10016 19.8158 8.52388 19.5771 7.92905 19.6049L6.41553 19.6757C5.23857 19.7307 4.26934 18.7614 4.32435 17.5845L4.39508 16.071C4.42288 15.4761 4.18418 14.8998 3.74391 14.4989L2.62368 13.4787C1.75255 12.6853 1.75255 11.3147 2.62368 10.5213L3.74391 9.50111C4.18418 9.10016 4.42288 8.52388 4.39508 7.92905L4.32435 6.41553C4.26934 5.23857 5.23857 4.26934 6.41554 4.32435L7.92905 4.39508C8.52388 4.42288 9.10016 4.18418 9.50111 3.74391L10.5213 2.62368Z"
+      stroke={color}
+      strokeWidth="1.5"
+    />
+    <Path
+      d="M9 12L11 14L15 10"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Edit icon component
+const EditIcon = ({ color, size = 24 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path
+      d="M7.23611 7C7.71115 6.46924 8 5.76835 8 5C8 3.34315 6.65685 2 5 2C3.34315 2 2 3.34315 2 5C2 6.65685 3.34315 8 5 8C5.8885 8 6.68679 7.61375 7.23611 7ZM7.23611 7L20 18"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M7.23611 17C7.71115 17.5308 8 18.2316 8 19C8 20.6569 6.65685 22 5 22C3.34315 22 2 20.6569 2 19C2 17.3431 3.34315 16 5 16C5.8885 16 6.68679 16.3863 7.23611 17ZM7.23611 17L20 6"
+      stroke={color}
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+// Get avatar border color based on role
+const getAvatarBorderColor = (role: string) => {
+  switch (role) {
+    case 'developer':
+      return '#22c55e'; // green
+    case 'official':
+      return '#eab308'; // yellow
+    case 'user':
+    default:
+      return '#06b6d4'; // cyan
+  }
+};
+
+// Get badge color based on role
+const getBadgeColor = (role: string) => {
+  switch (role) {
+    case 'developer':
+      return '#22c55e'; // green
+    case 'official':
+      return '#eab308'; // yellow
+    default:
+      return '#06b6d4'; // cyan
+  }
+};
+
+// Get avatar gradient colors based on role
+const getAvatarGradientColors = (role: string): [string, string, string] => {
+  const baseColor = getAvatarBorderColor(role);
+  switch (role) {
+    case 'developer':
+      return [baseColor, '#10b981', '#059669']; // green gradient
+    case 'official':
+      return [baseColor, '#fbbf24', '#f59e0b']; // yellow/orange gradient
+    case 'user':
+    default:
+      return [baseColor, '#8b5cf6', '#f97316']; // cyan to purple to orange
+  }
+};
+
+
+function ProfileScreen() {
+  const { user: currentUser } = useAuth();
   const profileState = useProfile();
-  const [editing, setEditing] = useState(false);
-  const [editData, setEditData] = useState<Partial<ProfileData>>({});
-  const [saving, setSaving] = useState(false);
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
+  // MVP: Gear showcase is disabled
+  // const [gearImages, setGearImages] = useState<{ board: string | null; binding: string | null; boots: string | null }>({
+  //   board: null,
+  //   binding: null,
+  //   boots: null,
+  // });
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [headerUrl, setHeaderUrl] = useState<string | null>(null);
+  // const [currentGearIndex, setCurrentGearIndex] = useState(0);
 
-  const handleSignOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      router.replace('/(auth)/sign-in');
-    } catch (error) {
-      console.error('Sign out error:', error);
-      Alert.alert('エラー', 'ログアウトに失敗しました');
-    }
-  };
+  // Load profile images and gear images
+  useEffect(() => {
+    const loadImages = async () => {
+      if (profileState.status !== 'success') return;
 
-  const handleSave = async () => {
-    setSaving(true);
-    const result = await updateProfile({
-      displayName: editData.displayName || undefined,
-      bio: editData.bio || undefined,
-      level: editData.level || undefined,
-      styles: editData.styles,
-    });
+      const profile = profileState.data;
 
-    setSaving(false);
+      // Load avatar image
+      if (profile.avatarUrl) {
+        // avatarUrlがフルパスの場合はそのまま使用、そうでない場合はストレージから取得
+        if (profile.avatarUrl.startsWith('http')) {
+          setAvatarUrl(profile.avatarUrl);
+        } else {
+          const { data } = supabase.storage.from('profile_avatar').getPublicUrl(profile.avatarUrl);
+          setAvatarUrl(data.publicUrl);
+        }
+      } else {
+        setAvatarUrl(null);
+      }
 
-    if (result.success) {
-      setEditing(false);
-      Alert.alert('保存完了', 'プロフィールを更新しました。');
-    } else {
-      Alert.alert('エラー', result.error || '保存に失敗しました。');
-    }
-  };
+      // Load header image
+      if (profile.headerUrl) {
+        // headerUrlがフルパスの場合はそのまま使用、そうでない場合はストレージから取得
+        if (profile.headerUrl.startsWith('http')) {
+          setHeaderUrl(profile.headerUrl);
+        } else {
+          const { data } = supabase.storage.from('profile_header').getPublicUrl(profile.headerUrl);
+          setHeaderUrl(data.publicUrl);
+        }
+      } else {
+        setHeaderUrl(null);
+      }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' });
+      // MVP: Gear images loading is disabled
+      // // Load gear images
+      // if (!profile.gear) return;
+
+      // const images: any = { board: null, binding: null, boots: null };
+      // const gear = profile.gear;
+
+      // // Check 'others' field first for explicit image paths
+      // if (gear.others?.board_image) {
+      //   const { data } = supabase.storage.from('boards').getPublicUrl(gear.others.board_image);
+      //   images.board = data.publicUrl;
+      // } else if (gear.board) {
+      //   const { data } = supabase.storage.from('boards').getPublicUrl(gear.board);
+      //   images.board = data.publicUrl;
+      // }
+
+      // if (gear.others?.binding_image) {
+      //   const { data } = supabase.storage.from('bindings').getPublicUrl(gear.others.binding_image);
+      //   images.binding = data.publicUrl;
+      // } else if (gear.binding) {
+      //   const { data } = supabase.storage.from('bindings').getPublicUrl(gear.binding);
+      //   images.binding = data.publicUrl;
+      // }
+
+      // if (gear.others?.boots_image) {
+      //   const { data } = supabase.storage.from('boots').getPublicUrl(gear.others.boots_image);
+      //   images.boots = data.publicUrl;
+      // } else if (gear.boots) {
+      //   const { data } = supabase.storage.from('boots').getPublicUrl(gear.boots);
+      //   images.boots = data.publicUrl;
+      // }
+
+      // setGearImages(images);
+    };
+
+    loadImages();
+  }, [profileState]);
+
+  const getFlagEmoji = (countryCode: string | null) => {
+    if (!countryCode) return null;
+    const codePoints = countryCode
+      .toUpperCase()
+      .split('')
+      .map((char) => 127397 + char.charCodeAt(0));
+    return String.fromCodePoint(...codePoints);
   };
 
   if (profileState.status === 'loading') {
     return (
-      <View style={styles.container}>
-        <View style={styles.centered}>
-          <ActivityIndicator size="large" color={Colors[colorScheme ?? 'light'].tint} />
-          <Text style={styles.loadingText}>プロフィールを読み込み中...</Text>
-        </View>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
 
-  if (profileState.status === 'error') {
-    const isProfileNotFound = profileState.error.includes('プロフィールが見つかりません');
-
+  if (profileState.status === 'error' || !profileState.data) {
     return (
-      <View style={styles.container}>
-        <View style={styles.centered}>
-          <Text style={styles.errorIcon}>❄️</Text>
-          <Text style={styles.errorText}>
-            {isProfileNotFound ? 'プロフィールが未作成です' : 'エラーが発生しました'}
-          </Text>
-          <Text style={styles.errorSubText}>{profileState.error}</Text>
-
-          {isProfileNotFound && (
-            <Text style={styles.errorHint}>
-              Supabase Dashboardでプロフィールを作成してください
-            </Text>
-          )}
-
-          <View style={styles.errorActions}>
-            <TouchableOpacity
-              style={styles.logoutButton}
-              onPress={handleSignOut}
-            >
-              <Text style={styles.logoutButtonText}>ログアウト</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.error }]}>プロフィールが見つかりません</Text>
       </View>
     );
   }
 
   const profile = profileState.data;
-  const displayData = editing ? { ...profile, ...editData } : profile;
+
+  // 自分のプロフィールかどうかを判定
+  const isOwnProfile = currentUser?.id === profile.userId;
+
+  // MVP: Gear showcase is disabled
+  // const gearItems = profile.gear
+  //   ? [
+  //     { type: 'BOARD', name: profile.gear.board, image: gearImages.board },
+  //     { type: 'BINDING', name: profile.gear.binding, image: gearImages.binding },
+  //     { type: 'BOOTS', name: profile.gear.boots, image: gearImages.boots },
+  //   ].filter(item => item.name || item.image)
+  //   : [];
+
+  // const handleNextGear = () => {
+  //   if (gearItems.length > 0) {
+  //     setCurrentGearIndex((prev) => (prev + 1) % gearItems.length);
+  //   }
+  // };
+
+  // const handlePrevGear = () => {
+  //   if (gearItems.length > 0) {
+  //     setCurrentGearIndex((prev) => (prev - 1 + gearItems.length) % gearItems.length);
+  //   }
+  // };
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      contentContainerStyle={[styles.contentContainer, { paddingTop: Math.max(insets.top, 16) }]}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={{ flex: 1 }} />
-        {!editing ? (
-          <TouchableOpacity
-            style={styles.editButton}
-            onPress={() => {
-              setEditData({
-                displayName: profile.displayName || '',
-                bio: profile.bio || '',
-                level: profile.level,
-                styles: profile.styles,
-              });
-              setEditing(true);
-            }}
-            activeOpacity={0.8}>
-            <IconSymbol name="pencil" size={20} color="#E5E7EB" />
-          </TouchableOpacity>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} bounces={false}>
+      {/* Header Image Section */}
+      <View style={styles.headerImageContainer}>
+        {headerUrl ? (
+          <>
+            <Image source={{ uri: headerUrl }} style={styles.headerImage} />
+            {/* Gradient overlay for blur effect at bottom */}
+            <LinearGradient
+              colors={['transparent', 'rgba(26, 32, 44, 0.4)', 'rgba(26, 32, 44, 1)']}
+              style={styles.headerGradientOverlay}
+            />
+          </>
         ) : (
-          <View style={styles.editActions}>
+          <View style={[styles.headerImagePlaceholder, { backgroundColor: colors.backgroundSecondary }]} />
+        )}
+
+        {/* Header Actions */}
+        {isOwnProfile ? (
+          // 自分のプロフィール - 編集ボタンを表示
+          <View style={styles.headerActions}>
             <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={() => {
-                setEditing(false);
-                setEditData({});
-              }}
-              activeOpacity={0.8}>
-              <Text style={styles.cancelButtonText}>キャンセル</Text>
+              style={styles.headerActionButton}
+              onPress={() => router.push('/edit-profile')}
+            >
+              <EditIcon color="#fff" size={24} />
             </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.saveButton}
-              onPress={handleSave}
-              disabled={saving}
-              activeOpacity={0.8}>
-              {saving ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Text style={styles.saveButtonText}>保存</Text>
+          </View>
+        ) : (
+          // 他のユーザーのプロフィール - 星とブロックボタンを表示
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.headerActionButton}>
+              <Ionicons name="star-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.headerActionButton}>
+              <Ionicons name="ban-outline" size={24} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Profile Info Overlay */}
+        <View style={styles.profileInfoOverlay}>
+          {/* Avatar on the left with gradient ring */}
+          <View style={styles.avatarOuterContainer}>
+            <LinearGradient
+              colors={getAvatarGradientColors(profile.role)}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.avatarGradientRing}
+            >
+              <View style={[styles.avatarInnerContainer, { backgroundColor: colors.background }]}>
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.backgroundSecondary }]}>
+                    <Ionicons name="person" size={40} color={colors.icon} />
+                  </View>
+                )}
+              </View>
+            </LinearGradient>
+            {/* Official Badge for developer and official roles */}
+            {(profile.role === 'developer' || profile.role === 'official') && (
+              <View style={[styles.badgeContainer, { backgroundColor: colors.background, borderColor: colors.background }]}>
+                <OfficialBadge color={getBadgeColor(profile.role)} size={24} />
+              </View>
+            )}
+          </View>
+
+          {/* User Info on the right */}
+          <View style={styles.userInfoContainer}>
+            {/* Username */}
+            <Text style={[styles.userName, { color: colors.text }]}>{profile.displayName || 'NO NAME'}</Text>
+
+            {/* Country Flag */}
+            {profile.countryCode && (
+              <View style={styles.flagRow}>
+                <Text style={styles.flagEmoji}>{getFlagEmoji(profile.countryCode)}</Text>
+              </View>
+            )}
+
+            {/* Tags Row */}
+            <View style={styles.tagsRow}>
+              {profile.homeResortName && (
+                <Text style={[styles.tag, { color: colors.textSecondary }]}>#{profile.homeResortName}</Text>
               )}
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      {/* Profile Header */}
-      <View style={styles.profileHeader}>
-        <View style={styles.avatarContainer}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {displayData.displayName?.charAt(0).toUpperCase() || 'U'}
-            </Text>
-          </View>
-        </View>
-        {editing ? (
-          <TextInput
-            style={styles.nameInput}
-            value={editData.displayName || ''}
-            onChangeText={(text) => setEditData({ ...editData, displayName: text })}
-            placeholder="表示名"
-            placeholderTextColor="#9CA3AF"
-          />
-        ) : (
-          <Text style={styles.profileName}>
-            {displayData.displayName || '未設定'}
-          </Text>
-        )}
-        {displayData.homeResortName && (
-          <Text style={styles.profileResort}>{displayData.homeResortName}</Text>
-        )}
-      </View>
-
-      {/* Stats */}
-      <View style={styles.statsContainer}>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{profile.stats.eventsJoined}</Text>
-          <Text style={styles.statLabel}>イベント</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{profile.stats.postsCount}</Text>
-          <Text style={styles.statLabel}>投稿</Text>
-        </View>
-        <View style={styles.statItem}>
-          <Text style={styles.statValue}>{profile.stats.starsReceived}</Text>
-          <Text style={styles.statLabel}>スター</Text>
-        </View>
-      </View>
-
-      {/* Bio */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>自己紹介</Text>
-        {editing ? (
-          <TextInput
-            style={styles.bioInput}
-            value={editData.bio || ''}
-            onChangeText={(text) => setEditData({ ...editData, bio: text })}
-            placeholder="自己紹介を入力..."
-            placeholderTextColor="#9CA3AF"
-            multiline
-            numberOfLines={4}
-            maxLength={500}
-          />
-        ) : (
-          <Text style={styles.bioText}>
-            {displayData.bio || '自己紹介が設定されていません。'}
-          </Text>
-        )}
-      </View>
-
-      {/* Level & Styles */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>スキルレベル</Text>
-        <View style={styles.levelContainer}>
-          {(['beginner', 'intermediate', 'advanced'] as const).map((level) => (
-            <TouchableOpacity
-              key={level}
-              style={[
-                styles.levelChip,
-                displayData.level === level && styles.levelChipActive,
-                !editing && styles.levelChipDisabled,
-              ]}
-              onPress={() => {
-                if (editing) {
-                  setEditData({ ...editData, level });
-                }
-              }}
-              disabled={!editing}
-              activeOpacity={0.8}>
-              <Text
-                style={[
-                  styles.levelChipText,
-                  displayData.level === level && styles.levelChipTextActive,
-                ]}>
-                {level === 'beginner' ? '初級' : level === 'intermediate' ? '中級' : '上級'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Gear */}
-      {profile.gear && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ギア</Text>
-          <View style={styles.gearContainer}>
-            {profile.gear.board && (
-              <View style={styles.gearItem}>
-                <Text style={styles.gearLabel}>ボード</Text>
-                <Text style={styles.gearValue}>{profile.gear.board}</Text>
-              </View>
-            )}
-            {profile.gear.binding && (
-              <View style={styles.gearItem}>
-                <Text style={styles.gearLabel}>ビンディング</Text>
-                <Text style={styles.gearValue}>{profile.gear.binding}</Text>
-              </View>
-            )}
-            {profile.gear.boots && (
-              <View style={styles.gearItem}>
-                <Text style={styles.gearLabel}>ブーツ</Text>
-                <Text style={styles.gearValue}>{profile.gear.boots}</Text>
-              </View>
-            )}
-          </View>
-        </View>
-      )}
-
-      {/* Recent Events */}
-      {profile.recentEvents.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>最近参加したイベント</Text>
-          {profile.recentEvents.map((event) => (
-            <View key={event.id} style={styles.activityItem}>
-              <IconSymbol name="calendar" size={16} color="#9CA3AF" />
-              <View style={styles.activityContent}>
-                <Text style={styles.activityTitle}>{event.title}</Text>
-                {event.resortName && (
-                  <Text style={styles.activitySubtitle}>{event.resortName}</Text>
-                )}
-                <Text style={styles.activityTime}>{formatDate(event.startAt)}</Text>
-              </View>
+              {profile.level && (
+                <Text style={[styles.tag, { color: colors.textSecondary }]}>#{profile.level.toUpperCase()}</Text>
+              )}
+              {profile.styles && profile.styles.length > 0 && profile.styles.slice(0, 2).map((style, index) => (
+                <Text key={index} style={[styles.tag, { color: colors.textSecondary }]}>#{style.toUpperCase()}</Text>
+              ))}
+              {profile.languages && profile.languages.length > 0 && profile.languages.map((lang, index) => (
+                <Text key={`lang-${index}`} style={[styles.tag, { color: colors.textSecondary }]}>#{lang.toUpperCase()}</Text>
+              ))}
             </View>
-          ))}
+          </View>
         </View>
-      )}
-
-      {/* Recent Posts */}
-      {profile.recentPosts.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>最近の投稿</Text>
-          {profile.recentPosts.map((post) => (
-            <View key={post.id} style={styles.activityItem}>
-              <IconSymbol name="text.bubble" size={16} color="#9CA3AF" />
-              <View style={styles.activityContent}>
-                <Text style={styles.activityText} numberOfLines={2}>
-                  {post.text || '投稿内容なし'}
-                </Text>
-                {post.resortName && (
-                  <Text style={styles.activitySubtitle}>{post.resortName}</Text>
-                )}
-                <Text style={styles.activityTime}>{formatDate(post.createdAt)}</Text>
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {/* Logout Button */}
-      <View style={styles.section}>
-        <TouchableOpacity
-          style={styles.logoutButton}
-          onPress={() => {
-            Alert.alert(
-              'ログアウト',
-              'ログアウトしますか？',
-              [
-                { text: 'キャンセル', style: 'cancel' },
-                { text: 'ログアウト', onPress: handleSignOut, style: 'destructive' },
-              ]
-            );
-          }}
-        >
-          <Text style={styles.logoutButtonText}>ログアウト</Text>
-        </TouchableOpacity>
       </View>
+
+      {/* Bio Section */}
+      {profile.bio && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>自己紹介</Text>
+          <Text style={[styles.bioText, { color: colors.textSecondary }]}>{profile.bio}</Text>
+        </View>
+      )}
+
+      {/* MVP: Gear Showcase is disabled */}
+      {/* {gearItems.length > 0 && (
+        <View style={styles.section}>
+          <View style={styles.gearHeaderRow}>
+            <Text style={styles.sectionTitle}>ギア紹介</Text>
+            <Ionicons name="chevron-up" size={20} color="#fff" />
+          </View>
+
+          <View style={styles.gearCard}>
+            <View style={styles.gearImageContainer}>
+              <TouchableOpacity style={styles.navButton} onPress={handlePrevGear}>
+                <Ionicons name="chevron-back" size={24} color="#fff" />
+              </TouchableOpacity>
+
+              {gearItems[currentGearIndex]?.image ? (
+                <Image
+                  source={{ uri: gearItems[currentGearIndex].image }}
+                  style={styles.gearImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <View style={styles.gearImagePlaceholder}>
+                  <Ionicons name="image-outline" size={64} color="#64748b" />
+                  <Text style={styles.gearPlaceholderText}>画像なし</Text>
+                </View>
+              )}
+
+              <TouchableOpacity style={styles.navButton} onPress={handleNextGear}>
+                <Ionicons name="chevron-forward" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.gearInfo}>
+              <Text style={styles.gearType}>{gearItems[currentGearIndex]?.type}</Text>
+              <Text style={styles.gearName}>{gearItems[currentGearIndex]?.name || 'Unknown Model'}</Text>
+            </View>
+          </View>
+        </View>
+      )} */}
+
+      <View style={{ height: 100 }} />
     </ScrollView>
   );
 }
@@ -341,273 +391,245 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A202C',
-  },
-  contentContainer: {
-    paddingBottom: 120,
+    // backgroundColor is set dynamically in the component
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-  },
-  loadingText: {
-    marginTop: 16,
-    color: '#E5E7EB',
-    fontSize: 16,
+    // backgroundColor is set dynamically in the component
   },
   errorText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#F87171',
-    marginBottom: 8,
-    textAlign: 'center',
+    // color is set dynamically in the component
+    fontSize: 16,
   },
-  errorSubText: {
-    fontSize: 14,
-    color: '#E5E7EB',
-    textAlign: 'center',
-    marginBottom: 8,
+  headerImageContainer: {
+    height: width * 0.7,
+    position: 'relative',
   },
-  errorIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  errorHint: {
-    fontSize: 13,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 32,
-  },
-  errorActions: {
+  headerImage: {
     width: '100%',
-    paddingHorizontal: 32,
+    height: '100%',
+  },
+  headerImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    // backgroundColor is set dynamically in the component
+  },
+  headerGradientOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '50%',
+  },
+  headerActions: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    flexDirection: 'row',
     gap: 12,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 48,
-    paddingBottom: 16,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  editButton: {
+  headerActionButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2D3748',
+  },
+  settingsButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    width: 40,
+    height: 40,
     borderRadius: 20,
-  },
-  editActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancelButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#2D3748',
-  },
-  cancelButtonText: {
-    color: '#E5E7EB',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  saveButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#5A7D9A',
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  profileHeader: {
+    backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 16,
+    justifyContent: 'center',
+  },
+  profileInfoOverlay: {
+    position: 'absolute',
+    bottom: -160,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    paddingTop: 40,
+  },
+  avatarOuterContainer: {
+    position: 'relative',
+    marginRight: 16,
+    marginTop: -30,
+  },
+  avatarGradientRing: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    padding: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInnerContainer: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    overflow: 'hidden',
+    // backgroundColor is set dynamically in the component
   },
   avatarContainer: {
-    marginBottom: 16,
+    position: 'relative',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 4,
+    overflow: 'visible',
+    marginRight: 16,
   },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#5A7D9A',
+  badgeContainer: {
+    position: 'absolute',
+    top: -4,
+    right: -2,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    // backgroundColor and borderColor are set dynamically in the component
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: '#1E293B',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 1, height: 1 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
+    elevation: 3,
   },
-  avatarText: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+  avatar: {
+    width: 112,
+    height: 112,
+    borderRadius: 56,
   },
-  profileName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  nameInput: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
-    padding: 8,
-    backgroundColor: '#2D3748',
-    borderRadius: 8,
-    minWidth: 200,
-    textAlign: 'center',
-  },
-  profileResort: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 24,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: '#1E293B',
-  },
-  statItem: {
+  avatarPlaceholder: {
+    // backgroundColor is set dynamically in the component
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  statValue: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
+  userInfoContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
   },
-  statLabel: {
-    fontSize: 14,
-    color: '#9CA3AF',
+  userName: {
+    fontSize: 26,
+    fontWeight: '900',
+    // color is set dynamically in the component
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  flagRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  flagEmoji: {
+    fontSize: 22,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tag: {
+    // color is set dynamically in the component
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   section: {
-    padding: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#1E293B',
+    paddingHorizontal: 20,
+    marginTop: 24,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    // color is set dynamically in the component
     marginBottom: 12,
+    letterSpacing: 1,
+    marginTop: 130,
   },
   bioText: {
-    fontSize: 15,
-    color: '#E5E7EB',
-    lineHeight: 22,
-  },
-  bioInput: {
-    fontSize: 15,
-    color: '#E5E7EB',
-    backgroundColor: '#2D3748',
-    borderRadius: 8,
-    padding: 12,
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  levelContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  levelChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#2D3748',
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  levelChipActive: {
-    backgroundColor: '#5A7D9A',
-    borderColor: '#5A7D9A',
-  },
-  levelChipDisabled: {
-    opacity: 1,
-  },
-  levelChipText: {
+    // color is set dynamically in the component
     fontSize: 14,
-    fontWeight: '600',
-    color: '#9CA3AF',
+    lineHeight: 20,
   },
-  levelChipTextActive: {
-    color: '#FFFFFF',
-  },
-  gearContainer: {
-    gap: 12,
-  },
-  gearItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#1E293B',
-  },
-  gearLabel: {
-    fontSize: 14,
-    color: '#9CA3AF',
-  },
-  gearValue: {
-    fontSize: 14,
-    color: '#E5E7EB',
-    fontWeight: '600',
-  },
-  activityItem: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#1E293B',
-  },
-  activityContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  activityTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  activityText: {
-    fontSize: 15,
-    color: '#E5E7EB',
-    marginBottom: 4,
-  },
-  activitySubtitle: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginBottom: 2,
-  },
-  activityTime: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  logoutButton: {
-    paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: '#EF4444',
-    alignItems: 'center',
-  },
-  logoutButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  // MVP: Gear styles are disabled
+  // gearHeaderRow: {
+  //   flexDirection: 'row',
+  //   justifyContent: 'space-between',
+  //   alignItems: 'center',
+  //   marginBottom: 12,
+  // },
+  // gearCard: {
+  //   backgroundColor: '#1e293b',
+  //   borderRadius: 16,
+  //   overflow: 'hidden',
+  //   borderWidth: 1,
+  //   borderColor: '#334155',
+  // },
+  // gearImageContainer: {
+  //   height: 220,
+  //   backgroundColor: '#334155',
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   justifyContent: 'space-between',
+  //   paddingHorizontal: 8,
+  // },
+  // gearImage: {
+  //   flex: 1,
+  //   height: '90%',
+  // },
+  // gearImagePlaceholder: {
+  //   flex: 1,
+  //   justifyContent: 'center',
+  //   alignItems: 'center',
+  // },
+  // gearPlaceholderText: {
+  //   color: '#64748b',
+  //   fontSize: 14,
+  //   marginTop: 8,
+  // },
+  // navButton: {
+  //   width: 36,
+  //   height: 36,
+  //   borderRadius: 18,
+  //   backgroundColor: 'rgba(0,0,0,0.5)',
+  //   alignItems: 'center',
+  //   justifyContent: 'center',
+  // },
+  // gearInfo: {
+  //   padding: 16,
+  //   alignItems: 'center',
+  //   backgroundColor: '#0f172a',
+  // },
+  // gearType: {
+  //   color: '#94a3b8',
+  //   fontSize: 11,
+  //   fontWeight: 'bold',
+  //   marginBottom: 4,
+  //   letterSpacing: 1,
+  // },
+  // gearName: {
+  //   color: '#fff',
+  //   fontSize: 18,
+  //   fontWeight: 'bold',
+  //   textTransform: 'uppercase',
+  //   letterSpacing: 0.5,
+  // },
 });
+
+export default ProfileScreen;

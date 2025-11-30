@@ -101,7 +101,7 @@ async function uploadImageToSupabase(
 
     console.log('✅ Upload successful:', data);
 
-    // パブリックURLを取得
+    // パブリックURLを取得して返す
     const { data: urlData } = supabase.storage
       .from(bucketName)
       .getPublicUrl(filePath);

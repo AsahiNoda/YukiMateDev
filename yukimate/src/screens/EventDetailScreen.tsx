@@ -8,6 +8,7 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Image,
   ScrollView,
   StyleSheet,
@@ -16,8 +17,6 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import BackArrowIcon from '../../assets/images/icons/back-arrow.svg';
-import BookmarkIcon from '../../assets/images/icons/bookmark.svg';
 
 interface EventDetail {
   id: string;
@@ -230,46 +229,73 @@ export default function EventDetailScreen() {
     );
   }
 
+  const { width: screenWidth } = Dimensions.get('window');
+
   return (
     <View style={styles.container}>
+      {/* ヘッダーバー */}
+      <View style={[styles.headerBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => router.back()}
+          activeOpacity={0.7}
+        >
+          <IconSymbol name="chevron.left" size={24} color="#E5E7EB" />
+        </TouchableOpacity>
+
+        {/* ブックマークボタン（自分の投稿以外のみ表示） */}
+        {!event.isHost ? (
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={toggleBookmark}
+            activeOpacity={0.7}
+            disabled={bookmarkLoading}
+          >
+            <IconSymbol
+              name={isBookmarked ? "bookmark.fill" : "bookmark"}
+              size={24}
+              color={isBookmarked ? "#FFD700" : "#E5E7EB"}
+            />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerButton} />
+        )}
+      </View>
+
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* ヘッダー画像 */}
         {event.photos.length > 0 && (
           <View style={styles.headerImageContainer}>
-            <TouchableOpacity
-              onPress={() => openImageViewer(event.photos[0])}
-              activeOpacity={0.9}
+            <ScrollView
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              style={styles.imageScrollView}
             >
-              <Image
-                source={{ uri: event.photos[0] }}
-                style={styles.headerImage}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
+              {event.photos.map((photo, index) => (
+                <TouchableOpacity
+                  key={index}
+                  onPress={() => openImageViewer(photo)}
+                  activeOpacity={0.9}
+                  style={{ width: screenWidth }}
+                >
+                  <Image
+                    source={{ uri: photo }}
+                    style={styles.headerImage}
+                    resizeMode="cover"
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
-            {/* 戻るボタン */}
-            <TouchableOpacity
-              style={[styles.backButtonIcon, { top: insets.top + 16 }]}
-              onPress={() => router.back()}
-              activeOpacity={0.7}
-            >
-              <BackArrowIcon width={24} height={24} stroke="#FFFFFF" />
-            </TouchableOpacity>
-
-            {/* ブックマークボタン */}
-            <TouchableOpacity
-              style={[styles.bookmarkButton, { top: insets.top + 16 }]}
-              onPress={toggleBookmark}
-              activeOpacity={0.7}
-              disabled={bookmarkLoading}
-            >
-              <BookmarkIcon
-                width={24}
-                height={24}
-                stroke={isBookmarked ? "#FFD700" : "#FFFFFF"}
-                fill={isBookmarked ? "#FFD700" : "none"}
-              />
-            </TouchableOpacity>
+            {/* 画像インジケーター */}
+            {event.photos.length > 1 && (
+              <View style={styles.imageIndicatorContainer}>
+                {event.photos.map((_, index) => (
+                  <View key={index} style={styles.imageIndicatorDot} />
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -351,9 +377,7 @@ export default function EventDetailScreen() {
               <Text style={styles.tagsSectionTitle}>タグ</Text>
               <View style={styles.tagsContainer}>
                 {event.tags.map((tag, index) => (
-                  <View key={index} style={styles.tag}>
-                    <Text style={styles.tagText}>#{tag}</Text>
-                  </View>
+                  <Text style={styles.tagText} key={index}>#{tag}</Text>
                 ))}
               </View>
             </View>
@@ -391,10 +415,10 @@ export default function EventDetailScreen() {
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => {
-              Alert.alert('開発中', '申請管理機能は開発中です');
+              router.push(`/create?eventId=${event.id}`);
             }}
           >
-            <Text style={styles.actionButtonText}>投稿を管理</Text>
+            <Text style={styles.actionButtonText}>投稿を編集</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -430,6 +454,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#1A202C',
+  },
+  headerBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+    backgroundColor: '#1A202C',
+    zIndex: 10,
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollView: {
     flex: 1,
@@ -471,17 +510,35 @@ const styles = StyleSheet.create({
     height: 400,
     position: 'relative',
   },
+  imageScrollView: {
+    width: '100%',
+    height: '100%',
+  },
   headerImage: {
     width: '100%',
     height: '100%',
+  },
+  imageIndicatorContainer: {
+    position: 'absolute',
+    bottom: 16,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  imageIndicatorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
   },
   backButtonIcon: {
     position: 'absolute',
     left: 16,
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
@@ -491,8 +548,6 @@ const styles = StyleSheet.create({
     right: 16,
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,

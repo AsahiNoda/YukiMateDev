@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
 import { supabase } from '@lib/supabase';
 import type { ProfileData, SkillLevel } from '@types';
+import { useEffect, useState } from 'react';
 
 type ProfileState =
   | { status: 'loading' }
@@ -25,7 +25,7 @@ export function useProfile(userId?: string): ProfileState {
 
         const targetUserId = userId || session.user.id;
 
-        // 1. プロフィール情報を取得
+        // 1. プロフィール情報とユーザーロールを取得
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select(
@@ -38,7 +38,9 @@ export function useProfile(userId?: string): ProfileState {
             level,
             styles,
             bio,
-            home_resort_id
+            home_resort_id,
+            header_url,
+            users!inner(role)
           `
           )
           .eq('user_id', targetUserId)
@@ -73,7 +75,7 @@ export function useProfile(userId?: string): ProfileState {
         // 2. ギア情報を取得
         const { data: gear, error: gearError } = await supabase
           .from('gear')
-          .select('board, binding, boots, others')
+          .select('board_name, binding_name, boots_name, others')
           .eq('user_id', targetUserId)
           .single();
 
@@ -196,11 +198,11 @@ export function useProfile(userId?: string): ProfileState {
             homeResortName: homeResortName,
             gear: gear
               ? {
-                  board: gear.board,
-                  binding: gear.binding,
-                  boots: gear.boots,
-                  others: gear.others,
-                }
+                board: gear.board_name,
+                binding: gear.binding_name,
+                boots: gear.boots_name,
+                others: gear.others,
+              }
               : null,
             stats: {
               eventsJoined: eventsResult.count || 0,
@@ -209,6 +211,8 @@ export function useProfile(userId?: string): ProfileState {
             },
             recentEvents,
             recentPosts,
+            headerUrl: profile.header_url,
+            role: (profile as any).users?.role || 'user',
           },
         });
       } catch (error) {
@@ -251,19 +255,23 @@ export async function updateProfile(
       return { success: false, error: 'ユーザーがログインしていません。' };
     }
 
+    // Build update object, excluding undefined values
+    const updateData: Record<string, any> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (updates.displayName !== undefined) updateData.display_name = updates.displayName;
+    if (updates.avatarUrl !== undefined) updateData.avatar_url = updates.avatarUrl;
+    if (updates.countryCode !== undefined) updateData.country_code = updates.countryCode;
+    if (updates.languages !== undefined) updateData.languages = updates.languages;
+    if (updates.level !== undefined) updateData.level = updates.level;
+    if (updates.styles !== undefined) updateData.styles = updates.styles;
+    if (updates.bio !== undefined) updateData.bio = updates.bio;
+    if (updates.homeResortId !== undefined) updateData.home_resort_id = updates.homeResortId;
+
     const { error } = await supabase
       .from('profiles')
-      .update({
-        display_name: updates.displayName,
-        avatar_url: updates.avatarUrl,
-        country_code: updates.countryCode,
-        languages: updates.languages,
-        level: updates.level,
-        styles: updates.styles,
-        bio: updates.bio,
-        home_resort_id: updates.homeResortId,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('user_id', session.user.id);
 
     if (error) {
@@ -296,6 +304,13 @@ export async function updateGear(
       return { success: false, error: 'ユーザーがログインしていません。' };
     }
 
+    // Map frontend fields to DB columns
+    const dbUpdates: any = {};
+    if (updates.board !== undefined) dbUpdates.board_name = updates.board;
+    if (updates.binding !== undefined) dbUpdates.binding_name = updates.binding;
+    if (updates.boots !== undefined) dbUpdates.boots_name = updates.boots;
+    if (updates.others !== undefined) dbUpdates.others = updates.others;
+
     // 既存のギアを確認
     const { data: existing } = await supabase
       .from('gear')
@@ -307,7 +322,7 @@ export async function updateGear(
       // 更新
       const { error } = await supabase
         .from('gear')
-        .update(updates)
+        .update(dbUpdates)
         .eq('user_id', session.user.id);
 
       if (error) {
@@ -317,7 +332,7 @@ export async function updateGear(
       // 新規作成
       const { error } = await supabase.from('gear').insert({
         user_id: session.user.id,
-        ...updates,
+        ...dbUpdates,
       });
 
       if (error) {

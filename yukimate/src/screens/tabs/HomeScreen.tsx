@@ -45,18 +45,18 @@ export default function HomeScreen() {
 
   if (state.status === 'loading') {
     return (
-      <View style={styles.centered}>
+      <View style={[styles.centered, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
         <ActivityIndicator />
-        <Text style={styles.loadingText}>Loading today&apos;s conditions...</Text>
+        <Text style={[styles.loadingText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>Loading today&apos;s conditions...</Text>
       </View>
     );
   }
 
   if (state.status === 'error') {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>Failed to load home data.</Text>
-        <Text style={styles.errorSubText}>{state.error}</Text>
+      <View style={[styles.centered, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+        <Text style={[styles.errorText, { color: Colors[colorScheme ?? 'light'].error }]}>Failed to load home data.</Text>
+        <Text style={[styles.errorSubText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{state.error}</Text>
       </View>
     );
   }
@@ -64,25 +64,26 @@ export default function HomeScreen() {
   const { weather, recommendedEvents, suggestedEvents, trendingPosts } = state.data;
 
   return (
-    <ScrollView 
-      style={styles.container} 
+    <ScrollView
+      style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}
       contentContainerStyle={[styles.contentContainer, { paddingTop: Math.max(insets.top, 16) }]}
-      overflow="visible" // スクロールビュー自体のクリッピングを解除（念の為）
     >
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>YukiMate</Text>
+          <Text style={[styles.title, { color: Colors[colorScheme ?? 'light'].text }]}>YukiMate</Text>
         </View>
         <TouchableOpacity
-          style={styles.profileButton}
+          style={[styles.profileButton, {
+            backgroundColor: Colors[colorScheme ?? 'light'].backgroundSecondary,
+            borderColor: Colors[colorScheme ?? 'light'].border
+          }]}
           activeOpacity={0.8}
           onPress={() => {
-            // TODO: Navigate to settings screen when implemented
-            console.log('Settings button pressed - Not yet implemented');
+            router.push('/settings');
           }}
         >
-          <IconSymbol name="gearshape" size={20} color="#E5E7EB" />
+          <IconSymbol name="gearshape" size={20} color={Colors[colorScheme ?? 'light'].icon} />
         </TouchableOpacity>
       </View>
 
@@ -108,15 +109,15 @@ export default function HomeScreen() {
 
             {/* コンテンツ */}
             <View style={styles.weatherCardContent}>
-              <Text style={styles.weatherResort}>{weather.resortName}</Text>
+              <Text style={[styles.weatherResort, { color: Colors[colorScheme ?? 'light'].text }]}>{weather.resortName}</Text>
 
               <View style={styles.weatherTopRow}>
-                <Text style={styles.weatherTemp}>{weather.temperatureC}°C</Text>
+                <Text style={[styles.weatherTemp, { color: Colors[colorScheme ?? 'light'].text }]}>{weather.temperatureC}°C</Text>
                 <View style={styles.weatherSnowRow}>
                   <Text style={styles.weatherSnowIcon}>❄️</Text>
-                  <Text style={styles.weatherBody}>{weather.snowDepthCm}cm</Text>
+                  <Text style={[styles.weatherBody, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{weather.snowDepthCm}cm</Text>
                 </View>
-                <Text style={styles.weatherBody}>New Snow: {weather.newSnowCm}cm</Text>
+                <Text style={[styles.weatherBody, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>New Snow: {weather.newSnowCm}cm</Text>
               </View>
 
               <View style={styles.weatherChipRow}>
@@ -128,12 +129,12 @@ export default function HomeScreen() {
 
               <View style={styles.weatherBottomRow}>
                 <View style={styles.metaColumn}>
-                  <Text style={styles.metaText}>Wind: {weather.windSpeedMs} m/s</Text>
-                  <Text style={styles.metaText}>Humidity: 85%</Text>
+                  <Text style={[styles.metaText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>Wind: {weather.windSpeedMs} m/s</Text>
+                  <Text style={[styles.metaText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>Humidity: 85%</Text>
                 </View>
                 <View style={styles.metaColumn}>
-                  <Text style={styles.metaText}>Visibility: Good</Text>
-                  <Text style={styles.metaText}>Snow Quality: Powder</Text>
+                  <Text style={[styles.metaText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>Visibility: Good</Text>
+                  <Text style={[styles.metaText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>Snow Quality: Powder</Text>
                 </View>
               </View>
             </View>
@@ -171,8 +172,8 @@ export default function HomeScreen() {
 
       {/* Suggested events */}
       {recommendedEvents.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Suggested events</Text>
+        <View style={[styles.section, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
+          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>Suggested events</Text>
           {recommendedEvents.map((evt) => (
             <TouchableOpacity
               key={evt.id}
@@ -180,8 +181,8 @@ export default function HomeScreen() {
               activeOpacity={0.8}
               onPress={() => router.push('/event-detail')}
             >
-              <Text style={styles.cardTitle}>{evt.title}</Text>
-              <Text style={styles.cardBody}>
+              <Text style={[styles.cardTitle, { color: Colors[colorScheme ?? 'light'].text }]}>{evt.title}</Text>
+              <Text style={[styles.cardBody, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>
                 {evt.resortName} · {evt.spotsTaken}/{evt.capacityTotal} spots ·{' '}
                 {evt.pricePerPersonJpy > 0
                   ? `¥${evt.pricePerPersonJpy.toLocaleString()}`
@@ -194,8 +195,8 @@ export default function HomeScreen() {
 
       {/* Local hub / trend section (Snowfeed) */}
       {trendingPosts.length > 0 && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Local Hub Spotlight</Text>
+        <View style={[styles.section, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
+          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>Local Hub Spotlight</Text>
           {trendingPosts.map((post) => (
             <TouchableOpacity
               key={post.id}
@@ -203,11 +204,11 @@ export default function HomeScreen() {
               activeOpacity={0.8}
               onPress={() => router.push('/(tabs)/snowfeed')}
             >
-              <Text style={styles.cardTitle}>
+              <Text style={[styles.cardTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
                 {post.resortName} · {post.snowTag}
               </Text>
-              <Text style={styles.cardBody}>{post.comment}</Text>
-              <Text style={styles.cardMeta}>{post.likeCount} likes</Text>
+              <Text style={[styles.cardBody, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{post.comment}</Text>
+              <Text style={[styles.cardMeta, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{post.likeCount} likes</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -219,7 +220,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A202C', // 1. 一番下の背景色
+    // backgroundColor is set dynamically in the component
   },
   contentContainer: {
     padding: 16,
@@ -236,7 +237,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#FFFFFF',
+    // color is set dynamically in the component
     marginBottom: 4,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
@@ -248,9 +249,8 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#2D3748',
+    // backgroundColor and borderColor are set dynamically in the component
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#4B5563',
   },
   // 新しいラッパー: 画像とカードの配置基準
   weatherSectionWrapper: {
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
   weatherResort: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    // color is set dynamically in the component
     marginBottom: 4,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   },
   weatherBody: {
     fontSize: 14,
-    color: '#E5E7EB',
+    // color is set dynamically in the component
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
   weatherTemp: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    // color is set dynamically in the component
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -322,7 +322,6 @@ const styles = StyleSheet.create({
   },
   weatherSnowIcon: {
     fontSize: 14,
-    color: '#E5E7EB',
   },
   weatherChipRow: {
     flexDirection: 'row',
@@ -341,7 +340,7 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 12,
-    color: '#E5E7EB',
+    // color is set dynamically in the component
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
@@ -350,12 +349,12 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     padding: 16,
     borderRadius: 12,
-    backgroundColor: '#ffffff20',
+    // backgroundColor is set dynamically in the component
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    // color is set dynamically in the component
     marginBottom: 4,
   },
   quickActionsRow: {
@@ -374,12 +373,12 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ffffff20',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     marginBottom: 6,
   },
   quickActionLabel: {
     fontSize: 12,
-    color: '#E5E7EB',
+    // color is set dynamically in the component
   },
   card: {
     marginTop: 8,
@@ -388,38 +387,38 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    // color is set dynamically in the component
   },
   cardBody: {
     fontSize: 14,
-    color: '#E5E7EB',
+    // color is set dynamically in the component
   },
   cardMeta: {
     fontSize: 12,
-    color: '#9CA3AF',
+    // color is set dynamically in the component
     marginTop: 2,
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#0A1628',
+    // backgroundColor is set dynamically in the component
     padding: 16,
   },
   loadingText: {
     marginTop: 8,
-    color: '#E5E7EB',
+    // color is set dynamically in the component
   },
   errorText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F87171',
+    // color is set dynamically in the component
     marginBottom: 4,
     textAlign: 'center',
   },
   errorSubText: {
     fontSize: 14,
-    color: '#E5E7EB',
+    // color is set dynamically in the component
     textAlign: 'center',
   },
 });
@@ -432,12 +431,13 @@ type QuickActionProps = {
 };
 
 function QuickAction({ icon, label, tint, onPress }: QuickActionProps) {
+  const colorScheme = useColorScheme();
   return (
     <TouchableOpacity style={styles.quickAction} activeOpacity={0.8} onPress={onPress}>
       <View style={styles.quickActionCircle}>
         <IconSymbol name={icon} size={24} color={tint} />
       </View>
-      <Text style={styles.quickActionLabel}>{label}</Text>
+      <Text style={[styles.quickActionLabel, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -448,16 +448,18 @@ type WeatherChipProps = {
 };
 
 function WeatherChip({ label, active }: WeatherChipProps) {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
   return (
     <View
       style={{
         paddingHorizontal: 16,
         paddingVertical: 8,
         borderRadius: 18,
-        backgroundColor: active ? '#ffffff40' : '#ffffff20',
+        backgroundColor: active ? `${colors.accent}40` : `${colors.backgroundSecondary}`,
       }}
     >
-      <Text style={{ fontSize: 10, color: '#FFFFFF' }}>{label}</Text>
+      <Text style={{ fontSize: 10, color: colors.text }}>{label}</Text>
     </View>
   );
 }

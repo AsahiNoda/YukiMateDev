@@ -1,22 +1,26 @@
-import React, { useState } from 'react';
+import type { SkillLevel } from '@/types/common';
+import { IconSymbol } from '@components/ui/icon-symbol';
+import { useAuth } from '@contexts/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
+import { updateProfile, useProfile } from '@hooks/useProfile';
+import { pickAndUploadImage } from '@lib/imageUpload';
+import { supabase } from '@lib/supabase';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
   ActivityIndicator,
+  Alert,
   Image,
   Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { router } from 'expo-router';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
-import type { SkillLevel } from '@/types';
-import { pickAndUploadImage } from '@/lib/imageUpload';
-import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { COUNTRIES, getFlagSource } from '@/constants/countries';
 
 type RidingStyle = 'Freeride' | 'Powder' | 'Carving' | 'Park' | 'Backcountry';
@@ -31,18 +35,18 @@ const RIDING_STYLES: RidingStyle[] = [
   'Backcountry',
 ];
 
-export default function ProfileSetupScreen() {
-  const { user, refreshProfile } = useAuth();
-  const [loading, setLoading] = useState(false);
+export default function EditProfileScreen() {
+  const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const profileState = useProfile();
 
-  // フォーム状態
   const [displayName, setDisplayName] = useState('');
+  const [bio, setBio] = useState('');
+  const [level, setLevel] = useState<SkillLevel | null>(null);
   const [countryCode, setCountryCode] = useState('JP');
   const [languages, setLanguages] = useState<string[]>([]);
-  const [skillLevel, setSkillLevel] = useState<SkillLevel>('beginner');
   const [ridingStyle, setRidingStyle] = useState<RidingStyle[]>([]);
-  const [bio, setBio] = useState('');
-  const homeResortId = null; // 将来的にホームゲレンデ選択機能を追加予定
+  const [isSaving, setIsSaving] = useState(false);
 
   // 画像関連の状態
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -52,6 +56,21 @@ export default function ProfileSetupScreen() {
 
   // UI状態
   const [showCountryPicker, setShowCountryPicker] = useState(false);
+
+  // Load current profile data
+  useEffect(() => {
+    if (profileState.status === 'success') {
+      const profile = profileState.data;
+      setDisplayName(profile.displayName || '');
+      setBio(profile.bio || '');
+      setLevel(profile.level);
+      setCountryCode(profile.countryCode || 'JP');
+      setLanguages(profile.languages || []);
+      setRidingStyle((profile.styles as RidingStyle[]) || []);
+      setAvatarUrl(profile.avatarUrl);
+      setHeaderUrl(profile.headerUrl);
+    }
+  }, [profileState]);
 
   const toggleRidingStyle = (style: RidingStyle) => {
     if (ridingStyle.includes(style)) {
@@ -93,20 +112,9 @@ export default function ProfileSetupScreen() {
     setUploadingHeader(false);
   };
 
-  const handleSubmit = async () => {
-    // バリデーション
-    if (!user?.id) {
-      Alert.alert('エラー', 'ユーザー情報が取得できませんでした');
-      return;
-    }
-
+  const handleSave = async () => {
     if (!displayName.trim()) {
       Alert.alert('エラー', '表示名を入力してください');
-      return;
-    }
-
-    if (!countryCode) {
-      Alert.alert('エラー', '国籍を選択してください');
       return;
     }
 
@@ -115,58 +123,86 @@ export default function ProfileSetupScreen() {
       return;
     }
 
+    setIsSaving(true);
     try {
-      setLoading(true);
-
-      const { error } = await supabase.from('profiles').insert({
-        user_id: user.id,
-        display_name: displayName.trim(),
-        avatar_url: avatarUrl,
-        header_url: headerUrl,
-        country_code: countryCode,
-        languages: languages,
-        level: skillLevel,
+      const result = await updateProfile({
+        displayName: displayName.trim(),
+        bio: bio.trim() || undefined,
+        level: level || undefined,
+        countryCode,
+        languages,
         styles: ridingStyle,
-        bio: bio.trim() || null,
-        home_resort_id: homeResortId,
       });
 
-      if (error) {
-        if (error.code === '23505') {
-          Alert.alert('エラー', 'プロフィールが既に存在します');
-        } else {
-          throw error;
+      if (result.success) {
+        // Update avatar and header URLs if changed
+        if (avatarUrl || headerUrl) {
+          const updates: any = {};
+          if (avatarUrl) updates.avatar_url = avatarUrl;
+          if (headerUrl) updates.header_url = headerUrl;
+
+          await supabase
+            .from('profiles')
+            .update(updates)
+            .eq('user_id', user?.id);
         }
-        return;
+
+        Alert.alert('成功', 'プロフィールを更新しました', [
+          {
+            text: 'OK',
+            onPress: () => router.back(),
+          },
+        ]);
+      } else {
+        Alert.alert('エラー', result.error || 'プロフィールの更新に失敗しました');
       }
-
-      // プロフィール作成成功
-      console.log('✅ Profile created successfully');
-
-      // AuthContextを更新してプロフィール情報を取得
-      console.log('🔄 Refreshing profile...');
-      await refreshProfile();
-      console.log('✅ Profile refreshed');
-
-      // プロフィール情報が更新されたことを確認してからホーム画面に遷移
-      console.log('➡️  Navigating to home...');
-      router.replace('/(tabs)/home');
-    } catch (error: any) {
-      console.error('Error creating profile:', error);
-      Alert.alert('エラー', 'プロフィールの作成に失敗しました');
+    } catch (error) {
+      console.error('Profile update error:', error);
+      Alert.alert('エラー', 'プロフィールの更新に失敗しました');
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
-  return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>プロフィール作成</Text>
-          <Text style={styles.subtitle}>基本情報を登録しましょう</Text>
-        </View>
+  if (profileState.status === 'loading') {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#06b6d4" />
+      </View>
+    );
+  }
 
+  if (profileState.status === 'error') {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>{profileState.error}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <IconSymbol name="chevron.left" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>プロフィール編集</Text>
+        <TouchableOpacity
+          style={styles.saveButton}
+          onPress={handleSave}
+          disabled={isSaving}
+        >
+          <Text style={[styles.saveButtonText, isSaving && styles.saveButtonTextDisabled]}>
+            {isSaving ? '保存中...' : '保存'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
         {/* ヘッダー画像 */}
         <View style={styles.section}>
           <Text style={styles.label}>ヘッダー</Text>
@@ -180,10 +216,10 @@ export default function ProfileSetupScreen() {
             ) : (
               <View style={styles.headerImagePlaceholder}>
                 {uploadingHeader ? (
-                  <ActivityIndicator color="#5A7D9A" />
+                  <ActivityIndicator color="#06b6d4" />
                 ) : (
                   <>
-                    <Ionicons name="image-outline" size={32} color="#9CA3AF" />
+                    <Ionicons name="image-outline" size={32} color="#64748b" />
                     <Text style={styles.placeholderText}>タップしてヘッダー画像を選択</Text>
                   </>
                 )}
@@ -205,9 +241,9 @@ export default function ProfileSetupScreen() {
             ) : (
               <View style={styles.avatarPlaceholder}>
                 {uploadingAvatar ? (
-                  <ActivityIndicator color="#5A7D9A" />
+                  <ActivityIndicator color="#06b6d4" />
                 ) : (
-                  <Ionicons name="person-outline" size={40} color="#9CA3AF" />
+                  <Ionicons name="person-outline" size={40} color="#64748b" />
                 )}
               </View>
             )}
@@ -215,16 +251,34 @@ export default function ProfileSetupScreen() {
           <Text style={styles.avatarHint}>タップしてアイコン画像を選択</Text>
         </View>
 
-        {/* 表示名 */}
+        {/* Display Name */}
         <View style={styles.section}>
-          <Text style={styles.label}>ユーザー名 *</Text>
+          <Text style={styles.label}>表示名 *</Text>
           <TextInput
             style={styles.input}
-            placeholder="雪山　太郎"
-            placeholderTextColor="#9CA3AF"
             value={displayName}
             onChangeText={setDisplayName}
+            placeholder="表示名を入力"
+            placeholderTextColor="#6B7280"
+            maxLength={50}
           />
+        </View>
+
+        {/* Bio */}
+        <View style={styles.section}>
+          <Text style={styles.label}>自己紹介</Text>
+          <TextInput
+            style={[styles.input, styles.textArea]}
+            value={bio}
+            onChangeText={setBio}
+            placeholder="自己紹介を入力"
+            placeholderTextColor="#6B7280"
+            multiline
+            numberOfLines={4}
+            maxLength={500}
+            textAlignVertical="top"
+          />
+          <Text style={styles.charCount}>{bio.length}/500</Text>
         </View>
 
         {/* 国籍 */}
@@ -238,7 +292,7 @@ export default function ProfileSetupScreen() {
             <Text style={styles.selectedCountryText}>
               {COUNTRIES.find(c => c.code === countryCode)?.nameJa || '選択してください'}
             </Text>
-            <Ionicons name="chevron-down" size={20} color="#9CA3AF" />
+            <Ionicons name="chevron-down" size={20} color="#94a3b8" />
           </TouchableOpacity>
 
           {/* Country Picker Modal */}
@@ -287,7 +341,7 @@ export default function ProfileSetupScreen() {
                           {country.nameJa}
                         </Text>
                         {countryCode === country.code && (
-                          <Ionicons name="checkmark" size={20} color="#5A7D9A" />
+                          <Ionicons name="checkmark" size={20} color="#06b6d4" />
                         )}
                       </TouchableOpacity>
                     ))}
@@ -337,26 +391,24 @@ export default function ProfileSetupScreen() {
           </View>
         </View>
 
-        {/* スキルレベル */}
+        {/* Skill Level */}
         <View style={styles.section}>
-          <Text style={styles.label}>スキルレベル *</Text>
+          <Text style={styles.label}>スキルレベル</Text>
           <View style={styles.buttonGroup}>
-            {SKILL_LEVELS.map((level) => (
+            {SKILL_LEVELS.map((lvl) => (
               <TouchableOpacity
-                key={level}
+                key={lvl}
                 style={[
-                  styles.skillButton,
-                  skillLevel === level && styles.skillButtonActive,
+                  styles.levelButton,
+                  level === lvl && styles.levelButtonActive,
                 ]}
-                onPress={() => setSkillLevel(level)}
+                onPress={() => setLevel(lvl)}
               >
-                <Text
-                  style={[
-                    styles.skillText,
-                    skillLevel === level && styles.skillTextActive,
-                  ]}
-                >
-                  {level === 'beginner' ? '初級' : level === 'intermediate' ? '中級' : '上級'}
+                <Text style={[
+                  styles.levelButtonText,
+                  level === lvl && styles.levelButtonTextActive,
+                ]}>
+                  {lvl === 'beginner' ? '初心者' : lvl === 'intermediate' ? '中級者' : '上級者'}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -389,87 +441,93 @@ export default function ProfileSetupScreen() {
           </View>
         </View>
 
-        {/* Bio */}
-        <View style={styles.section}>
-          <Text style={styles.label}>自己紹介</Text>
-          <TextInput
-            style={[styles.input, styles.bioInput]}
-            placeholder="スノーボードについて、自分について..."
-            placeholderTextColor="#9CA3AF"
-            value={bio}
-            onChangeText={setBio}
-            multiline
-            numberOfLines={4}
-            textAlignVertical="top"
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.submitButtonText}>プロフィールを作成</Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={{ height: 120 }} />
-      </View>
-    </ScrollView>
+        <View style={{ height: 40 }} />
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A202C',
+    backgroundColor: '#0f172a',
   },
-  content: {
-    padding: 16,
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0f172a',
+  },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 16,
   },
   header: {
-    marginBottom: 24,
-    marginTop: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1e293b',
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
+  backButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
     color: '#FFFFFF',
-    marginBottom: 8,
   },
-  subtitle: {
+  saveButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  saveButtonText: {
     fontSize: 16,
-    color: '#9CA3AF',
+    fontWeight: '600',
+    color: '#06b6d4',
+  },
+  saveButtonTextDisabled: {
+    color: '#64748b',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 20,
   },
   section: {
     marginBottom: 24,
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 12,
+    color: '#e2e8f0',
+    marginBottom: 8,
   },
   input: {
-    backgroundColor: '#2D3748',
-    color: '#FFFFFF',
+    backgroundColor: '#1e293b',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     fontSize: 16,
-    padding: 16,
-    borderRadius: 12,
+    color: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#334155',
   },
-  bioInput: {
-    minHeight: 100,
-    paddingTop: 16,
+  textArea: {
+    height: 100,
+    paddingTop: 12,
   },
-  hint: {
+  charCount: {
     fontSize: 12,
-    color: '#9CA3AF',
-    marginTop: 8,
+    color: '#64748b',
+    textAlign: 'right',
+    marginTop: 4,
   },
   // ヘッダー画像スタイル
   headerImageContainer: {
@@ -477,7 +535,7 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 12,
     overflow: 'hidden',
-    backgroundColor: '#2D3748',
+    backgroundColor: '#1e293b',
     borderWidth: 2,
     borderColor: '#334155',
   },
@@ -495,7 +553,7 @@ const styles = StyleSheet.create({
   },
   placeholderText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#64748b',
     marginTop: 8,
   },
   // アバター画像スタイル
@@ -504,7 +562,7 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     overflow: 'hidden',
-    backgroundColor: '#2D3748',
+    backgroundColor: '#1e293b',
     borderWidth: 3,
     borderColor: '#334155',
     alignSelf: 'center',
@@ -519,11 +577,11 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#2D3748',
+    backgroundColor: '#1e293b',
   },
   avatarHint: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#64748b',
     textAlign: 'center',
     marginTop: 8,
   },
@@ -531,11 +589,11 @@ const styles = StyleSheet.create({
   countrySelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2D3748',
-    borderRadius: 12,
+    backgroundColor: '#1e293b',
+    borderRadius: 8,
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 2,
+    paddingVertical: 12,
+    borderWidth: 1,
     borderColor: '#334155',
     gap: 12,
   },
@@ -556,11 +614,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   pickerModal: {
-    backgroundColor: '#1A202C',
+    backgroundColor: '#0f172a',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
-    borderWidth: 2,
+    borderWidth: 1,
     borderColor: '#334155',
   },
   pickerHeader: {
@@ -585,10 +643,10 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#2D3748',
+    borderBottomColor: '#1e293b',
   },
   pickerItemActive: {
-    backgroundColor: '#2D3748',
+    backgroundColor: '#1e293b',
   },
   pickerFlag: {
     width: 32,
@@ -598,7 +656,7 @@ const styles = StyleSheet.create({
   pickerItemText: {
     flex: 1,
     fontSize: 16,
-    color: '#CBD5E1',
+    color: '#cbd5e1',
   },
   pickerItemTextActive: {
     color: '#FFFFFF',
@@ -612,45 +670,45 @@ const styles = StyleSheet.create({
   languageButton: {
     flex: 1,
     paddingVertical: 16,
-    backgroundColor: '#2D3748',
+    backgroundColor: '#1e293b',
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#334155',
     alignItems: 'center',
   },
   languageButtonActive: {
-    borderColor: '#5A7D9A',
-    backgroundColor: '#1E3A8A',
+    borderColor: '#06b6d4',
+    backgroundColor: '#0e7490',
   },
   languageText: {
     fontSize: 16,
-    color: '#9CA3AF',
+    color: '#94a3b8',
   },
   languageTextActive: {
     color: '#FFFFFF',
     fontWeight: 'bold',
   },
-  // スキルレベルスタイル
-  skillButton: {
+  levelButton: {
     flex: 1,
-    paddingVertical: 16,
-    backgroundColor: '#2D3748',
-    borderRadius: 12,
-    borderWidth: 2,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#1e293b',
+    borderRadius: 8,
+    borderWidth: 1,
     borderColor: '#334155',
     alignItems: 'center',
   },
-  skillButtonActive: {
-    borderColor: '#5A7D9A',
-    backgroundColor: '#1E3A8A',
+  levelButtonActive: {
+    backgroundColor: '#06b6d4',
+    borderColor: '#06b6d4',
   },
-  skillText: {
-    fontSize: 16,
-    color: '#9CA3AF',
+  levelButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#94a3b8',
   },
-  skillTextActive: {
+  levelButtonTextActive: {
     color: '#FFFFFF',
-    fontWeight: 'bold',
   },
   styleGrid: {
     flexDirection: 'row',
@@ -660,36 +718,21 @@ const styles = StyleSheet.create({
   styleButton: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#2D3748',
+    backgroundColor: '#1e293b',
     borderRadius: 20,
     borderWidth: 2,
     borderColor: '#334155',
   },
   styleButtonActive: {
-    backgroundColor: '#1E3A8A',
-    borderColor: '#5A7D9A',
+    backgroundColor: '#0e7490',
+    borderColor: '#06b6d4',
   },
   styleText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#94a3b8',
   },
   styleTextActive: {
     color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  submitButton: {
-    marginTop: 24,
-    paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: '#5A7D9A',
-    alignItems: 'center',
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 18,
     fontWeight: '600',
   },
 });

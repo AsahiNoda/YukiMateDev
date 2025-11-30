@@ -115,6 +115,7 @@ function ConfirmationModal({ visible, type, event, onConfirm, onCancel }: Confir
 
 export default function DiscoverScreen() {
   const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [pendingSwipe, setPendingSwipe] = useState<{
@@ -206,18 +207,18 @@ export default function DiscoverScreen() {
 
   if (eventsState.status === 'loading') {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Colors[colorScheme ?? 'light'].tint} />
-        <Text style={styles.loadingText}>イベントを読み込み中...</Text>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.tint} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>イベントを読み込み中...</Text>
       </View>
     );
   }
 
   if (eventsState.status === 'error') {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>エラーが発生しました</Text>
-        <Text style={styles.errorSubText}>{eventsState.error}</Text>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <Text style={[styles.errorText, { color: colors.error }]}>エラーが発生しました</Text>
+        <Text style={[styles.errorSubText, { color: colors.textSecondary }]}>{eventsState.error}</Text>
       </View>
     );
   }
@@ -226,15 +227,15 @@ export default function DiscoverScreen() {
 
   if (!hasMoreEvents) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.emptyText}>すべてのイベントを確認しました</Text>
-        <Text style={styles.emptySubText}>新しいイベントをお待ちください</Text>
+      <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <Text style={[styles.emptyText, { color: colors.text }]}>すべてのイベントを確認しました</Text>
+        <Text style={[styles.emptySubText, { color: colors.textSecondary }]}>新しいイベントをお待ちください</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Card Stack - Fullscreen */}
       <View style={styles.cardContainer}>
         {eventsState.events.slice(currentIndex, currentIndex + 2).map((event, index) => (
@@ -560,42 +561,42 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A202C',
+    // backgroundColor is set dynamically in the component
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1A202C',
+    // backgroundColor is set dynamically in the component
     padding: 16,
   },
   loadingText: {
     marginTop: 16,
-    color: '#E5E7EB',
+    // color is set dynamically in the component
     fontSize: 16,
   },
   errorText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#F87171',
+    // color is set dynamically in the component
     marginBottom: 8,
     textAlign: 'center',
   },
   errorSubText: {
     fontSize: 14,
-    color: '#E5E7EB',
+    // color is set dynamically in the component
     textAlign: 'center',
   },
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#FFFFFF',
+    // color is set dynamically in the component
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    // color is set dynamically in the component
     textAlign: 'center',
   },
   headerOverlay: {

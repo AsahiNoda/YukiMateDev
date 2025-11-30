@@ -4,8 +4,8 @@ import { supabase } from '@/lib/supabase';
 import type { SkillLevel } from '@/types';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
-import React, { useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -39,6 +39,8 @@ const SKILL_LEVELS: { value: SkillLevel | ''; label: string }[] = [
 export default function CreateEventScreen() {
   const insets = useSafeAreaInsets();
   const resortsState = useResorts();
+  const params = useLocalSearchParams<{ eventId?: string }>();
+  const isEditMode = !!params.eventId;
 
   // Form states
   const [title, setTitle] = useState('');
@@ -65,6 +67,73 @@ export default function CreateEventScreen() {
 
   // Resort filter states
   const [expandedArea, setExpandedArea] = useState<string | null>(null);
+
+  // Load event data for edit mode
+  useEffect(() => {
+    if (params.eventId) {
+      loadEventData(params.eventId);
+    }
+  }, [params.eventId]);
+
+  const loadEventData = async (eventId: string) => {
+    try {
+      setLoading(true);
+      const { data: eventData, error } = await supabase
+        .from('posts_events')
+        .select('*')
+        .eq('id', eventId)
+        .single();
+
+      if (error) throw error;
+      if (!eventData) throw new Error('イベントが見つかりません');
+
+      // Populate form fields
+      setTitle(eventData.title || '');
+      setDescription(eventData.description || '');
+      setCategory(eventData.type || 'event');
+      setResortId(eventData.resort_id || '');
+
+      // Parse date and time
+      if (eventData.start_at) {
+        const startDate = new Date(eventData.start_at);
+        setDate(startDate);
+        setStartTime(`${String(startDate.getHours()).padStart(2, '0')}:${String(startDate.getMinutes()).padStart(2, '0')}`);
+      }
+
+      if (eventData.end_at) {
+        const endDate = new Date(eventData.end_at);
+        setEndTime(`${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}`);
+      }
+
+      setCapacity(String(eventData.capacity_total || 6));
+      setLevel(eventData.level_required || '');
+      setPrice(eventData.price_per_person_jpy ? String(eventData.price_per_person_jpy) : '');
+      setMeetingPlace(eventData.meeting_place || '');
+      setTags(eventData.tags || []);
+
+      // Load images
+      const photoUrls: string[] = [];
+      if (eventData.photos && eventData.photos.length > 0) {
+        eventData.photos.forEach((photoPath: string) => {
+          if (photoPath.startsWith('http')) {
+            photoUrls.push(photoPath);
+          } else {
+            const { data } = supabase.storage
+              .from('event_images')
+              .getPublicUrl(photoPath);
+            photoUrls.push(data.publicUrl);
+          }
+        });
+      }
+      setSelectedImages(photoUrls);
+    } catch (error) {
+      console.error('Error loading event data:', error);
+      Alert.alert('エラー', 'イベントデータの読み込みに失敗しました');
+      router.back();
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Group resorts by area
   const resortsByArea = React.useMemo(() => {
@@ -179,6 +248,52 @@ export default function CreateEventScreen() {
     return `${year}-${month}-${day}`;
   };
 
+  const handleDelete = async () => {
+    if (!params.eventId) return;
+
+    Alert.alert(
+      '投稿を削除',
+      '本当にこの投稿を削除しますか？\nこの操作は取り消せません。\n参加者がいる場合も削除されます。',
+      [
+        {
+          text: 'キャンセル',
+          style: 'cancel',
+        },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+
+              // Delete event
+              const { error } = await supabase
+                .from('posts_events')
+                .delete()
+                .eq('id', params.eventId);
+
+              if (error) throw error;
+
+              Alert.alert('完了', '投稿を削除しました', [
+                {
+                  text: 'OK',
+                  onPress: () => {
+                    router.back();
+                  },
+                },
+              ]);
+            } catch (error) {
+              console.error('Error deleting event:', error);
+              Alert.alert('エラー', '投稿の削除に失敗しました');
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const uploadImages = async (eventId: string): Promise<string[]> => {
     const uploadedPaths: string[] = [];
 
@@ -267,37 +382,55 @@ export default function CreateEventScreen() {
         return;
       }
 
-      // Create event (without photos first to get event ID)
-      const { data: newEvent, error: insertError } = await supabase
-        .from('posts_events')
-        .insert({
-          title: (title || '').trim(),
-          description: (description || '').trim() || null,
-          type: category,
-          resort_id: resortId,
-          host_user_id: session.user.id,
-          start_at: startAt,
-          end_at: endAt,
-          capacity_total: capacityNum,
-          level_required: level || null,
-          price_per_person_jpy: priceNum,
-          meeting_place: (meetingPlace || '').trim() || null,
-          tags: tags.length > 0 ? tags : null,
-          photos: [], // Empty array instead of null (matches DB default)
-          status: 'open',
-        })
-        .select('id')
-        .single();
+      const eventPayload = {
+        title: (title || '').trim(),
+        description: (description || '').trim() || null,
+        type: category,
+        resort_id: resortId,
+        start_at: startAt,
+        end_at: endAt,
+        capacity_total: capacityNum,
+        level_required: level || null,
+        price_per_person_jpy: priceNum,
+        meeting_place: (meetingPlace || '').trim() || null,
+        tags: tags.length > 0 ? tags : null,
+      };
 
-      if (insertError) throw insertError;
-      if (!newEvent) throw new Error('投稿に失敗しました');
+      let eventId: string;
+
+      if (isEditMode && params.eventId) {
+        // Update existing event
+        const { error: updateError } = await supabase
+          .from('posts_events')
+          .update(eventPayload)
+          .eq('id', params.eventId);
+
+        if (updateError) throw updateError;
+        eventId = params.eventId;
+      } else {
+        // Create new event
+        const { data: newEvent, error: insertError } = await supabase
+          .from('posts_events')
+          .insert({
+            ...eventPayload,
+            host_user_id: session.user.id,
+            photos: [],
+            status: 'open',
+          })
+          .select('id')
+          .single();
+
+        if (insertError) throw insertError;
+        if (!newEvent) throw new Error('投稿に失敗しました');
+        eventId = newEvent.id;
+      }
 
       // Upload images if any
       let photoPaths: string[] | null = null;
       if (selectedImages.length > 0) {
         try {
-          console.log(`Uploading ${selectedImages.length} images for event ${newEvent.id}...`);
-          photoPaths = await uploadImages(newEvent.id);
+          console.log(`Uploading ${selectedImages.length} images for event ${eventId}...`);
+          photoPaths = await uploadImages(eventId);
           console.log('Upload successful. Paths:', photoPaths);
 
           // Update event with photo paths (not URLs)
@@ -305,7 +438,7 @@ export default function CreateEventScreen() {
           const { data: updateData, error: updateError } = await supabase
             .from('posts_events')
             .update({ photos: photoPaths })
-            .eq('id', newEvent.id)
+            .eq('id', eventId)
             .select('id, photos');
 
           if (updateError) {
@@ -319,16 +452,18 @@ export default function CreateEventScreen() {
           // Continue even if image upload fails
           Alert.alert(
             '警告',
-            '画像のアップロードまたは登録に失敗しましたが、投稿は作成されました。詳細はログを確認してください。'
+            `画像のアップロードまたは登録に失敗しましたが、投稿は${isEditMode ? '更新' : '作成'}されました。詳細はログを確認してください。`
           );
         }
       }
 
-      Alert.alert('完了', '投稿を作成しました！', [
+      Alert.alert('完了', isEditMode ? '投稿を更新しました！' : '投稿を作成しました！', [
         {
           text: 'OK',
           onPress: () => {
-            resetForm();
+            if (!isEditMode) {
+              resetForm();
+            }
             router.back();
           },
         },
@@ -432,7 +567,7 @@ export default function CreateEventScreen() {
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: Math.max(insets.top, 16) }}>
       <View style={styles.content}>
-        <Text style={styles.title}>投稿を作成</Text>
+        <Text style={styles.title}>{isEditMode ? '投稿を編集' : '投稿を作成'}</Text>
 
         {/* Title */}
         <View style={styles.section}>
@@ -701,7 +836,7 @@ export default function CreateEventScreen() {
           </View>
         </View>
 
-        {/* Create Button */}
+        {/* Create/Edit Button */}
         <TouchableOpacity
           style={[styles.createButton, loading && styles.createButtonDisabled]}
           onPress={handleCreate}
@@ -710,9 +845,22 @@ export default function CreateEventScreen() {
           {loading ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.createButtonText}>投稿する</Text>
+            <Text style={styles.createButtonText}>
+              {isEditMode ? '編集を保存' : '投稿する'}
+            </Text>
           )}
         </TouchableOpacity>
+
+        {/* Delete Button (Edit Mode Only) */}
+        {isEditMode && (
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDelete}
+            disabled={loading}
+          >
+            <Text style={styles.deleteButtonText}>投稿を削除</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={{ height: 120 }} />
       </View>
@@ -977,6 +1125,20 @@ const styles = StyleSheet.create({
   },
   createButtonText: {
     color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    marginTop: 16,
+    paddingVertical: 16,
+    backgroundColor: 'transparent',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#EF4444',
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    color: '#EF4444',
     fontSize: 18,
     fontWeight: '600',
   },

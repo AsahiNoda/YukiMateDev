@@ -1,8 +1,22 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import { User as AppUser } from '@/types';
-import type { UserRole } from '@/types';
+import type { UserRole, UserGear } from '@/types';
+
+// AppUser type for AuthContext
+interface AppUser {
+  id: string;
+  username: string;
+  displayName: string;
+  avatar: string | null;
+  countryCode: string | null;
+  ageRange: string | null;
+  skillLevel: string | null;
+  ridingStyle: string[];
+  gearInfo: UserGear | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface AuthContextType {
   session: Session | null;
@@ -76,6 +90,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw error;
         }
       } else if (data) {
+        // Fetch gear information
+        const { data: gearData } = await supabase
+          .from('gear')
+          .select('board_name, binding_name, boots_name, others')
+          .eq('user_id', userId)
+          .single();
+
         const appUser: AppUser = {
           id: data.user_id,
           username: data.display_name || 'ユーザー',
@@ -85,7 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           ageRange: null,
           skillLevel: data.level,
           ridingStyle: data.styles || [],
-          gearInfo: null,
+          gearInfo: gearData ? {
+            board: gearData.board_name,
+            binding: gearData.binding_name,
+            boots: gearData.boots_name,
+            others: gearData.others,
+          } : null,
           createdAt: data.created_at,
           updatedAt: data.updated_at,
         };

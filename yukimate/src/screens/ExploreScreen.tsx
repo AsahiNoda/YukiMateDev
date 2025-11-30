@@ -1,5 +1,7 @@
 import { EventListCard } from '@/components/EventListCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useExplore, type ExploreFilters, type SortOptions } from '@/hooks/useExplore';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -18,10 +20,10 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // カテゴリアイコンのインポート
-import EventFlagIcon from '../../assets/images/icons/event-flag.svg';
 import CameraIcon from '../../assets/images/icons/camera.svg';
-import LessonIcon from '../../assets/images/icons/lesson.svg';
+import EventFlagIcon from '../../assets/images/icons/event-flag.svg';
 import GroupIcon from '../../assets/images/icons/group.svg';
+import LessonIcon from '../../assets/images/icons/lesson.svg';
 
 const CATEGORIES = [
   { key: 'event', label: 'イベント', IconComponent: EventFlagIcon },
@@ -38,6 +40,8 @@ const SORT_OPTIONS = [
 
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
 
   // 検索とフィルター状態
   const [searchQuery, setSearchQuery] = useState('');
@@ -92,25 +96,25 @@ export default function ExploreScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* ヘッダー */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top, 10) }]}>
         <View style={{ flex: 1 }} />
       </View>
 
       {/* 検索バー */}
-      <View style={styles.searchContainer}>
-        <IconSymbol name="magnifyingglass" size={18} color="#9CA3AF" />
+      <View style={[styles.searchContainer, { backgroundColor: colors.backgroundSecondary }]}>
+        <IconSymbol name="magnifyingglass" size={18} color={colors.icon} />
         <TextInput
-          style={styles.searchInput}
+          style={[styles.searchInput, { color: colors.text }]}
           placeholder="Search places, events, hosts"
-          placeholderTextColor="#6B7280"
+          placeholderTextColor={colors.icon}
           value={searchQuery}
           onChangeText={setSearchQuery}
         />
         {searchQuery.length > 0 && (
           <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <IconSymbol name="xmark.circle.fill" size={18} color="#6B7280" />
+            <IconSymbol name="xmark.circle.fill" size={18} color={colors.icon} />
           </TouchableOpacity>
         )}
       </View>
@@ -122,7 +126,8 @@ export default function ExploreScreen() {
             key={category.key}
             style={[
               styles.categoryButton,
-              selectedCategory === category.key && styles.categoryButtonActive,
+              { backgroundColor: colors.backgroundSecondary },
+              selectedCategory === category.key && [styles.categoryButtonActive, { backgroundColor: colors.tint }],
             ]}
             onPress={() => {
               // 既に選択されているカテゴリをタップした場合は選択解除
@@ -136,12 +141,13 @@ export default function ExploreScreen() {
             <category.IconComponent
               width={16}
               height={16}
-              color={selectedCategory === category.key ? '#FFFFFF' : '#9CA3AF'}
+              color={selectedCategory === category.key ? colors.text : colors.icon}
             />
             <Text
               style={[
                 styles.categoryText,
-                selectedCategory === category.key && styles.categoryTextActive,
+                { color: colors.icon },
+                selectedCategory === category.key && [styles.categoryTextActive, { color: colors.text }],
               ]}
             >
               {category.label}
@@ -152,23 +158,23 @@ export default function ExploreScreen() {
 
       {/* List/Map切り替え & 結果数 */}
       <View style={styles.controlsRow}>
-        <Text style={styles.resultsText}>
+        <Text style={[styles.resultsText, { color: colors.textSecondary }]}>
           {status === 'success' ? `Showing ${events?.length || 0} results` : 'Loading...'}
         </Text>
-        <View style={styles.viewControls}>
+        <View style={[styles.viewControls, { backgroundColor: colors.backgroundSecondary }]}>
           <TouchableOpacity
-            style={[styles.viewButton, viewMode === 'list' && styles.viewButtonActive]}
+            style={[styles.viewButton, viewMode === 'list' && [styles.viewButtonActive, { backgroundColor: colors.backgroundTertiary }]]}
             onPress={() => setViewMode('list')}
           >
-            <Text style={[styles.viewButtonText, viewMode === 'list' && styles.viewButtonTextActive]}>
+            <Text style={[styles.viewButtonText, { color: colors.icon }, viewMode === 'list' && [styles.viewButtonTextActive, { color: colors.text }]]}>
               List
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.viewButton, viewMode === 'map' && styles.viewButtonActive]}
+            style={[styles.viewButton, viewMode === 'map' && [styles.viewButtonActive, { backgroundColor: colors.backgroundTertiary }]]}
             onPress={() => setViewMode('map')}
           >
-            <Text style={[styles.viewButtonText, viewMode === 'map' && styles.viewButtonTextActive]}>
+            <Text style={[styles.viewButtonText, { color: colors.icon }, viewMode === 'map' && [styles.viewButtonTextActive, { color: colors.text }]]}>
               Map
             </Text>
           </TouchableOpacity>
@@ -178,17 +184,17 @@ export default function ExploreScreen() {
       {/* イベントリスト */}
       {status === 'loading' && (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color="#5A7D9A" />
-          <Text style={styles.loadingText}>読み込み中...</Text>
+          <ActivityIndicator size="large" color={colors.tint} />
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>読み込み中...</Text>
         </View>
       )}
 
       {status === 'error' && (
         <View style={styles.centered}>
-          <IconSymbol name="exclamationmark.triangle" size={48} color="#EF4444" />
-          <Text style={styles.errorText}>エラーが発生しました</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={refetch}>
-            <Text style={styles.retryButtonText}>再試行</Text>
+          <IconSymbol name="exclamationmark.triangle" size={48} color={colors.error} />
+          <Text style={[styles.errorText, { color: colors.error }]}>エラーが発生しました</Text>
+          <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.tint }]} onPress={refetch}>
+            <Text style={[styles.retryButtonText, { color: colors.text }]}>再試行</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -205,9 +211,9 @@ export default function ExploreScreen() {
           )}
           ListEmptyComponent={() => (
             <View style={styles.empty}>
-              <IconSymbol name="magnifyingglass" size={64} color="#6B7280" />
-              <Text style={styles.emptyText}>イベントが見つかりませんでした</Text>
-              <Text style={styles.emptySubtext}>
+              <IconSymbol name="magnifyingglass" size={64} color={colors.icon} />
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>イベントが見つかりませんでした</Text>
+              <Text style={[styles.emptySubtext, { color: colors.icon }]}>
                 検索条件を変更してみてください
               </Text>
             </View>
@@ -222,7 +228,7 @@ export default function ExploreScreen() {
             <RefreshControl
               refreshing={false}
               onRefresh={refetch}
-              tintColor="#5A7D9A"
+              tintColor={colors.tint}
             />
           }
           contentContainerStyle={styles.listContent}
@@ -237,27 +243,28 @@ export default function ExploreScreen() {
         onRequestClose={() => setShowSortModal(false)}
       >
         <Pressable style={styles.modalOverlay} onPress={() => setShowSortModal(false)}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>ソート順を選択</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.backgroundSecondary }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>ソート順を選択</Text>
             {SORT_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option.key}
                 style={[
                   styles.modalOption,
-                  sortOption.sortBy === option.key && styles.modalOptionActive,
+                  sortOption.sortBy === option.key && [styles.modalOptionActive, { backgroundColor: colors.backgroundTertiary }],
                 ]}
                 onPress={() => handleSortSelect(option.key)}
               >
                 <Text
                   style={[
                     styles.modalOptionText,
-                    sortOption.sortBy === option.key && styles.modalOptionTextActive,
+                    { color: colors.textSecondary },
+                    sortOption.sortBy === option.key && [styles.modalOptionTextActive, { color: colors.text }],
                   ]}
                 >
                   {option.label}
                 </Text>
                 {sortOption.sortBy === option.key && (
-                  <IconSymbol name="checkmark" size={20} color="#5A7D9A" />
+                  <IconSymbol name="checkmark" size={20} color={colors.tint} />
                 )}
               </TouchableOpacity>
             ))}
@@ -267,10 +274,10 @@ export default function ExploreScreen() {
 
       {/* フローティングソートボタン */}
       <TouchableOpacity
-        style={styles.sortFab}
+        style={[styles.sortFab, { backgroundColor: colors.tint, shadowColor: colors.tint }]}
         onPress={() => setShowSortModal(true)}
       >
-        <IconSymbol name="arrow.up.arrow.down" size={20} color="#FFFFFF" />
+        <IconSymbol name="arrow.up.arrow.down" size={20} color={colors.text} />
       </TouchableOpacity>
     </View>
   );
@@ -279,7 +286,7 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1A202C',
+    // backgroundColor is set dynamically in the component
   },
   header: {
     flexDirection: 'row',
@@ -290,7 +297,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2D3748',
+    // backgroundColor is set dynamically in the component
     marginHorizontal: 20,
     marginBottom: 16,
     paddingHorizontal: 16,
@@ -301,7 +308,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#FFFFFF',
+    // color is set dynamically in the component
   },
   categoriesContainer: {
     flexDirection: 'row',
@@ -317,19 +324,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 8,
     borderRadius: 16,
-    backgroundColor: '#2D3748',
+    // backgroundColor is set dynamically in the component
     gap: 4,
   },
   categoryButtonActive: {
-    backgroundColor: '#5A7D9A',
+    // backgroundColor is set dynamically in the component
   },
   categoryText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#9CA3AF',
+    // color is set dynamically in the component
   },
   categoryTextActive: {
-    color: '#FFFFFF',
+    // color is set dynamically in the component
   },
   controlsRow: {
     flexDirection: 'row',
@@ -340,11 +347,11 @@ const styles = StyleSheet.create({
   },
   resultsText: {
     fontSize: 13,
-    color: '#9CA3AF',
+    // color is set dynamically in the component
   },
   viewControls: {
     flexDirection: 'row',
-    backgroundColor: '#2D3748',
+    // backgroundColor is set dynamically in the component
     borderRadius: 8,
     padding: 2,
   },
@@ -354,15 +361,15 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   viewButtonActive: {
-    backgroundColor: '#334155',
+    // backgroundColor is set dynamically in the component
   },
   viewButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
+    // color is set dynamically in the component
   },
   viewButtonTextActive: {
-    color: '#FFFFFF',
+    // color is set dynamically in the component
   },
   listContent: {
     paddingBottom: 150,
@@ -375,23 +382,23 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    color: '#9CA3AF',
+    // color is set dynamically in the component
     fontSize: 16,
   },
   errorText: {
     marginTop: 16,
-    color: '#EF4444',
+    // color is set dynamically in the component
     fontSize: 16,
     marginBottom: 16,
   },
   retryButton: {
     paddingVertical: 12,
     paddingHorizontal: 24,
-    backgroundColor: '#5A7D9A',
+    // backgroundColor is set dynamically in the component
     borderRadius: 8,
   },
   retryButtonText: {
-    color: '#FFFFFF',
+    // color is set dynamically in the component
     fontSize: 16,
     fontWeight: '600',
   },
@@ -403,14 +410,14 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     marginTop: 16,
-    color: '#9CA3AF',
+    // color is set dynamically in the component
     fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
   },
   emptySubtext: {
     marginTop: 8,
-    color: '#6B7280',
+    // color is set dynamically in the component
     fontSize: 14,
     textAlign: 'center',
   },
@@ -421,10 +428,9 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#5A7D9A',
+    // backgroundColor and shadowColor are set dynamically in the component
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#5A7D9A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -437,7 +443,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#2D3748',
+    // backgroundColor is set dynamically in the component
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
@@ -445,7 +451,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    // color is set dynamically in the component
     marginBottom: 20,
   },
   modalOption: {
@@ -458,14 +464,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalOptionActive: {
-    backgroundColor: '#334155',
+    // backgroundColor is set dynamically in the component
   },
   modalOptionText: {
     fontSize: 16,
-    color: '#9CA3AF',
+    // color is set dynamically in the component
   },
   modalOptionTextActive: {
-    color: '#FFFFFF',
+    // color is set dynamically in the component
     fontWeight: '600',
   },
 });

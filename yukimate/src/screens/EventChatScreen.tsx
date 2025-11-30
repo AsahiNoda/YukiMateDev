@@ -244,7 +244,7 @@ export default function EventChatScreen() {
         });
       }
 
-      // 参加者を整形（ホストを除く）
+      // 参加者を整形（ホストを含む全参加者）
       const allParticipants: Array<{
         user: {
           id: string;
@@ -252,6 +252,17 @@ export default function EventChatScreen() {
         };
       }> = [];
 
+      // ホストを追加
+      if (eventData.host_user_id && eventData.profiles) {
+        allParticipants.push({
+          user: {
+            id: eventData.host_user_id,
+            profiles: eventData.profiles,
+          },
+        });
+      }
+
+      // その他の参加者を追加（ホストが重複しないようにチェック）
       if (participantsData) {
         participantsData.forEach((p: any) => {
           if (p.user_id !== eventData.host_user_id) {
@@ -265,10 +276,9 @@ export default function EventChatScreen() {
         });
       }
 
-      console.log('[EventChatScreen] 🎯 Participants formatted (excluding host):', {
+      console.log('[EventChatScreen] 🎯 Participants formatted (including host):', {
         hostUserId: eventData.host_user_id,
-        totalParticipants: participantsData?.length || 0,
-        nonHostParticipants: allParticipants.length,
+        totalParticipants: allParticipants.length,
         participantIds: allParticipants.map((p) => p.user.id),
       });
 
@@ -449,14 +459,14 @@ export default function EventChatScreen() {
 
       // イベント開始から6時間経過
       if (hoursSinceStart >= 6) {
-        const hasShownPostAction = await AsyncStorage.getItem(`post_action_shown_${event.id}`);
+        const hasCompletedPostAction = await AsyncStorage.getItem(`post_action_completed_${event.id}`);
 
         console.log('[EventChatScreen] 📋 Post action check:', {
-          hasShownPostAction: !!hasShownPostAction,
-          storageKey: `post_action_shown_${event.id}`,
+          hasCompletedPostAction: !!hasCompletedPostAction,
+          storageKey: `post_action_completed_${event.id}`,
         });
 
-        if (!hasShownPostAction) {
+        if (!hasCompletedPostAction) {
           // ★登録/ブロック画面へ遷移
           const otherParticipants = event.participants.filter(
             (p) => p.user.id !== currentUserId
@@ -469,8 +479,6 @@ export default function EventChatScreen() {
             participantIds: otherParticipants.map((p) => p.user.id),
           });
 
-          await AsyncStorage.setItem(`post_action_shown_${event.id}`, 'true');
-
           router.replace({
             pathname: '/post-event-action/[eventId]',
             params: {
@@ -479,7 +487,7 @@ export default function EventChatScreen() {
             },
           });
         } else {
-          console.log('[EventChatScreen] ℹ️ Post action already shown for this event');
+          console.log('[EventChatScreen] ℹ️ Post action already completed for this event');
         }
       } else {
         console.log('[EventChatScreen] ⏳ Event not ready for post-action (< 6 hours)');
@@ -678,10 +686,12 @@ export default function EventChatScreen() {
 
     return (
       <View style={[styles.header, { backgroundColor: colors.card }]}>
-        {/* Back button */}
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <IconSymbol name="chevron.left" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
+        {/* Header top bar with back button */}
+        <View style={styles.headerTopBar}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <IconSymbol name="chevron.left" size={24} color={colors.text} />
+          </TouchableOpacity>
+        </View>
 
         {/* Top row: Image + Title/Info */}
         <View style={styles.headerTopRow}>
@@ -745,19 +755,16 @@ export default function EventChatScreen() {
           </View>
         )}
 
-        {/* Action buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity
-            style={[styles.actionButton, { borderColor: colors.border }]}
-            onPress={() => router.push({
-              pathname: '/event-detail',
-              params: { eventId: params.eventId },
-            } as any)}
-          >
-            <Text style={[styles.actionButtonText, { color: colors.text }]}>Details</Text>
-          </TouchableOpacity>
-
-        </View>
+        {/* Details link */}
+        <TouchableOpacity
+          style={styles.detailsLink}
+          onPress={() => router.push({
+            pathname: '/event-detail',
+            params: { eventId: params.eventId },
+          } as any)}
+        >
+          <Text style={styles.detailsLinkText}>イベント詳細を見る</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -920,15 +927,14 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
     position: 'relative',
   },
+  headerTopBar: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
   backButton: {
-    position: 'absolute',
-    top: spacing.xl,
-    left: spacing.md,
-    zIndex: 10,
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -938,7 +944,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     gap: spacing.md,
-    marginTop: 40,
   },
   headerImage: {
     width: 100,
@@ -1011,6 +1016,17 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: fontSize.sm,
     fontWeight: fontWeight.medium,
+  },
+  detailsLink: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.sm,
+    alignItems: 'center',
+  },
+  detailsLinkText: {
+    fontSize: fontSize.sm,
+    color: '#5A7D9A',
+    textDecorationLine: 'underline',
   },
   emptyState: {
     alignItems: 'center',

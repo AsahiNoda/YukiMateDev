@@ -1,9 +1,9 @@
-import { IconSymbol } from '@/components/ui/icon-symbol';
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { Profile } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -16,6 +16,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SvgXml } from 'react-native-svg';
+
+const getStarIcon = (color: string) => `<?xml version="1.0" encoding="UTF-8"?><svg width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.58737 8.23597L11.1849 3.00376C11.5183 2.33208 12.4817 2.33208 12.8151 3.00376L15.4126 8.23597L21.2215 9.08017C21.9668 9.18848 22.2638 10.0994 21.7243 10.6219L17.5217 14.6918L18.5135 20.4414C18.6409 21.1798 17.8614 21.7428 17.1945 21.3941L12 18.678L6.80547 21.3941C6.1386 21.7428 5.35909 21.1798 5.48645 20.4414L6.47825 14.6918L2.27575 10.6219C1.73617 10.0994 2.03322 9.18848 2.77852 9.08017L8.58737 8.23597Z" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>`;
+
+const getBlockIcon = (color: string) => `<?xml version="1.0" encoding="UTF-8"?><svg width="24px" height="24px" stroke-width="1.5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M14.6667 12H15.4C15.7314 12 16 12.2686 16 12.6V16.4C16 16.7314 15.7314 17 15.4 17H8.6C8.26863 17 8 16.7314 8 16.4V12.6C8 12.2686 8.26863 12 8.6 12H9.33333M14.6667 12V9.5C14.6667 8.66667 14.1333 7 12 7C9.86667 7 9.33333 8.66667 9.33333 9.5V12M14.6667 12H9.33333" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M3 19V5C3 3.89543 3.89543 3 5 3H19C20.1046 3 21 3.89543 21 5V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19Z" stroke="${color}" stroke-width="1.5"></path></svg>`;
 
 interface Participant {
   user: {
@@ -152,14 +157,15 @@ export default function PostEventActionScreen() {
     }
   }
 
-  // 自分以外の参加者のみフィルター
+  // 自分以外の参加者のみフィルター（ホストを含む）
   const otherParticipants = currentUserId
     ? participants.filter((p) => p.user.id !== currentUserId)
     : participants;
 
-  console.log('[PostEventActionScreen] 🎯 Other participants filtered:', {
+  console.log('[PostEventActionScreen] 🎯 Other participants filtered (including host):', {
     currentUserId,
     otherParticipantsCount: otherParticipants.length,
+    participantIds: otherParticipants.map(p => p.user.id),
   });
 
   function toggleSelection(userId: string, action: ActionType) {
@@ -216,7 +222,12 @@ export default function PostEventActionScreen() {
         }
       }
 
-      console.log('[PostEventActionScreen] 🏁 All actions processed, leaving event and redirecting to chat');
+      console.log('[PostEventActionScreen] 🏁 All actions processed, marking as completed');
+
+      // イベントのポストアクションが完了したことをAsyncStorageに保存
+      await AsyncStorage.setItem(`post_action_completed_${params.eventId}`, 'true');
+      console.log('[PostEventActionScreen] ✅ Post action completion saved to AsyncStorage');
+
       const leaveResult = await leaveEvent();
       if (leaveResult.success) {
         router.replace('/(tabs)/chat');
@@ -230,16 +241,6 @@ export default function PostEventActionScreen() {
       setProcessing(false);
       console.log('[PostEventActionScreen] ✅ Processing completed');
     }
-  }
-
-  function getLevelBadgeConfig(level: string | null) {
-    const config = {
-      beginner: { label: '初級', color: '#10b981', icon: '🟢' },
-      intermediate: { label: '中級', color: '#5A7D9A', icon: '🔵' },
-      advanced: { label: '上級', color: '#ef4444', icon: '🔴' },
-    };
-
-    return config[level as keyof typeof config] || config.intermediate;
   }
 
   // 参加者がいない場合の表示
@@ -268,6 +269,11 @@ export default function PostEventActionScreen() {
             style={styles.finishButton}
             onPress={async () => {
               console.log('[PostEventActionScreen] ✅ Finish button pressed (no participants)');
+
+              // イベントのポストアクションが完了したことをAsyncStorageに保存
+              await AsyncStorage.setItem(`post_action_completed_${params.eventId}`, 'true');
+              console.log('[PostEventActionScreen] ✅ Post action completion saved to AsyncStorage (no participants)');
+
               const result = await leaveEvent();
               if (result.success) {
                 router.replace('/(tabs)/chat');
@@ -313,7 +319,6 @@ export default function PostEventActionScreen() {
       {/* 参加者リスト */}
       <ScrollView style={styles.scrollView}>
         {otherParticipants.map((participant) => {
-          const levelBadge = getLevelBadgeConfig(participant.user.profiles?.level);
           const userSelection = selections[participant.user.id];
 
           return (
@@ -330,24 +335,15 @@ export default function PostEventActionScreen() {
                   style={styles.participantAvatar}
                 />
                 <View style={styles.participantDetails}>
-                  <Text style={[styles.participantName, { color: colors.text }]}>
-                    {participant.user.profiles?.display_name || 'Unknown'}
-                  </Text>
-                  <View style={styles.participantMeta}>
-                    <View
-                      style={[
-                        styles.participantLevelBadge,
-                        { backgroundColor: levelBadge.color + '20' },
-                      ]}
-                    >
-                      <Text style={styles.participantLevelIcon}>{levelBadge.icon}</Text>
-                      <Text style={[styles.participantLevelLabel, { color: levelBadge.color }]}>
-                        {levelBadge.label}
-                      </Text>
-                    </View>
-                    {participant.user.profiles?.country_code && (
-                      <Text style={styles.participantFlag}>
-                        {participant.user.profiles.country_code === 'JP' ? '🇯🇵' : '🌐'}
+                  <View style={styles.participantNameRow}>
+                    <Text style={[styles.participantName, { color: colors.text }]}>
+                      {participant.user.profiles?.display_name || 'Unknown'}
+                    </Text>
+                    {/* ホストバッジを表示 */}
+                    {!isHost && participant.user.id !== currentUserId && (
+                      <Text style={[styles.hostBadge, { color: '#22c55e' }]}>
+                        {/* ホストかどうかはEventChatScreenから渡されたparticipantsの最初の要素で判断 */}
+                        {participant.user.id === participants[0]?.user.id ? '（ホスト）' : ''}
                       </Text>
                     )}
                   </View>
@@ -359,49 +355,43 @@ export default function PostEventActionScreen() {
                 <TouchableOpacity
                   style={[
                     styles.actionButton,
-                    userSelection === 'star' && styles.starButtonSelected,
-                    userSelection !== 'star' && styles.actionButtonInactive,
                   ]}
                   onPress={() => toggleSelection(participant.user.id, 'star')}
                   disabled={processing}
                 >
-                  <IconSymbol
-                    name="star.fill"
-                    size={24}
-                    color={userSelection === 'star' ? '#f59e0b' : '#9ca3af'}
+                  <SvgXml
+                    xml={getStarIcon(userSelection === 'star' ? '#eab308' : colors.text)}
+                    width={24}
+                    height={24}
                   />
                   <Text
                     style={[
                       styles.actionButtonText,
-                      userSelection === 'star' && styles.starButtonTextSelected,
-                      userSelection !== 'star' && styles.actionButtonTextInactive,
+                      { color: userSelection === 'star' ? '#eab308' : colors.text },
                     ]}
                   >
-                    Star
+                    ★登録
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[
                     styles.actionButton,
-                    userSelection === 'block' && styles.blockButtonSelected,
-                    userSelection !== 'block' && styles.actionButtonInactive,
                   ]}
                   onPress={() => toggleSelection(participant.user.id, 'block')}
                   disabled={processing}
                 >
-                  <IconSymbol
-                    name="xmark.circle.fill"
-                    size={24}
-                    color={userSelection === 'block' ? '#ef4444' : '#9ca3af'}
+                  <SvgXml
+                    xml={getBlockIcon(userSelection === 'block' ? '#ef4444' : colors.text)}
+                    width={24}
+                    height={24}
                   />
                   <Text
                     style={[
                       styles.actionButtonText,
-                      userSelection === 'block' && styles.blockButtonTextSelected,
-                      userSelection !== 'block' && styles.actionButtonTextInactive,
+                      { color: userSelection === 'block' ? '#ef4444' : colors.text },
                     ]}
                   >
-                    Block
+                    ブロック
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -445,6 +435,7 @@ const styles = StyleSheet.create({
   header: {
     padding: spacing.lg,
     paddingBottom: spacing.md,
+    marginTop: 60,
   },
   title: {
     fontSize: fontSize.xxl,
@@ -494,68 +485,34 @@ const styles = StyleSheet.create({
   participantDetails: {
     flex: 1,
   },
+  participantNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs / 2,
+    marginBottom: spacing.xs,
+  },
   participantName: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
-    marginBottom: spacing.xs,
   },
-  participantMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  participantLevelBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs / 2,
-    borderRadius: borderRadius.md,
-    gap: spacing.xs / 2,
-  },
-  participantLevelIcon: {
+  hostBadge: {
     fontSize: fontSize.xs,
-  },
-  participantLevelLabel: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
-  },
-  participantFlag: {
-    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
   },
   actionButtons: {
     flexDirection: 'row',
-    gap: spacing.md,
   },
   actionButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
     minWidth: 60,
-  },
-  actionButtonInactive: {
-    backgroundColor: '#f3f4f6',
   },
   actionButtonText: {
     fontSize: fontSize.xs,
     fontWeight: fontWeight.semibold,
     marginTop: spacing.xs / 2,
-  },
-  actionButtonTextInactive: {
-    color: '#9ca3af',
-  },
-  starButtonSelected: {
-    backgroundColor: '#fef3c7',
-  },
-  starButtonTextSelected: {
-    color: '#f59e0b',
-  },
-  blockButtonSelected: {
-    backgroundColor: '#fee2e2',
-  },
-  blockButtonTextSelected: {
-    color: '#ef4444',
   },
   footer: {
     padding: spacing.lg,

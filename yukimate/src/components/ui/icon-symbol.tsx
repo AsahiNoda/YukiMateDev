@@ -25,6 +25,7 @@ import CompassIcon from '../../../assets/images/icons/compass.svg';
 import PostIcon from '../../../assets/images/icons/post.svg';
 import FeedIcon from '../../../assets/images/icons/feed.svg';
 import SettingsIcon from '../../../assets/images/icons/settings.svg';
+import BookmarkIcon from '../../../assets/images/icons/bookmark.svg';
 
 type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
 type SvgIconMapping = Record<string, React.FC<any>>;
@@ -93,6 +94,8 @@ const SVG_MAPPING: SvgIconMapping = {
   'list.bullet': FeedIcon,
   'newspaper': FeedIcon,
   'tray.fill': FeedIcon,
+  'bookmark': BookmarkIcon,
+  'bookmark.fill': BookmarkIcon,
 };
 
 /**

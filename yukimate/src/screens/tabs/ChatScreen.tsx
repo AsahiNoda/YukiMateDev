@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import type { EventChat } from '@types';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import {
@@ -13,6 +15,7 @@ import {
   Alert,
   FlatList,
   Image,
+  Platform,
   SectionList,
   StyleSheet,
   Text,
@@ -193,61 +196,70 @@ export default function ChatScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.chatItem, { backgroundColor: colors.card }]}
+        style={styles.chatItemContainer}
         onPress={() => router.push({
           pathname: '/event-chat/[eventId]',
           params: { eventId: item.eventId },
         } as any)}>
-        {firstPhoto ? (
-          <Image source={{ uri: firstPhoto }} style={styles.chatImage} />
-        ) : (
-          <View style={[styles.chatIcon, { backgroundColor: colors.backgroundSecondary }]}>
-            <IconSymbol name="person.2.fill" size={24} color={colors.icon} />
-          </View>
-        )}
-        <View style={styles.chatInfo}>
-          <View style={styles.chatTopRow}>
-            <Text style={[styles.chatTitle, { color: colors.text }]} numberOfLines={1}>
-              {item.eventTitle}
-            </Text>
-            <View style={styles.chatTimeContainer}>
-              {timeAgo && (
-                <Text style={[styles.chatTime, { color: colors.textSecondary }]}>{timeAgo}</Text>
-              )}
-              {/* Participants */}
-              {item.participants && item.participants.length > 0 && (
-                <View style={styles.participantsAvatars}>
-                  {item.participants.slice(0, 3).map((p, idx) => (
-                    <Image
-                      key={p.userId}
-                      source={{ uri: p.avatarUrl || undefined }}
-                      style={[
-                        styles.participantAvatar,
-                        { marginLeft: idx > 0 ? -8 : 0, borderColor: colors.card },
-                      ]}
-                    />
-                  ))}
+        <BlurView intensity={95} tint="dark" style={styles.blurContainer}>
+          <LinearGradient
+            colors={['rgba(40, 60, 80, 0.45)', 'rgba(30, 50, 70, 0.5)', 'rgba(40, 60, 80, 0.48)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.chatItemGradient}
+          >
+            {firstPhoto ? (
+              <Image source={{ uri: firstPhoto }} style={styles.chatImage} />
+            ) : (
+              <View style={[styles.chatIcon, { backgroundColor: 'rgba(255, 255, 255, 0.1)' }]}>
+                <IconSymbol name="person.2.fill" size={24} color={colors.icon} />
+              </View>
+            )}
+            <View style={styles.chatInfo}>
+              <View style={styles.chatTopRow}>
+                <Text style={[styles.chatTitle, { color: colors.text }]} numberOfLines={1}>
+                  {item.eventTitle}
+                </Text>
+                <View style={styles.chatTimeContainer}>
+                  {timeAgo && (
+                    <Text style={[styles.chatTime, { color: colors.textSecondary }]}>{timeAgo}</Text>
+                  )}
+                  {/* Participants */}
+                  {item.participants && item.participants.length > 0 && (
+                    <View style={styles.participantsAvatars}>
+                      {item.participants.slice(0, 3).map((p, idx) => (
+                        <Image
+                          key={p.userId}
+                          source={{ uri: p.avatarUrl || undefined }}
+                          style={[
+                            styles.participantAvatar,
+                            { marginLeft: idx > 0 ? -8 : 0, borderColor: 'rgba(255, 255, 255, 0.2)' },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  )}
                 </View>
+              </View>
+              <Text style={[styles.chatResort, { color: colors.textSecondary }]} numberOfLines={1}>
+                {new Date(item.eventStartAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                })}{' '}
+                • {item.eventResortName || 'リゾート未設定'}
+              </Text>
+              {shouldShowDeletionWarning ? (
+                <Text style={styles.deletionWarning} numberOfLines={1}>
+                  ⚠️ 投稿は一定時間後に自動で削除されます
+                </Text>
+              ) : (
+                <Text style={[styles.chatPreview, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {messagePreview}
+                </Text>
               )}
             </View>
-          </View>
-          <Text style={[styles.chatResort, { color: colors.textSecondary }]} numberOfLines={1}>
-            {new Date(item.eventStartAt).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-            })}{' '}
-            • {item.eventResortName || 'リゾート未設定'}
-          </Text>
-          {shouldShowDeletionWarning ? (
-            <Text style={styles.deletionWarning} numberOfLines={1}>
-              ⚠️ 投稿は一定時間後に自動で削除されます
-            </Text>
-          ) : (
-            <Text style={[styles.chatPreview, { color: colors.textSecondary }]} numberOfLines={1}>
-              {messagePreview}
-            </Text>
-          )}
-        </View>
+          </LinearGradient>
+        </BlurView>
       </TouchableOpacity>
     );
   }
@@ -257,9 +269,9 @@ export default function ChatScreen() {
     const eventTitle = item.event?.title || 'Unknown Event';
     const eventDate = item.event?.start_at
       ? new Date(item.event.start_at).toLocaleDateString('ja-JP', {
-          month: 'short',
-          day: 'numeric',
-        })
+        month: 'short',
+        day: 'numeric',
+      })
       : '';
     const resortName = item.event?.resorts?.name || '';
     const countryFlag = item.applicant?.profiles?.country_code || '';
@@ -453,11 +465,30 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
     gap: spacing.xs,
   },
-  chatItem: {
+  chatItemContainer: {
+    borderRadius: borderRadius.xl,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  blurContainer: {
+    borderRadius: borderRadius.xl,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(248, 255, 255, 0.15)',
+  },
+  chatItemGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.md,
-    borderRadius: borderRadius.xl,
     gap: spacing.md,
   },
   chatIcon: {

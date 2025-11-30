@@ -35,6 +35,9 @@ export type RecentPost = {
   createdAt: string;
 };
 
+// User role type
+export type UserRole = 'user' | 'developer' | 'official';
+
 // Complete user profile data
 export type ProfileData = {
   userId: string;
@@ -51,4 +54,6 @@ export type ProfileData = {
   stats: UserStats;
   recentEvents: RecentEvent[];
   recentPosts: RecentPost[];
+  headerUrl: string | null;
+  role: UserRole;
 };

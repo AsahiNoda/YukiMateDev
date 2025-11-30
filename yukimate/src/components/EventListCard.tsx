@@ -1,23 +1,28 @@
+import { IconSymbol } from '@/components/ui/icon-symbol';
+import { Colors } from '@/constants/theme';
+import { saveEvent } from '@/hooks/useDiscoverEvents';
+import { useColorScheme } from '@hooks/use-color-scheme';
+import type { DiscoverEvent } from '@types';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
 import {
+  Alert,
+  Image,
+  Platform,
   StyleSheet,
   Text,
-  View,
-  Image,
   TouchableOpacity,
-  Alert,
+  View,
 } from 'react-native';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { saveEvent } from '@/hooks/useDiscoverEvents';
-import type { DiscoverEvent } from '@types';
 
 // カテゴリアイコンのインポート
-import EventFlagIcon from '../../assets/images/icons/event-flag.svg';
-import CameraIcon from '../../assets/images/icons/camera.svg';
-import LessonIcon from '../../assets/images/icons/lesson.svg';
-import GroupIcon from '../../assets/images/icons/group.svg';
-import MountainIcon from '../../assets/images/icons/mountain.svg';
 import CalendarIcon from '../../assets/images/icons/calendar.svg';
+import CameraIcon from '../../assets/images/icons/camera.svg';
+import EventFlagIcon from '../../assets/images/icons/event-flag.svg';
+import GroupIcon from '../../assets/images/icons/group.svg';
+import LessonIcon from '../../assets/images/icons/lesson.svg';
+import MountainIcon from '../../assets/images/icons/mountain.svg';
 
 interface EventListCardProps {
   event: DiscoverEvent;
@@ -25,6 +30,8 @@ interface EventListCardProps {
 }
 
 export function EventListCard({ event, onPress }: EventListCardProps) {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const formatDate = (dateString: string) => {
@@ -97,156 +104,179 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
 
   return (
     <TouchableOpacity
-      style={styles.card}
+      style={styles.cardContainer}
       onPress={onPress}
       activeOpacity={0.8}
     >
-      {/* イベント画像 */}
-      <View style={styles.imageContainer}>
-        {event.photoUrl ? (
-          <Image
-            source={{ uri: event.photoUrl }}
-            style={styles.image}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={[styles.image, styles.imagePlaceholder]}>
-            <IconSymbol name="photo" size={32} color="#6B7280" />
-          </View>
-        )}
-
-        {/* カテゴリバッジ（左上） */}
-        <View style={styles.categoryBadge}>
-          {(() => {
-            const IconComponent = getCategoryIcon(event.category);
-            return <IconComponent width={14} height={14} color="#FFFFFF" />;
-          })()}
-          <Text style={styles.categoryBadgeText}>
-            {getCategoryLabel(event.category)}
-          </Text>
-        </View>
-
-        {/* 空き状況バッジ（右上） */}
-        <View style={styles.spotsBadge}>
-          <Text style={styles.spotsText}>
-            {event.spotsTaken}/{event.capacityTotal}
-          </Text>
-        </View>
-      </View>
-
-      {/* イベント情報 */}
-      <View style={styles.content}>
-        {/* タイトル */}
-        <Text style={styles.title} numberOfLines={2}>
-          {event.title}
-        </Text>
-
-        {/* スキー場と日時 */}
-        <View style={styles.infoRow}>
-          <MountainIcon width={14} height={14} color="#9CA3AF" />
-          <Text style={styles.infoText}>{event.resortName}</Text>
-          <CalendarIcon width={14} height={14} color="#9CA3AF" />
-          <Text style={styles.infoText}>{formatDate(event.startAt)}</Text>
-        </View>
-
-        {/* タグ（最初の3つまで） */}
-        {event.tags && event.tags.length > 0 && (
-          <View style={styles.tagsRow}>
-            {event.tags.slice(0, 10).map((tag, index) => (
-              <Text key={index} style={styles.tag}>
-                #{tag}
-              </Text>
-            ))}
-          </View>
-        )}
-
-        {/* 仕切り線 */}
-        <View style={styles.divider} />
-
-        {/* ホスト情報とレベル */}
-        <View style={styles.footer}>
-          <View style={styles.hostRow}>
-            {event.hostAvatar ? (
+      <BlurView intensity={95} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.blurContainer}>
+        <LinearGradient
+          colors={['rgba(219, 240, 250, 0.7)', 'rgba(181, 228, 255, 0.68)', 'rgba(210, 235, 248, 0.7)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientOverlay}
+        >
+          {/* イベント画像 */}
+          <View style={styles.imageContainer}>
+            {event.photoUrl ? (
               <Image
-                source={{ uri: event.hostAvatar }}
-                style={styles.hostAvatar}
+                source={{ uri: event.photoUrl }}
+                style={styles.image}
+                resizeMode="cover"
               />
             ) : (
-              <View style={[styles.hostAvatar, styles.hostAvatarPlaceholder]}>
-                <Text style={styles.hostAvatarText}>
-                  {event.hostName.charAt(0).toUpperCase()}
-                </Text>
+              <View style={[styles.image, styles.imagePlaceholder, { backgroundColor: colors.backgroundSecondary }]}>
+                <IconSymbol name="photo" size={32} color={colors.icon} />
               </View>
             )}
-            <Text style={styles.hostName} numberOfLines={1}>
-              {event.hostName}
-            </Text>
-          </View>
 
-          {/* レベルバッジ */}
-          {event.levelRequired && (
-            <View style={[
-              styles.levelBadge,
-              { backgroundColor: getLevelColor(event.levelRequired) }
-            ]}>
-              <Text style={styles.levelText}>
-                {getLevelLabel(event.levelRequired)}
+            {/* カテゴリバッジ（左上） */}
+            <View style={styles.categoryBadge}>
+              {(() => {
+                const IconComponent = getCategoryIcon(event.category);
+                return <IconComponent width={14} height={14} color={colors.text} />;
+              })()}
+              <Text style={[styles.categoryBadgeText, { color: colors.text }]}>
+                {getCategoryLabel(event.category)}
               </Text>
             </View>
-          )}
-        </View>
 
-        {/* 価格と保存ボタン */}
-        <View style={styles.bottomRow}>
-          <View style={styles.priceRow}>
-            <Text style={styles.price}>
-              {event.pricePerPersonJpy !== null
-                ? `¥${event.pricePerPersonJpy.toLocaleString()}`
-                : '無料'}
-            </Text>
-            <Text style={styles.priceLabel}> / person</Text>
+            {/* 空き状況バッジ（右上） */}
+            <View style={styles.spotsBadge}>
+              <Text style={[styles.spotsText, { color: colors.text }]}>
+                {event.spotsTaken}/{event.capacityTotal}
+              </Text>
+            </View>
           </View>
 
-          {/* 保存ボタン */}
-          <TouchableOpacity
-            style={[
-              styles.saveButton,
-              isSaved && styles.saveButtonActive,
-            ]}
-            onPress={handleSave}
-            disabled={isSaving || isSaved}
-            activeOpacity={0.7}
-          >
-            <IconSymbol
-              name={isSaved ? 'star.fill' : 'star'}
-              size={18}
-              color={isSaved ? '#D4AF37' : '#E5E7EB'}
-            />
-            <Text style={[
-              styles.saveButtonText,
-              isSaved && styles.saveButtonTextActive,
-            ]}>
-              {isSaved ? '保存済み' : '保存'}
+          {/* イベント情報 */}
+          <View style={styles.content}>
+            {/* タイトル */}
+            <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
+              {event.title}
             </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+
+            {/* スキー場と日時 */}
+            <View style={styles.infoRow}>
+              <MountainIcon width={14} height={14} color={colors.icon} />
+              <Text style={[styles.infoText, { color: colors.textSecondary }]}>{event.resortName}</Text>
+              <CalendarIcon width={14} height={14} color={colors.icon} />
+              <Text style={[styles.infoText, { color: colors.textSecondary }]}>{formatDate(event.startAt)}</Text>
+            </View>
+
+            {/* タグ（10個まで） */}
+            {event.tags && event.tags.length > 0 && (
+              <View style={styles.tagsRow}>
+                {event.tags.slice(0, 10).map((tag, index) => (
+                  <Text key={index} style={[styles.tag, { color: colors.accent }]}>
+                    #{tag}
+                  </Text>
+                ))}
+              </View>
+            )}
+
+            {/* 仕切り線 */}
+            <View style={styles.divider} />
+
+            {/* ホスト情報とレベル */}
+            <View style={styles.footer}>
+              <View style={styles.hostRow}>
+                {event.hostAvatar ? (
+                  <Image
+                    source={{ uri: event.hostAvatar }}
+                    style={styles.hostAvatar}
+                  />
+                ) : (
+                  <View style={[styles.hostAvatar, styles.hostAvatarPlaceholder, { backgroundColor: colors.tint }]}>
+                    <Text style={[styles.hostAvatarText, { color: colors.text }]}>
+                      {event.hostName.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                )}
+                <Text style={[styles.hostName, { color: colors.textSecondary }]} numberOfLines={1}>
+                  {event.hostName}
+                </Text>
+              </View>
+
+              {/* レベルバッジ */}
+              {event.levelRequired && (
+                <View style={[
+                  styles.levelBadge,
+                  { backgroundColor: getLevelColor(event.levelRequired) }
+                ]}>
+                  <Text style={[styles.levelText, { color: colors.text }]}>
+                    {getLevelLabel(event.levelRequired)}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* 価格と保存ボタン */}
+            <View style={styles.bottomRow}>
+              <View style={styles.priceRow}>
+                <Text style={[styles.price, { color: colors.accent }]}>
+                  {event.pricePerPersonJpy !== null
+                    ? `¥${event.pricePerPersonJpy.toLocaleString()}`
+                    : '無料'}
+                </Text>
+                <Text style={[styles.priceLabel, { color: colors.textSecondary }]}> / 1人</Text>
+              </View>
+
+              {/* 保存ボタン */}
+              <TouchableOpacity
+                style={[
+                  styles.saveButton,
+                  isSaved && [styles.saveButtonActive, { borderColor: colors.accent }],
+                ]}
+                onPress={handleSave}
+                disabled={isSaving || isSaved}
+                activeOpacity={0.7}
+              >
+                <IconSymbol
+                  name={isSaved ? 'star.fill' : 'star'}
+                  size={18}
+                  color={isSaved ? colors.accent : colors.textSecondary}
+                />
+                <Text style={[
+                  styles.saveButtonText,
+                  { color: colors.textSecondary },
+                  isSaved && { color: colors.accent },
+                ]}>
+                  {isSaved ? '保存済み' : '保存'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </LinearGradient>
+      </BlurView>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: '#2D3748',
-    borderRadius: 16,
+  cardContainer: {
     marginHorizontal: 16,
     marginVertical: 8,
+    borderRadius: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  blurContainer: {
+    borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    borderWidth: 2,
+    borderColor: 'rgba(158, 210, 255, 0.68)',
+  },
+  gradientOverlay: {
+    borderRadius: 16,
   },
   imageContainer: {
     width: '100%',
@@ -258,7 +288,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   imagePlaceholder: {
-    backgroundColor: '#334155',
+    // backgroundColor is set dynamically in the component
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -275,7 +305,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   categoryBadgeText: {
-    color: '#FFFFFF',
+    // color is set dynamically in the component
     fontSize: 11,
     fontWeight: '600',
   },
@@ -289,7 +319,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   spotsText: {
-    color: '#FFFFFF',
+    // color is set dynamically in the component
     fontSize: 12,
     fontWeight: '600',
   },
@@ -299,9 +329,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    // color is set dynamically in the component
     marginBottom: 8,
     lineHeight: 24,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   infoRow: {
     flexDirection: 'row',
@@ -311,7 +344,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 13,
-    color: '#9CA3AF',
+    // color is set dynamically in the component
   },
   tagsRow: {
     flexDirection: 'row',
@@ -321,12 +354,12 @@ const styles = StyleSheet.create({
   },
   tag: {
     fontSize: 11,
-    color: '#60A5FA',
+    // color is set dynamically in the component
     fontWeight: '500',
   },
   divider: {
     height: 1,
-    backgroundColor: '#334155',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)', // More subtle divider
     marginVertical: 12,
   },
   footer: {
@@ -342,24 +375,28 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   hostAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 45,
+    height: 45,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   hostAvatarPlaceholder: {
-    backgroundColor: '#5A7D9A',
+    // backgroundColor is set dynamically in the component
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
   },
   hostAvatarText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#FFFFFF',
+    // color is set dynamically in the component
   },
   hostName: {
-    fontSize: 13,
-    color: '#E5E7EB',
-    fontWeight: '500',
+    fontSize: 18,
+    // color is set dynamically in the component
+    fontWeight: '700',
     flex: 1,
   },
   levelBadge: {
@@ -370,7 +407,7 @@ const styles = StyleSheet.create({
   levelText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#FFFFFF',
+    // color is set dynamically in the component
   },
   bottomRow: {
     flexDirection: 'row',
@@ -384,11 +421,14 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#D4AF37',
+    // color is set dynamically in the component
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   priceLabel: {
     fontSize: 13,
-    color: '#9CA3AF',
+    // color is set dynamically in the component
     marginLeft: 2,
   },
   saveButton: {
@@ -397,18 +437,22 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: '#334155',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)', // Glassy button
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     gap: 6,
   },
   saveButtonActive: {
-    backgroundColor: '#1E3A5F',
+    backgroundColor: 'rgba(30, 58, 95, 0.6)',
+    borderColor: '#D4AF37',
   },
   saveButtonText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#E5E7EB',
+    // color is set dynamically in the component
   },
   saveButtonTextActive: {
-    color: '#D4AF37',
+    // color is set dynamically in the component
   },
 });
+

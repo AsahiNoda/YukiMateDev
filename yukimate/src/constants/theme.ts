@@ -41,7 +41,7 @@ export const Colors = {
     text: '#F7FAFC', // オフホワイト
     background: '#1A202C', // 深みのあるチャコールネイビー
     tint: tintColorLight, // スレートブルー
-    icon: '#9BA1A6',
+    icon: '#d3f1ffe0',
     tabIconDefault: '#9BA1A6',
     tabIconSelected: tintColorLight, // スレートブルー
     // Extended colors for Phase 2
@@ -53,8 +53,8 @@ export const Colors = {
     accent: accentGold, // シャンパンゴールド
     error: '#EF4444',
     success: '#10B981',
-    warning: '#F59E0B',
-    card: '#2D3748', // カード背景
+    warning: '#fae631ff',
+    card: 'rgba(188, 234, 255, 0.84)', // カード背景
   },
 };
 
