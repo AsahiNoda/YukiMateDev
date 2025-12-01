@@ -16,6 +16,7 @@ import {
   FlatList,
   Image,
   Platform,
+  RefreshControl,
   SectionList,
   StyleSheet,
   Text,
@@ -44,7 +45,10 @@ export default function ChatScreen() {
     error: applicationsError,
     approveApplication,
     rejectApplication,
+    refetch: refetchApplications,
   } = useEventApplications();
+
+  const [refreshing, setRefreshing] = React.useState(false);
 
   const [currentUserId, setCurrentUserId] = React.useState<string | null>(null);
 
@@ -69,6 +73,20 @@ export default function ChatScreen() {
       Alert.alert('エラー', '申請の読み込みに失敗しました');
     }
   }, [chatsError, applicationsError, activeTab]);
+
+  // プルツーリフレッシュハンドラー
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (activeTab === 'chats') {
+        await refetch();
+      } else {
+        await refetchApplications();
+      }
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // チャットをToday/Upcoming/Earlierに分類（メモ化）
   const sections = useMemo(() => {
@@ -395,6 +413,14 @@ export default function ChatScreen() {
               </Text>
             </View>
           )}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.accent}
+              colors={[colors.accent]}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <IconSymbol name="message" size={48} color={colors.icon} />
@@ -413,6 +439,14 @@ export default function ChatScreen() {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.chatList}
           renderItem={renderApplicationItem}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.accent}
+              colors={[colors.accent]}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <IconSymbol name="person.crop.circle.badge.checkmark" size={48} color={colors.icon} />

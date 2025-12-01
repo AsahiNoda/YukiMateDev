@@ -204,6 +204,12 @@ export function useExplore(
         });
       }
 
+      // 満員のイベントを除外（常に適用）
+      results = results.filter(event => {
+        const participantCount = event.spotsTaken || 0;
+        return participantCount < (event.capacity_total || 0);
+      });
+
       // 人気順ソート（後処理）
       if (sort.sortBy === 'popular') {
         results.sort((a, b) => {

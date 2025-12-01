@@ -131,8 +131,13 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
           })
         );
 
+        // 6.5. 満員のイベントを除外
+        const availableEvents = eventsWithParticipants.filter(
+          event => event.spotsTaken < (event.capacity_total || 0)
+        );
+
         // 7. パーソナライゼーション（スコアリング）
-        const scoredEvents = eventsWithParticipants.map(event => {
+        const scoredEvents = availableEvents.map(event => {
           let score = 0;
 
           // レベル一致 +10
@@ -256,6 +261,7 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
  * イベント参加申請
  * - event_applicationsテーブルにINSERT
  * - status: 'pending'で申請
+ * - 定員チェックを実施
  */
 export async function applyToEvent(
   eventId: string,
@@ -266,6 +272,29 @@ export async function applyToEvent(
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) {
       return { success: false, error: 'ユーザーがログインしていません' };
+    }
+
+    // イベント情報を取得（定員チェック用）
+    const { data: event, error: eventError } = await supabase
+      .from('posts_events')
+      .select('capacity_total')
+      .eq('id', eventId)
+      .single();
+
+    if (eventError || !event) {
+      return { success: false, error: 'イベントが見つかりません' };
+    }
+
+    // 現在の参加者数を取得
+    const { count } = await supabase
+      .from('event_participants')
+      .select('*', { count: 'exact', head: true })
+      .eq('event_id', eventId)
+      .is('left_at', null);
+
+    // 定員チェック
+    if (count !== null && count >= (event.capacity_total || 0)) {
+      return { success: false, error: 'このイベントは定員に達しています' };
     }
 
     // 既に申請済みかチェック

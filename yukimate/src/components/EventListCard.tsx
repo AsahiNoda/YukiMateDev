@@ -149,6 +149,19 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
                 {event.spotsTaken}/{event.capacityTotal}
               </Text>
             </View>
+
+            {/* レベルバッジ（右下） */}
+            {event.levelRequired && (
+              <View style={[
+                styles.levelBadgeImage,
+                { backgroundColor: `${getLevelColor(event.levelRequired)}DD` }
+              ]}>
+                <IconSymbol name="cube.fill" size={12} color={colors.text} />
+                <Text style={[styles.levelText, { color: colors.text }]}>
+                  {getLevelLabel(event.levelRequired)}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* イベント情報 */}
@@ -180,7 +193,7 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
             {/* 仕切り線 */}
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-            {/* ホスト情報とレベル */}
+            {/* ホスト情報 */}
             <View style={styles.footer}>
               <View style={styles.hostRow}>
                 <RoleBasedAvatar
@@ -193,18 +206,6 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
                   {event.hostName}
                 </Text>
               </View>
-
-              {/* レベルバッジ */}
-              {event.levelRequired && (
-                <View style={[
-                  styles.levelBadge,
-                  { backgroundColor: getLevelColor(event.levelRequired) }
-                ]}>
-                  <Text style={[styles.levelText, { color: colors.text }]}>
-                    {getLevelLabel(event.levelRequired)}
-                  </Text>
-                </View>
-              )}
             </View>
 
             {/* 価格と保存ボタン */}
@@ -399,6 +400,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 10,
+  },
+  levelBadgeImage: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
   },
   levelText: {
     fontSize: 11,

@@ -95,7 +95,7 @@ function ConfirmationModal({ visible, type, event, onConfirm, onCancel }: Confir
                 <Text style={[styles.modalEventTitle, { color: colors.text }]} numberOfLines={2}>
                   {event.title}
                 </Text>
-                <Text style={[styles.modalEventHost, { color: colors.textSecondary }]}>by {event.hostName}</Text>
+                <Text style={[styles.modalEventHost, { color: colors.textSecondary }]}>ホスト: {event.hostName}</Text>
               </View>
             </View>
           </View>
@@ -403,15 +403,17 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    return `${month}月${day}日`;
   };
 
   const formatPrice = (price: number | null) => {
-    if (price === null || price === 0) return 'Free';
+    if (price === null || price === 0) return '無料';
     return `¥${price.toLocaleString()}`;
   };
 
-  const levelText = event.levelRequired || 'Any';
+  const levelText = event.levelRequired || '指定なし';
 
   return (
     <GestureDetector gesture={panGesture}>
@@ -514,7 +516,7 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
                 {event.title}
               </Text>
               <Text style={[styles.cardDescription, { color: colors.textSecondary }]} numberOfLines={3}>
-                {event.description || 'Looking for experienced riders to explore the legendary backcountry... Let\'s chase some fresh tracks!'}
+                {event.description || '一緒に滑りましょう！素晴らしい雪山での体験をお楽しみください。'}
               </Text>
             </View>
 
@@ -533,7 +535,7 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
               <View style={styles.cardPriceContainer}>
                 <YenIcon width={18} height={18} color={colors.accent} />
                 <Text style={[styles.cardPriceAmount, { color: colors.accent }]}>
-                  {event.pricePerPersonJpy === null || event.pricePerPersonJpy === 0 ? 'Free' : event.pricePerPersonJpy.toLocaleString()}
+                  {event.pricePerPersonJpy === null || event.pricePerPersonJpy === 0 ? '無料' : event.pricePerPersonJpy.toLocaleString()}
                 </Text>
               </View>
             </View>

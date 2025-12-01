@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     statusText: {
         fontSize: fontSize.xs,
         fontWeight: fontWeight.semibold,
-        color: '#FFFFFF',
+        color: '#474747ff',
     },
     eventInfo: {
         padding: spacing.md,

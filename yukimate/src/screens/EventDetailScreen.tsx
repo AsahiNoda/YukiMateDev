@@ -639,6 +639,19 @@ export default function EventDetailScreen() {
     return String.fromCodePoint(...codePoints);
   };
 
+  const getLevelLabel = (level: string): string => {
+    switch (level) {
+      case 'beginner':
+        return '初級';
+      case 'intermediate':
+        return '中級';
+      case 'advanced':
+        return '上級';
+      default:
+        return level;
+    }
+  };
+
   if (loading) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
@@ -760,7 +773,7 @@ export default function EventDetailScreen() {
             {/* 日時 */}
             <View style={styles.gridItemWide}>
               <View style={styles.gridIconContainer}>
-                <IconSymbol name="calendar" size={20} color={colors.tint} />
+                <IconSymbol name="calendar" size={20} color={colors.icon} />
               </View>
               <View style={styles.gridTextContainer}>
                 <Text style={[styles.gridValue, { color: colors.text }]}>{formatDate(event.startAt)}</Text>
@@ -770,7 +783,7 @@ export default function EventDetailScreen() {
             {/* スキー場 */}
             <View style={styles.gridItemWide}>
               <View style={styles.gridIconContainer}>
-                <IconSymbol name="mountain.2.fill" size={20} color={colors.success} />
+                <IconSymbol name="mountain.2.fill" size={20} color={colors.icon} />
               </View>
               <View style={styles.gridTextContainer}>
                 <Text style={[styles.gridValue, { color: colors.text }]}>{event.resortName}</Text>
@@ -780,7 +793,7 @@ export default function EventDetailScreen() {
             {/* 参加人数 */}
             <View style={styles.gridItem}>
               <View style={styles.gridIconContainer}>
-                <IconSymbol name="person.2.fill" size={20} color={colors.tint} />
+                <IconSymbol name="person.2.fill" size={20} color={colors.icon} />
               </View>
               <View style={styles.gridTextContainer}>
                 <Text style={[styles.gridValue, { color: colors.text }]}>{event.spotsTaken}/{event.capacityTotal}人</Text>
@@ -790,7 +803,7 @@ export default function EventDetailScreen() {
             {/* 集合場所 */}
             <View style={styles.gridItemWide}>
               <View style={styles.gridIconContainer}>
-                <IconSymbol name="mappin.circle.fill" size={20} color={colors.warning} />
+                <IconSymbol name="mappin.circle.fill" size={20} color={colors.icon} />
               </View>
               <View style={styles.gridTextContainer}>
                 <Text style={[styles.gridValue, { color: colors.text }]} numberOfLines={1}>
@@ -802,7 +815,7 @@ export default function EventDetailScreen() {
             {/* 価格 */}
             <View style={styles.gridItem}>
               <View style={styles.gridIconContainer}>
-                <IconSymbol name="yensign.circle.fill" size={20} color={colors.accent} />
+                <IconSymbol name="yensign.circle.fill" size={20} color={colors.icon} />
               </View>
               <View style={styles.gridTextContainer}>
                 <Text style={[styles.gridValue, { color: colors.text }]}>
@@ -812,6 +825,20 @@ export default function EventDetailScreen() {
                 </Text>
               </View>
             </View>
+
+            {/* レベル */}
+            {event.levelRequired && (
+              <View style={styles.gridItemWide}>
+                <View style={styles.gridIconContainer}>
+                  <IconSymbol name="cube.fill" size={20} color={colors.icon} />
+                </View>
+                <View style={styles.gridTextContainer}>
+                  <Text style={[styles.gridValue, { color: colors.text }]}>
+                    {getLevelLabel(event.levelRequired)}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* タグセクション */}

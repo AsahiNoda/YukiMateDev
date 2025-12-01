@@ -1,31 +1,32 @@
 // Fallback for using MaterialIcons on Android and web.
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
+import { SymbolViewProps, SymbolWeight } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
 // Import SVG icons
-import HomeIcon from '../../../assets/images/icons/home.svg';
-import SearchIcon from '../../../assets/images/icons/search.svg';
-import ChatIcon from '../../../assets/images/icons/chat-lines.svg';
-import ProfileIcon from '../../../assets/images/icons/profile.svg';
+import BookmarkIcon from '../../../assets/images/icons/bookmark.svg';
 import CalendarIcon from '../../../assets/images/icons/calendar.svg';
-import MountainIcon from '../../../assets/images/icons/mountain.svg';
-import MapPinIcon from '../../../assets/images/icons/map-pin.svg';
-import YenIcon from '../../../assets/images/icons/yen.svg';
+import ChatIcon from '../../../assets/images/icons/chat-lines.svg';
+import CheckCircleIcon from '../../../assets/images/icons/check-circle.svg';
+import CompassIcon from '../../../assets/images/icons/compass.svg';
+import EditIcon from '../../../assets/images/icons/edit.svg';
+import FeedIcon from '../../../assets/images/icons/feed.svg';
 import FilterIcon from '../../../assets/images/icons/filter-list.svg';
+import GroupIcon from '../../../assets/images/icons/group.svg';
+import HomeIcon from '../../../assets/images/icons/home.svg';
+import InfoCircleIcon from '../../../assets/images/icons/info-circle.svg';
+import LevelIcon from '../../../assets/images/icons/level.svg';
+import MapPinIcon from '../../../assets/images/icons/map-pin.svg';
+import MountainIcon from '../../../assets/images/icons/mountain.svg';
+import PostIcon from '../../../assets/images/icons/post.svg';
+import ProfileIcon from '../../../assets/images/icons/profile.svg';
+import SearchIcon from '../../../assets/images/icons/search.svg';
+import SettingsIcon from '../../../assets/images/icons/settings.svg';
 import SortIcon from '../../../assets/images/icons/sort.svg';
 import XMarkIcon from '../../../assets/images/icons/xmark.svg';
-import CheckCircleIcon from '../../../assets/images/icons/check-circle.svg';
-import EditIcon from '../../../assets/images/icons/edit.svg';
-import InfoCircleIcon from '../../../assets/images/icons/info-circle.svg';
-import GroupIcon from '../../../assets/images/icons/group.svg';
-import CompassIcon from '../../../assets/images/icons/compass.svg';
-import PostIcon from '../../../assets/images/icons/post.svg';
-import FeedIcon from '../../../assets/images/icons/feed.svg';
-import SettingsIcon from '../../../assets/images/icons/settings.svg';
-import BookmarkIcon from '../../../assets/images/icons/bookmark.svg';
+import YenIcon from '../../../assets/images/icons/yen.svg';
 
 type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
 type SvgIconMapping = Record<string, React.FC<any>>;
@@ -96,6 +97,8 @@ const SVG_MAPPING: SvgIconMapping = {
   'tray.fill': FeedIcon,
   'bookmark': BookmarkIcon,
   'bookmark.fill': BookmarkIcon,
+  'cube.fill': LevelIcon,
+  'cube': LevelIcon,
 };
 
 /**
