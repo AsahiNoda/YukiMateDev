@@ -298,7 +298,7 @@ export default function ProfileSetupScreen() {
   // フォーム状態
   const [displayName, setDisplayName] = useState('');
   const [countryCode, setCountryCode] = useState('JP');
-  const [languages, setLanguages] = useState<string[]>([]);
+  const [language, setLanguage] = useState<'ja' | 'en'>('ja'); // デフォルトは日本語
   const [skillLevel, setSkillLevel] = useState<SkillLevel>('beginner');
   const [ridingStyle, setRidingStyle] = useState<RidingStyle[]>([]);
   const [bio, setBio] = useState('');
@@ -321,13 +321,7 @@ export default function ProfileSetupScreen() {
     }
   };
 
-  const toggleLanguage = (language: string) => {
-    if (languages.includes(language)) {
-      setLanguages(languages.filter((l) => l !== language));
-    } else {
-      setLanguages([...languages, language]);
-    }
-  };
+
 
   // アバター画像をアップロード
   const handleAvatarUpload = async () => {
@@ -370,10 +364,7 @@ export default function ProfileSetupScreen() {
       return;
     }
 
-    if (languages.length === 0) {
-      Alert.alert('エラー', '少なくとも1つの言語を選択してください');
-      return;
-    }
+    // 言語は必須でデフォルト値があるため、バリデーション不要
 
     try {
       setLoading(true);
@@ -384,7 +375,7 @@ export default function ProfileSetupScreen() {
         avatar_url: avatarUrl,
         header_url: headerUrl,
         country_code: countryCode,
-        languages: languages,
+        languages: [language], // 単一言語を配列として保存
         level: skillLevel,
         styles: ridingStyle,
         bio: bio.trim() || null,
@@ -560,19 +551,19 @@ export default function ProfileSetupScreen() {
 
         {/* 言語 */}
         <View style={styles.section}>
-          <Text style={styles.label}>言語 * (複数選択可)</Text>
+          <Text style={styles.label}>言語 *</Text>
           <View style={styles.buttonGroup}>
             <TouchableOpacity
               style={[
                 styles.languageButton,
-                languages.includes('Japanese') && styles.languageButtonActive,
+                language === 'ja' && styles.languageButtonActive,
               ]}
-              onPress={() => toggleLanguage('Japanese')}
+              onPress={() => setLanguage('ja')}
             >
               <Text
                 style={[
                   styles.languageText,
-                  languages.includes('Japanese') && styles.languageTextActive,
+                  language === 'ja' && styles.languageTextActive,
                 ]}
               >
                 日本語
@@ -581,14 +572,14 @@ export default function ProfileSetupScreen() {
             <TouchableOpacity
               style={[
                 styles.languageButton,
-                languages.includes('English') && styles.languageButtonActive,
+                language === 'en' && styles.languageButtonActive,
               ]}
-              onPress={() => toggleLanguage('English')}
+              onPress={() => setLanguage('en')}
             >
               <Text
                 style={[
                   styles.languageText,
-                  languages.includes('English') && styles.languageTextActive,
+                  language === 'en' && styles.languageTextActive,
                 ]}
               >
                 English

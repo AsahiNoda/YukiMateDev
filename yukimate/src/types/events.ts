@@ -16,6 +16,8 @@ export type HomeEvent = {
   levelRequired: SkillLevel;
   pricePerPersonJpy: number;
   isOfficial?: boolean;
+  photoUrl?: string | null;
+  hostRole?: string;
 };
 
 // Extended event type for discover/swipe feature

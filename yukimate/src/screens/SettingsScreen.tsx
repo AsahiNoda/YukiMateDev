@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { router } from 'expo-router';
 import React from 'react';
@@ -16,7 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { signOut, profile, userRole } = useAuth();
+  const { signOut, profile, userRole, user } = useAuth();
+  const { locale, setLocale } = useLocale();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
 
@@ -69,8 +71,68 @@ export default function SettingsScreen() {
               <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>ユーザー名</Text>
               <Text style={[styles.infoValue, { color: colors.text }]}>{profile.displayName}</Text>
             </View>
+            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>メールアドレス</Text>
+              <Text style={[styles.infoValue, { color: colors.text }]}>{user?.email || '未設定'}</Text>
+            </View>
           </View>
         )}
+
+        {/* Language Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>言語</Text>
+          <View style={[styles.languageSwitchContainer, { borderBottomColor: colors.border }]}>
+            <TouchableOpacity
+              style={styles.languageOption}
+              onPress={async () => {
+                if (locale !== 'ja') {
+                  try {
+                    await setLocale('ja');
+                  } catch (error) {
+                    Alert.alert('エラー', '言語の変更に失敗しました');
+                  }
+                }
+              }}
+              activeOpacity={0.6}
+            >
+              <Text style={[
+                styles.languageOptionText,
+                { color: locale === 'ja' ? colors.text : colors.textSecondary },
+                locale === 'ja' && styles.languageOptionTextActive
+              ]}>
+                日本語
+              </Text>
+              {locale === 'ja' && (
+                <View style={[styles.languageIndicator, { backgroundColor: colors.accent }]} />
+              )}
+            </TouchableOpacity>
+            <View style={[styles.languageDivider, { backgroundColor: colors.border }]} />
+            <TouchableOpacity
+              style={styles.languageOption}
+              onPress={async () => {
+                if (locale !== 'en') {
+                  try {
+                    await setLocale('en');
+                  } catch (error) {
+                    Alert.alert('エラー', '言語の変更に失敗しました');
+                  }
+                }
+              }}
+              activeOpacity={0.6}
+            >
+              <Text style={[
+                styles.languageOptionText,
+                { color: locale === 'en' ? colors.text : colors.textSecondary },
+                locale === 'en' && styles.languageOptionTextActive
+              ]}>
+                English
+              </Text>
+              {locale === 'en' && (
+                <View style={[styles.languageIndicator, { backgroundColor: colors.accent }]} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
 
         {/* Settings Options */}
         <View style={styles.section}>
@@ -216,6 +278,32 @@ const styles = StyleSheet.create({
   },
   menuItemText: {
     fontSize: 16,
+  },
+  languageSwitchContainer: {
+    flexDirection: 'row',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  languageOption: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  languageOptionText: {
+    fontSize: 16,
+  },
+  languageOptionTextActive: {
+    fontWeight: '600',
+  },
+  languageDivider: {
+    width: 1,
+    height: '100%',
+  },
+  languageIndicator: {
+    width: 24,
+    height: 2,
+    borderRadius: 1,
+    marginTop: 4,
   },
   logoutButton: {
     flexDirection: 'row',

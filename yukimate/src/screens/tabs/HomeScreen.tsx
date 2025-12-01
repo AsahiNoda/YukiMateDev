@@ -3,15 +3,19 @@ import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  FlatList,
+  ImageBackground,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { OfficialBadge } from '@/components/OfficialBadge';
 import { Colors } from '@/constants/theme';
+import { getBadgeColor } from '@/utils/avatar-utils';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { useHomeData } from '@hooks/useHomeData';
@@ -171,26 +175,24 @@ export default function HomeScreen() {
         />
       </View>
 
-      {/* Suggested events */}
+      {/* Featured Events */}
       {recommendedEvents.length > 0 && (
-        <View style={[styles.section, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
-          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>Suggested events</Text>
-          {recommendedEvents.map((evt) => (
-            <TouchableOpacity
-              key={evt.id}
-              style={styles.card}
-              activeOpacity={0.8}
-              onPress={() => router.push('/event-detail')}
-            >
-              <Text style={[styles.cardTitle, { color: Colors[colorScheme ?? 'light'].text }]}>{evt.title}</Text>
-              <Text style={[styles.cardBody, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>
-                {evt.resortName} · {evt.spotsTaken}/{evt.capacityTotal} spots ·{' '}
-                {evt.pricePerPersonJpy > 0
-                  ? `¥${evt.pricePerPersonJpy.toLocaleString()}`
-                  : 'Free'}
-              </Text>
-            </TouchableOpacity>
-          ))}
+        <View style={styles.featuredSection}>
+          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>注目の投稿</Text>
+          <FlatList
+            horizontal
+            data={recommendedEvents}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <FeaturedEventCard
+                event={item}
+                colorScheme={colorScheme ?? 'light'}
+                onPress={() => router.push(`/event-detail?eventId=${item.id}` as any)}
+              />
+            )}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.featuredListContent}
+          />
         </View>
       )}
 
@@ -399,6 +401,51 @@ const styles = StyleSheet.create({
     // color is set dynamically in the component
     marginTop: 2,
   },
+  featuredSection: {
+    marginBottom: 24,
+  },
+  featuredListContent: {
+    paddingRight: 16,
+  },
+  featuredCard: {
+    width: 200,
+    height: 250,
+    marginRight: 12,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  featuredImage: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  featuredPlaceholder: {
+    flex: 1,
+    backgroundColor: 'rgba(45, 55, 72, 0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featuredGradient: {
+    padding: 12,
+    paddingTop: 40,
+  },
+  featuredTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  roleBadgeContainer: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+  },
+  roleBadgeBackground: {
+    backgroundColor: 'rgba(26, 32, 44, 0.8)', // Dark background for contrast
+    borderRadius: 12,
+    padding: 2,
+  },
   centered: {
     flex: 1,
     alignItems: 'center',
@@ -467,4 +514,70 @@ function WeatherChip({ label, active }: WeatherChipProps) {
       <Text style={{ fontSize: 10, color: colors.text }}>{label}</Text>
     </View>
   );
+}
+
+type FeaturedEventCardProps = {
+  event: {
+    id: string;
+    title: string;
+    photoUrl: string | null;
+    hostRole?: string;
+  };
+  colorScheme: 'light' | 'dark';
+  onPress: () => void;
+};
+
+function FeaturedEventCard({ event, colorScheme, onPress }: FeaturedEventCardProps) {
+  const colors = Colors[colorScheme];
+  const hasBadge = event.hostRole === 'developer' || event.hostRole === 'official';
+
+  return (
+    <TouchableOpacity style={styles.featuredCard} activeOpacity={0.8} onPress={onPress}>
+      {event.photoUrl ? (
+        <ImageBackground
+          source={{ uri: event.photoUrl }}
+          style={styles.featuredImage}
+          resizeMode="cover"
+        >
+          {/* グラデーションオーバーレイ（黒の半透明） */}
+          <View style={[StyleSheet.absoluteFill, {
+            backgroundColor: 'transparent',
+            justifyContent: 'flex-end',
+          }]}>
+            <View>
+              <View style={styles.featuredGradient}>
+                <Text style={styles.featuredTitle} numberOfLines={2}>
+                  {event.title}
+                </Text>
+              </View>
+            </View>
+          </View>
+          {/* ロールバッジ */}
+          {hasBadge && event.hostRole && (
+            <View style={styles.roleBadgeContainer}>
+              <View style={styles.roleBadgeBackground}>
+                <OfficialBadge color={getBadgeColor(event.hostRole)} size={24} />
+              </View>
+            </View>
+          )}
+        </ImageBackground>
+      ) : (
+        <View style={styles.featuredPlaceholder}>
+          <IconSymbol name="photo" size={40} color={colors.icon} />
+          <View style={styles.featuredGradient}>
+            <Text style={styles.featuredTitle} numberOfLines={2}>
+              {event.title}
+            </Text>
+          </View>
+          {hasBadge && event.hostRole && (
+            <View style={styles.roleBadgeContainer}>
+              <View style={styles.roleBadgeBackground}>
+                <OfficialBadge color={getBadgeColor(event.hostRole)} size={24} />
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+</TouchableOpacity>
+      );
 }

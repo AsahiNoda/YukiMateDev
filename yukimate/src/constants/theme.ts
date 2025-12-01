@@ -34,8 +34,11 @@ export const Colors = {
     accent: accentGold,
     error: '#EF4444',
     success: '#10B981',
-    warning: '#F59E0B',
+    warning: '#ffe32cff',
     card: '#F7FAFC',
+    // Role badge colors
+    roleDeveloper: '#FFD700', // ゴールド
+    roleOfficial: '#4169E1', // ロイヤルブルー
   },
   dark: {
     text: '#F7FAFC', // オフホワイト
@@ -53,8 +56,11 @@ export const Colors = {
     accent: accentGold, // シャンパンゴールド
     error: '#EF4444',
     success: '#10B981',
-    warning: '#fae631ff',
+    warning: '#ffe32cff',
     card: '#242B38', // カード背景
+    // Role badge colors
+    roleDeveloper: '#FFD700', // ゴールド
+    roleOfficial: '#4169E1', // ロイヤルブルー
   },
 };
 

@@ -173,9 +173,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    setIsGuest(false); // サインアウト時にゲストモードを解除
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error) {
+      // Ignore AuthSessionMissingError as it means we're already signed out
+      if (error instanceof Error && (
+        error.message.includes('Auth session missing') ||
+        error.name === 'AuthSessionMissingError'
+      )) {
+        console.log('Auth session missing, proceeding with sign out cleanup');
+      } else {
+        throw error;
+      }
+    } finally {
+      setIsGuest(false); // サインアウト時にゲストモードを解除
+    }
   }
 
   async function refreshProfile() {
