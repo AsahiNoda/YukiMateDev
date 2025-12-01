@@ -112,12 +112,15 @@ CREATE TABLE public.feed_reactions (
 );
 CREATE TABLE public.gear (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
+  user_id uuid NOT NULL UNIQUE,
   board text,
   binding text,
   boots text,
   others jsonb,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
+  board_name text,
+  binding_name text,
+  boots_name text,
   CONSTRAINT gear_pkey PRIMARY KEY (id),
   CONSTRAINT gear_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
@@ -230,6 +233,26 @@ CREATE TABLE public.resorts (
   difficulty_dist jsonb,
   map_image_url text,
   searchable tsvector,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  region text,
+  CONSTRAINT resorts_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.saved_events (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  event_id uuid NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT saved_events_pkey PRIMARY KEY (id),
+  CONSTRAINT saved_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT saved_events_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.posts_events(id)
+);
+CREATE TABLE public.spot_reviews (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  spot_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  text text,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT spot_reviews_pkey PRIMARY KEY (id),
   CONSTRAINT spot_reviews_spot_id_fkey FOREIGN KEY (spot_id) REFERENCES public.spots(id),

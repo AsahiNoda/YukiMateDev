@@ -107,7 +107,7 @@ export default function ExploreScreen() {
         <IconSymbol name="magnifyingglass" size={18} color={colors.icon} />
         <TextInput
           style={[styles.searchInput, { color: colors.text }]}
-          placeholder="Search places, events, hosts"
+          placeholder="検索"
           placeholderTextColor={colors.icon}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -159,7 +159,7 @@ export default function ExploreScreen() {
       {/* List/Map切り替え & 結果数 */}
       <View style={styles.controlsRow}>
         <Text style={[styles.resultsText, { color: colors.textSecondary }]}>
-          {status === 'success' ? `Showing ${events?.length || 0} results` : 'Loading...'}
+          {status === 'success' ? `${events?.length || 0} 件の検索結果を表示中` : 'ロード中...'}
         </Text>
         <View style={[styles.viewControls, { backgroundColor: colors.backgroundSecondary }]}>
           <TouchableOpacity
@@ -167,7 +167,7 @@ export default function ExploreScreen() {
             onPress={() => setViewMode('list')}
           >
             <Text style={[styles.viewButtonText, { color: colors.icon }, viewMode === 'list' && [styles.viewButtonTextActive, { color: colors.text }]]}>
-              List
+              リスト
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -175,7 +175,7 @@ export default function ExploreScreen() {
             onPress={() => setViewMode('map')}
           >
             <Text style={[styles.viewButtonText, { color: colors.icon }, viewMode === 'map' && [styles.viewButtonTextActive, { color: colors.text }]]}>
-              Map
+              地図
             </Text>
           </TouchableOpacity>
         </View>

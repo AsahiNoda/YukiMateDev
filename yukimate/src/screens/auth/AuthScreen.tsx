@@ -1,4 +1,10 @@
-KeyboardAvoidingView,
+import { useAuth } from '@/contexts/AuthContext';
+import { borderRadius, colors, fontSize, fontWeight, spacing } from '@/theme/colors';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import {
+  Alert,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
@@ -217,7 +223,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   appName: {
-    fontSize: fontSize.xxxl,
+    fontSize: fontSize.xxl,
     fontWeight: fontWeight.bold,
     color: colors.text.primary,
     marginBottom: spacing.xs,
@@ -229,7 +235,7 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     backgroundColor: colors.background.secondary,
-    borderRadius: borderRadius.xl,
+    borderRadius: borderRadius.lg,
     padding: spacing.xl,
   },
   formTitle: {

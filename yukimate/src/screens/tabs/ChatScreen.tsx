@@ -495,7 +495,7 @@ const styles = StyleSheet.create({
   chatList: {
     padding: spacing.md,
     paddingBottom: 120,
-    gap: spacing.xs,
+    gap: spacing.md,
   },
   chatItemContainer: {
     borderRadius: borderRadius.xl,

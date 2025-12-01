@@ -12,6 +12,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // グローバル変数で初期化状態を管理（再マウント時もリセットされない）
 let globalInitialized = false;
+// ナビゲーション中フラグ（重複ナビゲーション防止）
+let isNavigating = false;
 
 export default function RootLayout() {
   const router = useRouter();
@@ -37,16 +39,31 @@ export default function RootLayout() {
       try {
         console.log('🔄 Checking session...');
 
-        // 初期セッションチェック（タイムアウト付き - 3秒に短縮）
+        // 初期セッションチェック（タイムアウト付き - 10秒に延長）
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Timeout')), 3000)
+          setTimeout(() => reject(new Error('Session check timeout')), 10000)
         );
 
-        const { data: { session } } = await Promise.race([
-          sessionPromise,
-          timeoutPromise,
-        ]) as any;
+        let session;
+        try {
+          const result = await Promise.race([
+            sessionPromise,
+            timeoutPromise,
+          ]) as any;
+          session = result.data.session;
+        } catch (error: any) {
+          if (error.message === 'Session check timeout') {
+            console.error('❌ Session check timed out after 10s');
+            // タイムアウト時はサインイン画面へ
+            if (mounted) {
+              setIsReady(true);
+              router.replace('/(auth)/sign-in');
+            }
+            return;
+          }
+          throw error;
+        }
 
         console.log('✅ Session check done:', session ? 'Logged in' : 'Guest');
 
@@ -131,6 +148,13 @@ export default function RootLayout() {
           if (event === 'SIGNED_IN' && session) {
             console.log('➡️  User signed in, checking profile...');
 
+            // ナビゲーション中フラグをチェック（重複防止）
+            if (isNavigating) {
+              console.log('⚠️  Already navigating, skipping duplicate navigation');
+              return;
+            }
+            isNavigating = true;
+
             // プロフィールの存在確認
             supabase
               .from('profiles')
@@ -142,14 +166,17 @@ export default function RootLayout() {
                   // プロフィールが存在しない場合
                   console.log('⚠️  Profile not found, redirecting to setup...');
                   router.replace('/profile-setup');
+                  setTimeout(() => { isNavigating = false; }, 1000);
                 } else if (profile) {
                   // プロフィールが存在する場合
                   console.log('✅ Profile exists, redirecting to home...');
                   router.replace('/(tabs)/home');
+                  setTimeout(() => { isNavigating = false; }, 1000);
                 } else {
                   // その他のエラー
                   console.error('❌ Error checking profile:', error);
                   router.replace('/(tabs)/home');
+                  setTimeout(() => { isNavigating = false; }, 1000);
                 }
               });
           }

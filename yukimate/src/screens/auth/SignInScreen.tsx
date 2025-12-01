@@ -62,7 +62,8 @@ export default function SignInScreen() {
         if (error) throw error;
 
         console.log('✅ Signed in successfully:', data.user?.email);
-        // RootLayoutのonAuthStateChangeが自動的にホーム画面へリダイレクト
+        // RootLayout の onAuthStateChange が自動的にリダイレクトするまで待つ
+        // 明示的なナビゲーションは行わない（競合を避けるため）
       }
     } catch (error: any) {
       console.error('Auth error:', error);

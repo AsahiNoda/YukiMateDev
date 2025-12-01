@@ -408,10 +408,11 @@ const styles = StyleSheet.create({
     paddingRight: 16,
   },
   featuredCard: {
-    width: 200,
+    width: 160,
     height: 250,
-    marginRight: 12,
+    marginRight: 22,
     borderRadius: 12,
+    marginTop: 8,
     overflow: 'hidden',
   },
   featuredImage: {
@@ -578,6 +579,6 @@ function FeaturedEventCard({ event, colorScheme, onPress }: FeaturedEventCardPro
           )}
         </View>
       )}
-</TouchableOpacity>
-      );
+    </TouchableOpacity>
+  );
 }

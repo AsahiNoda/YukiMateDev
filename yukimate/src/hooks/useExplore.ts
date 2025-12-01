@@ -119,11 +119,12 @@ export function useExplore(
         query = query.not('id', 'in', `(${approvedEventIds.join(',')})`);
       }
 
-      // キーワード検索
+      // キーワード検索（タイトル、説明、タグを検索）
       if (filters.keyword) {
         query = query.or(
           `title.ilike.%${filters.keyword}%,` +
-          `description.ilike.%${filters.keyword}%`
+          `description.ilike.%${filters.keyword}%,` +
+          `tags.cs.{${filters.keyword}}`
         );
       }
 
