@@ -1,20 +1,12 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  KeyboardAvoidingView,
+KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { globalStyles } from '@/theme/styles';
-import { colors, spacing, fontSize, borderRadius, fontWeight } from '@/theme/colors';
-import { useAuth } from '@/contexts/AuthContext';
-import Button from '@/components/Button';
 
 export default function AuthScreen() {
   const { signUp, signIn } = useAuth();

@@ -1,3 +1,4 @@
+import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
 import { useEventApplications, type EventApplicationWithDetails } from '@/hooks/useEventApplications';
@@ -222,14 +223,14 @@ export default function ChatScreen() {
                   {item.participants && item.participants.length > 0 && (
                     <View style={styles.participantsAvatars}>
                       {item.participants.slice(0, 3).map((p, idx) => (
-                        <Image
-                          key={p.userId}
-                          source={{ uri: p.avatarUrl || undefined }}
-                          style={[
-                            styles.participantAvatar,
-                            { marginLeft: idx > 0 ? -8 : 0, borderColor: 'rgba(255, 255, 255, 0.2)' },
-                          ]}
-                        />
+                        <View key={p.userId} style={{ marginLeft: idx > 0 ? -8 : 0 }}>
+                          <RoleBasedAvatar
+                            avatarUrl={p.avatarUrl}
+                            role={p.role}
+                            size={24}
+                            showBadge={false}
+                          />
+                        </View>
                       ))}
                     </View>
                   )}
@@ -273,24 +274,25 @@ export default function ChatScreen() {
     return (
       <View style={[styles.applicationItem, { backgroundColor: colors.card }]}>
         {/* 申請者情報 */}
-        <View style={styles.applicationHeader}>
-          <Image
-            source={{ uri: item.applicant?.profiles?.avatar_url || undefined }}
-            style={styles.applicationAvatar}
+        <TouchableOpacity
+          style={styles.applicationHeader}
+          onPress={() => {
+            if (item.applicant?.id) {
+              router.push(`/user/${item.applicant.id}` as any);
+            }
+          }}
+        >
+          <RoleBasedAvatar
+            avatarUrl={item.applicant?.profiles?.avatar_url || null}
+            role={item.applicant?.profiles?.role || 'user'}
+            size={60}
+            showBadge={true}
           />
           <View style={styles.applicationUserInfo}>
             <View style={styles.applicationNameRow}>
               <Text style={[styles.applicationName, { color: colors.text }]}>
                 {applicantName}
               </Text>
-              {countryFlag && <Text style={styles.countryFlag}>{countryFlag}</Text>}
-              {item.applicant?.profiles?.level && (
-                <View style={[styles.levelBadge, { backgroundColor: colors.backgroundSecondary }]}>
-                  <Text style={[styles.levelText, { color: colors.textSecondary }]}>
-                    {item.applicant.profiles.level}
-                  </Text>
-                </View>
-              )}
             </View>
             <Text style={[styles.applicationEventTitle, { color: colors.textSecondary }]} numberOfLines={1}>
               {eventTitle}
@@ -299,16 +301,18 @@ export default function ChatScreen() {
               {eventDate} • {resortName}
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* メッセージ */}
-        {item.message && (
-          <View style={[styles.applicationMessage, { backgroundColor: colors.backgroundSecondary }]}>
-            <Text style={[styles.applicationMessageText, { color: colors.text }]}>
-              {item.message}
-            </Text>
-          </View>
-        )}
+        {
+          item.message && (
+            <View style={[styles.applicationMessage, { backgroundColor: colors.backgroundSecondary }]}>
+              <Text style={[styles.applicationMessageText, { color: colors.text }]}>
+                {item.message}
+              </Text>
+            </View>
+          )
+        }
 
         {/* アクションボタン */}
         <View style={styles.applicationActions}>
@@ -323,7 +327,7 @@ export default function ChatScreen() {
             <Text style={styles.approveButtonText}>承認</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </View >
     );
   }
 

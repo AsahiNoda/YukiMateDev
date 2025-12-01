@@ -1,3 +1,4 @@
+import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { saveEvent, unsaveEvent } from '@/hooks/useDiscoverEvents';
@@ -182,18 +183,12 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
             {/* ホスト情報とレベル */}
             <View style={styles.footer}>
               <View style={styles.hostRow}>
-                {event.hostAvatar ? (
-                  <Image
-                    source={{ uri: event.hostAvatar }}
-                    style={[styles.hostAvatar, { borderColor: colors.border }]}
-                  />
-                ) : (
-                  <View style={[styles.hostAvatar, styles.hostAvatarPlaceholder, { backgroundColor: colors.tint, borderColor: colors.border }]}>
-                    <Text style={[styles.hostAvatarText, { color: colors.text }]}>
-                      {event.hostName.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                )}
+                <RoleBasedAvatar
+                  avatarUrl={event.hostAvatar}
+                  role={event.hostRole}
+                  size={45}
+                  showBadge={true}
+                />
                 <Text style={[styles.hostName, { color: colors.textSecondary }]} numberOfLines={1}>
                   {event.hostName}
                 </Text>

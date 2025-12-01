@@ -1,13 +1,23 @@
-import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { EventApplication, Profile, Event } from '@types';
+import type { EventApplication } from '@types';
+import { useEffect, useState } from 'react';
 
 export interface EventApplicationWithDetails extends EventApplication {
   applicant: {
     id: string;
-    profiles: Pick<Profile, 'user_id' | 'display_name' | 'avatar_url' | 'level' | 'country_code'>;
+    profiles: {
+      user_id: string;
+      display_name: string | null;
+      avatar_url: string | null;
+      level: import('@types').SkillLevel | null;
+      country_code: string | null;
+      role: string; // or UserRole if imported
+    } | null;
   } | null;
-  event: Pick<Event, 'id' | 'title' | 'start_at'> & {
+  event: {
+    id: string;
+    title: string;
+    start_at: string;
     resorts: { id: string; name: string } | null;
   } | null;
 }
@@ -95,7 +105,7 @@ export function useEventApplications() {
         (applicationsData || []).map(async (app: any) => {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('user_id, display_name, avatar_url, level, country_code')
+            .select('user_id, display_name, avatar_url, level, country_code, users!profiles_user_id_fkey(role)')
             .eq('user_id', app.applicant_user_id)
             .single();
 
@@ -103,7 +113,10 @@ export function useEventApplications() {
             ...app,
             applicant: {
               id: app.applicant_user_id,
-              profiles: profile,
+              profiles: profile ? {
+                ...profile,
+                role: profile.users?.role || 'user',
+              } : null,
             },
             event: app.posts_events,
           };

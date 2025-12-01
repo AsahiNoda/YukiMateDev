@@ -1,3 +1,4 @@
+import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
@@ -491,17 +492,13 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
 
             {/* Host Info */}
             <View style={styles.cardHostRow}>
-              <View style={[styles.cardHostAvatar, { backgroundColor: colors.backgroundTertiary, borderColor: colors.text }]}>
-                {event.hostAvatar ? (
-                  <Image
-                    source={{ uri: event.hostAvatar }}
-                    style={styles.cardHostAvatarImage}
-                  />
-                ) : (
-                  <Text style={[styles.cardHostAvatarText, { color: colors.text }]}>
-                    {event.hostName.charAt(0).toUpperCase()}
-                  </Text>
-                )}
+              <View>
+                <RoleBasedAvatar
+                  avatarUrl={event.hostAvatar}
+                  role={event.hostRole}
+                  size={48}
+                  showBadge={true}
+                />
               </View>
               <View style={styles.cardHostInfo}>
                 <Text style={styles.cardHostName}>{event.hostName}</Text>

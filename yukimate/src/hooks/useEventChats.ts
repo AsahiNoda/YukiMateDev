@@ -163,8 +163,31 @@ export function useEventChats() {
       const hostEvents = hostEventsData || [];
       const hostEventIds = hostEvents?.map((e) => e.id) || [];
 
-      // 3. 両方を統合（重複を排除）
-      const allEventIds = [...new Set([...participantEventIds, ...hostEventIds])];
+      // 3. 自分がホストのイベントのうち、参加者が存在するもののみをフィルタリング
+      const hostEventIdsWithParticipants: string[] = [];
+
+      if (hostEventIds.length > 0) {
+        const { data: participantsInHostEvents, error: participantsError } = await supabase
+          .from('event_participants')
+          .select('event_id')
+          .in('event_id', hostEventIds)
+          .is('left_at', null);
+
+        if (participantsError) throw participantsError;
+
+        // 重複を除いて参加者が存在するホストイベントのIDを取得
+        const eventIdsSet = new Set(participantsInHostEvents?.map((p) => p.event_id) || []);
+        hostEventIdsWithParticipants.push(...Array.from(eventIdsSet));
+      }
+
+      console.log('[useEventChats] 📊 Event IDs statistics:', {
+        participantEventIds: participantEventIds.length,
+        hostEventIds: hostEventIds.length,
+        hostEventIdsWithParticipants: hostEventIdsWithParticipants.length,
+      });
+
+      // 4. 統合（参加者として参加しているイベント + 参加者が存在するホストイベント）
+      const allEventIds = [...new Set([...participantEventIds, ...hostEventIdsWithParticipants])];
 
       if (allEventIds.length === 0) {
         setChats([]);
@@ -195,7 +218,7 @@ export function useEventChats() {
 
       // チャットが存在するイベントのみを処理
       const allChats = chatData || [];
-      
+
       // チャットIDのリストを保存（リアルタイムサブスクリプション用）
       const currentChatIds = allChats.map((chat: any) => chat.id);
       setChatIds(currentChatIds);
@@ -240,6 +263,7 @@ export function useEventChats() {
               user_id,
               users!event_participants_user_id_fkey(
                 id,
+                role,
                 profiles(
                   user_id,
                   display_name,
@@ -257,6 +281,7 @@ export function useEventChats() {
             userId: p.user_id,
             displayName: p.users?.profiles?.display_name || null,
             avatarUrl: p.users?.profiles?.avatar_url || null,
+            role: p.users?.role || 'user',
           }));
 
           // event_imagesストレージから画像URLを取得

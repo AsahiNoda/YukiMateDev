@@ -38,6 +38,7 @@ export type DiscoverEvent = {
   photoUrl: string | null; // 下位互換性のため残す（最初の画像）
   photoUrls: string[]; // 全画像のURL配列
   hostUserId: string;
+  hostRole: string;
 };
 
 // Event filter options

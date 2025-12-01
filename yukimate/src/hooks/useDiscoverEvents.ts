@@ -77,7 +77,8 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
               user_id,
               display_name,
               avatar_url,
-              level
+              level,
+              users!profiles_user_id_fkey(role)
             )
           `)
           .eq('status', 'open')
@@ -226,6 +227,7 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
             photoUrl: photoUrls[0] || null, // 下位互換性のため最初の画像
             photoUrls, // 全画像
             hostUserId: event.host_user_id,
+            hostRole: event.profiles?.users?.role || 'user',
           };
         });
 

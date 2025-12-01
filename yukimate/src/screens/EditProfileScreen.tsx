@@ -1,3 +1,4 @@
+import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
 import type { SkillLevel } from '@/types/common';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useAuth } from '@contexts/AuthContext';
@@ -236,19 +237,19 @@ export default function EditProfileScreen() {
         <View style={styles.section}>
           <Text style={[styles.label, { color: colors.textSecondary }]}>アイコン</Text>
           <TouchableOpacity
-            style={styles.avatarContainer}
             onPress={handleAvatarUpload}
             disabled={uploadingAvatar}
+            style={{ alignSelf: 'center', marginBottom: 8 }}
           >
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                {uploadingAvatar ? (
-                  <ActivityIndicator color={colors.tint} />
-                ) : (
-                  <Ionicons name="person-outline" size={40} color={colors.icon} />
-                )}
+            <RoleBasedAvatar
+              avatarUrl={avatarUrl}
+              role={profileState.status === 'success' ? profileState.data.role : 'user'}
+              size={120}
+              showBadge={true}
+            />
+            {uploadingAvatar && (
+              <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 60 }]}>
+                <ActivityIndicator color={colors.tint} />
               </View>
             )}
           </TouchableOpacity>
@@ -605,8 +606,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
     gap: 12,
   },
   selectedFlag: {
@@ -630,8 +629,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     maxHeight: '80%',
-    borderWidth: 1,
-    borderColor: '#334155',
   },
   pickerHeader: {
     flexDirection: 'row',
@@ -684,8 +681,6 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     backgroundColor: '#1e293b',
     borderRadius: 12,
-    borderWidth: 2,
-    borderColor: '#334155',
     alignItems: 'center',
   },
   languageButtonActive: {
@@ -706,8 +701,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     backgroundColor: '#1e293b',
     borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
     alignItems: 'center',
   },
   levelButtonActive: {
@@ -732,12 +725,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     backgroundColor: '#1e293b',
     borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#334155',
   },
   styleButtonActive: {
     backgroundColor: '#0e7490',
-    borderColor: '#06b6d4',
   },
   styleText: {
     fontSize: 14,

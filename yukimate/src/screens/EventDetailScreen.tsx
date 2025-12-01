@@ -1,4 +1,5 @@
 import { ImageViewer } from '@/components/ImageViewer';
+import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -20,6 +21,15 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+interface Participant {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  countryCode: string | null;
+  styles: string[];
+  role: string;
+}
+
 interface EventDetail {
   id: string;
   title: string;
@@ -39,6 +49,7 @@ interface EventDetail {
   hostAvatar: string | null;
   hostUserId: string;
   hostLevel: string | null;
+  hostRole: string;
   isHost: boolean;
   hasApplied: boolean;
   applicationStatus: string | null;
@@ -245,6 +256,68 @@ function createStyles(colors: typeof Colors.light) {
       color: colors.tint,
       fontWeight: '500',
     },
+    participantsSection: {
+      marginTop: 24,
+    },
+    participantsSectionTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: colors.text,
+      marginBottom: 12,
+    },
+    participantCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    participantAvatar: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.tint,
+    },
+    participantAvatarPlaceholder: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.tint,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    participantAvatarText: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: colors.text,
+    },
+    participantInfo: {
+      flex: 1,
+      marginLeft: 12,
+    },
+    participantNameRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    participantName: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: colors.text,
+      marginRight: 6,
+    },
+    participantFlag: {
+      fontSize: 16,
+    },
+    participantStylesRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 4,
+    },
+    participantStyleTagText: {
+      fontSize: 12,
+      color: colors.textSecondary,
+    },
     footer: {
       position: 'absolute',
       bottom: 0,
@@ -277,6 +350,7 @@ function createStyles(colors: typeof Colors.light) {
       color: colors.text,
     },
     footerHostInfo: {
+      marginHorizontal: 12,
       flex: 1,
     },
     footerHostLabel: {
@@ -317,6 +391,7 @@ export default function EventDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [event, setEvent] = useState<EventDetail | null>(null);
+  const [participants, setParticipants] = useState<Participant[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string>('');
@@ -360,7 +435,8 @@ export default function EventDetailScreen() {
             user_id,
             display_name,
             avatar_url,
-            level
+            level,
+            users!profiles_user_id_fkey(role)
           )
         `)
         .eq('id', params.eventId)
@@ -375,6 +451,46 @@ export default function EventDetailScreen() {
         .select('*', { count: 'exact', head: true })
         .eq('event_id', params.eventId)
         .is('left_at', null);
+
+      // 参加者の詳細情報を取得
+      const { data: participantsData } = await supabase
+        .from('event_participants')
+        .select(`
+          user_id,
+          users!event_participants_user_id_fkey(
+            id,
+            role,
+            profiles(
+              user_id,
+              display_name,
+              avatar_url,
+              country_code,
+              styles
+            )
+          )
+        `)
+        .eq('event_id', params.eventId)
+        .is('left_at', null);
+
+      // 参加者データを整形
+      const formattedParticipants: Participant[] = [];
+      if (participantsData) {
+        participantsData.forEach((p: any) => {
+          const profile = p.users?.profiles;
+          if (profile) {
+            formattedParticipants.push({
+              userId: profile.user_id,
+              displayName: profile.display_name || 'Unknown',
+              avatarUrl: profile.avatar_url,
+              countryCode: profile.country_code,
+              styles: profile.styles || [],
+              role: p.users?.role || 'user',
+            });
+          }
+        });
+      }
+
+      setParticipants(formattedParticipants);
 
       // 申請状況を確認
       const { data: application } = await supabase
@@ -418,6 +534,7 @@ export default function EventDetailScreen() {
         hostAvatar: eventData.profiles?.avatar_url || null,
         hostUserId: eventData.host_user_id,
         hostLevel: eventData.profiles?.level || null,
+        hostRole: eventData.profiles?.users?.role || 'user',
         isHost: eventData.host_user_id === session.user.id,
         hasApplied: !!application,
         applicationStatus: application?.status || null,
@@ -447,6 +564,45 @@ export default function EventDetailScreen() {
     }
   };
 
+  const handleDeleteEvent = async () => {
+    if (!event) return;
+
+    Alert.alert(
+      'イベントを削除',
+      'このイベントを削除してもよろしいですか？この操作は取り消せません。',
+      [
+        {
+          text: 'キャンセル',
+          style: 'cancel',
+        },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { error } = await supabase
+                .from('posts_events')
+                .delete()
+                .eq('id', event.id);
+
+              if (error) throw error;
+
+              Alert.alert('削除完了', 'イベントを削除しました', [
+                {
+                  text: 'OK',
+                  onPress: () => router.back(),
+                },
+              ]);
+            } catch (err) {
+              console.error('Error deleting event:', err);
+              Alert.alert('エラー', 'イベントの削除に失敗しました');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const toggleBookmark = async () => {
     const success = await handleToggleBookmark();
     if (!success) {
@@ -473,6 +629,14 @@ export default function EventDetailScreen() {
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
     return `${year}年${month}月${day}日 ${weekday} ${hours}:${minutes}`;
+  };
+
+  const getFlagEmoji = (countryCode: string): string => {
+    const codePoints = countryCode
+      .toUpperCase()
+      .split('')
+      .map((char) => 127397 + char.charCodeAt(0));
+    return String.fromCodePoint(...codePoints);
   };
 
   if (loading) {
@@ -512,7 +676,7 @@ export default function EventDetailScreen() {
           <IconSymbol name="chevron.left" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
 
-        {/* ブックマークボタン（自分の投稿以外のみ表示） */}
+        {/* ブックマークボタン（自分の投稿以外のみ表示）/ 削除ボタン（自分の投稿のみ表示） */}
         {!event.isHost ? (
           <TouchableOpacity
             style={styles.headerButton}
@@ -527,7 +691,17 @@ export default function EventDetailScreen() {
             />
           </TouchableOpacity>
         ) : (
-          <View style={styles.headerButton} />
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={handleDeleteEvent}
+            activeOpacity={0.7}
+          >
+            <IconSymbol
+              name="trash"
+              size={24}
+              color={colors.error}
+            />
+          </TouchableOpacity>
         )}
       </View>
 
@@ -651,6 +825,56 @@ export default function EventDetailScreen() {
               </View>
             </View>
           )}
+
+          {/* 参加者セクション */}
+          {participants.length > 0 && (
+            <View style={styles.participantsSection}>
+              <Text style={[styles.participantsSectionTitle, { color: colors.text }]}>
+                参加者 ({participants.length}人)
+              </Text>
+              {participants.map((participant) => (
+                <TouchableOpacity
+                  key={participant.userId}
+                  style={[styles.participantCard, { borderBottomColor: colors.border }]}
+                  onPress={() => router.push(`/user/${participant.userId}` as any)}
+                >
+                  {/* アバター */}
+                  <RoleBasedAvatar
+                    avatarUrl={participant.avatarUrl}
+                    role={participant.role}
+                    size={48}
+                    showBadge={true}
+                  />
+
+                  {/* 参加者情報 */}
+                  <View style={styles.participantInfo}>
+                    {/* 名前と国旗 */}
+                    <View style={styles.participantNameRow}>
+                      <Text style={[styles.participantName, { color: colors.text }]}>
+                        {participant.displayName}
+                      </Text>
+                      {participant.countryCode && (
+                        <Text style={styles.participantFlag}>
+                          {getFlagEmoji(participant.countryCode)}
+                        </Text>
+                      )}
+                    </View>
+
+                    {/* スタイルタグ */}
+                    {participant.styles.length > 0 && (
+                      <View style={styles.participantStylesRow}>
+                        {participant.styles.map((style, idx) => (
+                          <Text key={idx} style={[styles.participantStyleTagText, { color: colors.textSecondary }]}>
+                            #{style}{idx < participant.styles.length - 1 ? ' ' : ''}
+                          </Text>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         {/* フッター用のスペース */}
@@ -660,24 +884,21 @@ export default function EventDetailScreen() {
       {/* 固定フッター */}
       <View style={[styles.footer, { paddingBottom: insets.bottom + 16, backgroundColor: colors.background, borderTopColor: colors.border }]}>
         {/* ホスト情報 */}
-        <View style={styles.footerHostSection}>
-          {event.hostAvatar ? (
-            <Image
-              source={{ uri: event.hostAvatar }}
-              style={styles.footerHostAvatar}
-            />
-          ) : (
-            <View style={[styles.footerHostAvatar, styles.hostAvatarPlaceholder]}>
-              <Text style={styles.footerHostAvatarText}>
-                {event.hostName.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-          )}
+        <TouchableOpacity
+          style={styles.footerHostSection}
+          onPress={() => router.push(`/user/${event.hostUserId}` as any)}
+        >
+          <RoleBasedAvatar
+            avatarUrl={event.hostAvatar}
+            role={event.hostRole}
+            size={40}
+            showBadge={true}
+          />
           <View style={styles.footerHostInfo}>
             <Text style={[styles.footerHostLabel, { color: colors.icon }]}>ホスト</Text>
             <Text style={[styles.footerHostName, { color: colors.text }]}>{event.hostName}</Text>
           </View>
-        </View>
+        </TouchableOpacity>
 
         {/* アクションボタン */}
         {event.isHost ? (

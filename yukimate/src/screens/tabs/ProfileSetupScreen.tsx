@@ -1,25 +1,25 @@
+import { COUNTRIES, getFlagSource } from '@/constants/countries';
+import { Colors } from '@/constants/theme';
+import { useAuth } from '@/contexts/AuthContext';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { pickAndUploadImage } from '@/lib/imageUpload';
+import { supabase } from '@/lib/supabase';
+import type { SkillLevel } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
   ActivityIndicator,
+  Alert,
   Image,
   Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { router } from 'expo-router';
-import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/contexts/AuthContext';
-import type { SkillLevel } from '@/types';
-import { pickAndUploadImage } from '@/lib/imageUpload';
-import { Ionicons } from '@expo/vector-icons';
-import { COUNTRIES, getFlagSource } from '@/constants/countries';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
 
 type RidingStyle = 'Freeride' | 'Powder' | 'Carving' | 'Park' | 'Backcountry';
 
@@ -71,8 +71,6 @@ function createStyles(colors: typeof Colors.light) {
       fontSize: 16,
       padding: 16,
       borderRadius: 12,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     bioInput: {
       minHeight: 100,
@@ -90,8 +88,6 @@ function createStyles(colors: typeof Colors.light) {
       borderRadius: 12,
       overflow: 'hidden',
       backgroundColor: colors.backgroundSecondary,
-      borderWidth: 2,
-      borderColor: colors.border,
     },
     headerImage: {
       width: '100%',
@@ -117,8 +113,6 @@ function createStyles(colors: typeof Colors.light) {
       borderRadius: 60,
       overflow: 'hidden',
       backgroundColor: colors.backgroundSecondary,
-      borderWidth: 3,
-      borderColor: colors.border,
       alignSelf: 'center',
     },
     avatar: {
@@ -147,8 +141,6 @@ function createStyles(colors: typeof Colors.light) {
       borderRadius: 12,
       paddingHorizontal: 16,
       paddingVertical: 16,
-      borderWidth: 2,
-      borderColor: colors.border,
       gap: 12,
     },
     selectedFlag: {
@@ -172,8 +164,6 @@ function createStyles(colors: typeof Colors.light) {
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       maxHeight: '80%',
-      borderWidth: 2,
-      borderColor: colors.border,
     },
     pickerHeader: {
       flexDirection: 'row',
@@ -226,12 +216,9 @@ function createStyles(colors: typeof Colors.light) {
       paddingVertical: 16,
       backgroundColor: colors.backgroundSecondary,
       borderRadius: 12,
-      borderWidth: 2,
-      borderColor: colors.border,
       alignItems: 'center',
     },
     languageButtonActive: {
-      borderColor: colors.tint,
       backgroundColor: colors.tint,
     },
     languageText: {
@@ -248,12 +235,9 @@ function createStyles(colors: typeof Colors.light) {
       paddingVertical: 16,
       backgroundColor: colors.backgroundSecondary,
       borderRadius: 12,
-      borderWidth: 2,
-      borderColor: colors.border,
       alignItems: 'center',
     },
     skillButtonActive: {
-      borderColor: colors.tint,
       backgroundColor: colors.tint,
     },
     skillText: {
@@ -274,12 +258,9 @@ function createStyles(colors: typeof Colors.light) {
       paddingVertical: 12,
       backgroundColor: colors.backgroundSecondary,
       borderRadius: 20,
-      borderWidth: 2,
-      borderColor: colors.border,
     },
     styleButtonActive: {
       backgroundColor: colors.tint,
-      borderColor: colors.tint,
     },
     styleText: {
       fontSize: 14,

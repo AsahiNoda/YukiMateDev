@@ -925,8 +925,6 @@ function createStyles(colors: typeof Colors.light) {
       fontSize: 16,
       padding: 12,
       borderRadius: 8,
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     textArea: {
       minHeight: 100,
@@ -944,8 +942,6 @@ function createStyles(colors: typeof Colors.light) {
       backgroundColor: colors.backgroundSecondary,
       padding: 12,
       borderRadius: 8,
-      borderWidth: 1,
-      borderColor: colors.border,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
@@ -958,8 +954,6 @@ function createStyles(colors: typeof Colors.light) {
       marginTop: 8,
       backgroundColor: colors.backgroundSecondary,
       borderRadius: 8,
-      borderWidth: 1,
-      borderColor: colors.border,
       maxHeight: 200,
     },
     pickerOption: {
@@ -1094,11 +1088,6 @@ function createStyles(colors: typeof Colors.light) {
       backgroundColor: colors.error,
       alignItems: 'center',
       justifyContent: 'center',
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.3,
-      shadowRadius: 3,
-      elevation: 4,
     },
     imagePlaceholder: {
       width: 100,

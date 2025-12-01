@@ -1,4 +1,6 @@
+import { OfficialBadge } from '@/components/OfficialBadge';
 import { Colors } from '@/constants/theme';
+import { getAvatarGradientColors, getBadgeColor } from '@/utils/avatar-utils';
 import { useAuth } from '@contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@hooks/use-color-scheme';
@@ -21,24 +23,6 @@ import Svg, { Path } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
 
-// Official badge component
-const OfficialBadge = ({ color, size = 20 }: { color: string; size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Path
-      d="M10.5213 2.62368C11.3147 1.75255 12.6853 1.75255 13.4787 2.62368L14.4989 3.74391C14.8998 4.18418 15.4761 4.42288 16.071 4.39508L17.5845 4.32435C18.7614 4.26934 19.7307 5.23857 19.6757 6.41554L19.6049 7.92905C19.5771 8.52388 19.8158 9.10016 20.2561 9.50111L21.3763 10.5213C22.2475 11.3147 22.2475 12.6853 21.3763 13.4787L20.2561 14.4989C19.8158 14.8998 19.5771 15.4761 19.6049 16.071L19.6757 17.5845C19.7307 18.7614 18.7614 19.7307 17.5845 19.6757L16.071 19.6049C15.4761 19.5771 14.8998 19.8158 14.4989 20.2561L13.4787 21.3763C12.6853 22.2475 11.3147 22.2475 10.5213 21.3763L9.50111 20.2561C9.10016 19.8158 8.52388 19.5771 7.92905 19.6049L6.41553 19.6757C5.23857 19.7307 4.26934 18.7614 4.32435 17.5845L4.39508 16.071C4.42288 15.4761 4.18418 14.8998 3.74391 14.4989L2.62368 13.4787C1.75255 12.6853 1.75255 11.3147 2.62368 10.5213L3.74391 9.50111C4.18418 9.10016 4.42288 8.52388 4.39508 7.92905L4.32435 6.41553C4.26934 5.23857 5.23857 4.26934 6.41554 4.32435L7.92905 4.39508C8.52388 4.42288 9.10016 4.18418 9.50111 3.74391L10.5213 2.62368Z"
-      stroke={color}
-      strokeWidth="1.5"
-    />
-    <Path
-      d="M9 12L11 14L15 10"
-      stroke={color}
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </Svg>
-);
-
 // Edit icon component
 const EditIcon = ({ color, size = 24 }: { color: string; size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -59,49 +43,10 @@ const EditIcon = ({ color, size = 24 }: { color: string; size?: number }) => (
   </Svg>
 );
 
-// Get avatar border color based on role
-const getAvatarBorderColor = (role: string) => {
-  switch (role) {
-    case 'developer':
-      return '#22c55e'; // green
-    case 'official':
-      return '#eab308'; // yellow
-    case 'user':
-    default:
-      return '#06b6d4'; // cyan
-  }
-};
 
-// Get badge color based on role
-const getBadgeColor = (role: string) => {
-  switch (role) {
-    case 'developer':
-      return '#22c55e'; // green
-    case 'official':
-      return '#eab308'; // yellow
-    default:
-      return '#06b6d4'; // cyan
-  }
-};
-
-// Get avatar gradient colors based on role
-const getAvatarGradientColors = (role: string): [string, string, string] => {
-  const baseColor = getAvatarBorderColor(role);
-  switch (role) {
-    case 'developer':
-      return [baseColor, '#10b981', '#059669']; // green gradient
-    case 'official':
-      return [baseColor, '#fbbf24', '#f59e0b']; // yellow/orange gradient
-    case 'user':
-    default:
-      return [baseColor, '#8b5cf6', '#f97316']; // cyan to purple to orange
-  }
-};
-
-
-function ProfileScreen() {
+function ProfileScreen({ userId }: { userId?: string }) {
   const { user: currentUser } = useAuth();
-  const profileState = useProfile();
+  const profileState = useProfile(userId);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   // MVP: Gear showcase is disabled
@@ -112,6 +57,8 @@ function ProfileScreen() {
   // });
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [headerUrl, setHeaderUrl] = useState<string | null>(null);
+  const [isStarred, setIsStarred] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   // const [currentGearIndex, setCurrentGearIndex] = useState(0);
 
   // Load profile images and gear images
@@ -185,6 +132,127 @@ function ProfileScreen() {
     loadImages();
   }, [profileState]);
 
+  // Check if user has starred or blocked this profile
+  useEffect(() => {
+    const checkStarAndBlockStatus = async () => {
+      if (profileState.status !== 'success' || !profileState.data) {
+        return;
+      }
+
+      const viewedProfile = profileState.data;
+
+      if (!currentUser?.id || !viewedProfile.userId || currentUser.id === viewedProfile.userId) {
+        return; // Skip check for own profile
+      }
+
+      try {
+        // Check if starred
+        const { data: starData } = await supabase
+          .from('stars')
+          .select('id')
+          .eq('user_id', currentUser.id)
+          .eq('target_user_id', viewedProfile.userId)
+          .maybeSingle();
+
+        setIsStarred(!!starData);
+
+        // Check if blocked
+        const { data: blockData } = await supabase
+          .from('blocks')
+          .select('id')
+          .eq('user_id', currentUser.id)
+          .eq('blocked_user_id', viewedProfile.userId)
+          .maybeSingle();
+
+        setIsBlocked(!!blockData);
+      } catch (error) {
+        console.error('Error checking star/block status:', error);
+      }
+    };
+
+    checkStarAndBlockStatus();
+  }, [currentUser, profileState]);
+
+  // Handle star toggle
+  const handleStarToggle = async () => {
+    if (!currentUser?.id || !profile.userId) return;
+
+    try {
+      if (isStarred) {
+        // Remove star
+        const { error } = await supabase
+          .from('stars')
+          .delete()
+          .eq('user_id', currentUser.id)
+          .eq('target_user_id', profile.userId);
+
+        if (error) {
+          console.error('Error removing star:', error);
+          return;
+        }
+
+        setIsStarred(false);
+      } else {
+        // Add star
+        const { error } = await supabase
+          .from('stars')
+          .insert({
+            user_id: currentUser.id,
+            target_user_id: profile.userId,
+          });
+
+        if (error) {
+          console.error('Error adding star:', error);
+          return;
+        }
+
+        setIsStarred(true);
+      }
+    } catch (error) {
+      console.error('Error toggling star:', error);
+    }
+  };
+
+  // Handle block toggle
+  const handleBlockToggle = async () => {
+    if (!currentUser?.id || !profile.userId) return;
+
+    try {
+      if (isBlocked) {
+        // Remove block
+        const { error } = await supabase
+          .from('blocks')
+          .delete()
+          .eq('user_id', currentUser.id)
+          .eq('blocked_user_id', profile.userId);
+
+        if (error) {
+          console.error('Error removing block:', error);
+          return;
+        }
+
+        setIsBlocked(false);
+      } else {
+        // Add block
+        const { error } = await supabase
+          .from('blocks')
+          .insert({
+            user_id: currentUser.id,
+            blocked_user_id: profile.userId,
+          });
+
+        if (error) {
+          console.error('Error adding block:', error);
+          return;
+        }
+
+        setIsBlocked(true);
+      }
+    } catch (error) {
+      console.error('Error toggling block:', error);
+    }
+  };
+
   const getFlagEmoji = (countryCode: string | null) => {
     if (!countryCode) return null;
     const codePoints = countryCode
@@ -257,28 +325,54 @@ function ProfileScreen() {
           <View style={[styles.headerImagePlaceholder, { backgroundColor: colors.backgroundSecondary }]} />
         )}
 
+        {/* Back Button */}
+        {userId && (
+          <TouchableOpacity
+            style={styles.headerBackButton}
+            onPress={() => router.back()}
+          >
+            <Ionicons name="chevron-back" size={24} color="#fff" />
+          </TouchableOpacity>
+        )}
+
         {/* Header Actions */}
-        {isOwnProfile ? (
-          // 自分のプロフィール - 編集ボタンを表示
-          <View style={styles.headerActions}>
+        <View style={styles.headerActions}>
+
+
+          {isOwnProfile ? (
+            // 自分のプロフィール - 編集ボタンを表示
             <TouchableOpacity
               style={styles.headerActionButton}
               onPress={() => router.push('/edit-profile')}
             >
               <EditIcon color="#fff" size={24} />
             </TouchableOpacity>
-          </View>
-        ) : (
-          // 他のユーザーのプロフィール - 星とブロックボタンを表示
-          <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.headerActionButton}>
-              <Ionicons name="star-outline" size={24} color="#fff" />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.headerActionButton}>
-              <Ionicons name="ban-outline" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        )}
+          ) : (
+            // 他のユーザーのプロフィール - 星とブロックボタンを表示
+            <>
+              <TouchableOpacity
+                style={styles.headerActionButton}
+                onPress={handleStarToggle}
+              >
+                <Ionicons
+                  name={isStarred ? "star" : "star-outline"}
+                  size={24}
+                  color={isStarred ? "#eab308" : "#fff"}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerActionButton}
+                onPress={handleBlockToggle}
+              >
+                <Ionicons
+                  name={isBlocked ? "ban" : "ban-outline"}
+                  size={24}
+                  color={isBlocked ? "#ef4444" : "#fff"}
+                />
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
 
         {/* Profile Info Overlay */}
         <View style={styles.profileInfoOverlay}>
@@ -441,6 +535,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerBackButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
   settingsButton: {
     position: 'absolute',

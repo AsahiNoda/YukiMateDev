@@ -2,12 +2,12 @@ import { router } from 'expo-router';
 import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
+  Dimensions,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Dimensions, // 画面幅取得のために追加
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -19,6 +19,7 @@ import { testSupabaseSetup } from '@lib/testSupabaseSetup';
 
 // SVGコンポーネント
 import HomeBgMountain from '../../../assets/images/home-bg-mountain.svg';
+import DocumentIcon from '../../../assets/images/icons/document.svg';
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
@@ -90,10 +91,10 @@ export default function HomeScreen() {
       {/* Weather Section (Container for Image + Card) */}
       {weather && (
         <View style={styles.weatherSectionWrapper}>
-          
+
           {/* 1. 背景画像レイヤー (カードからはみ出すように配置) */}
           <View style={styles.mountainBackgroundContainer}>
-            <HomeBgMountain 
+            <HomeBgMountain
               width={screenWidth} // 画面幅いっぱいに
               height={300}        // 高さを指定
               preserveAspectRatio="xMidYMid meet"
@@ -103,7 +104,7 @@ export default function HomeScreen() {
 
           {/* 2. Weather Card レイヤー (半透明のガラス表現) */}
           <View style={styles.weatherCard}>
-            
+
             {/* カード内の半透明背景色 */}
             <View style={[StyleSheet.absoluteFill, styles.weatherCardGlass]} />
 
@@ -157,10 +158,10 @@ export default function HomeScreen() {
           onPress={() => router.push('/(tabs)/chat')}
         />
         <QuickAction
-          icon="newspaper"
-          label="Snowfeed"
+          icon={<DocumentIcon width={24} height={24} color={tint} />}
+          label="My Posts"
           tint={tint}
-          onPress={() => router.push('/(tabs)/snowfeed')}
+          onPress={() => router.push('/my-posts' as any)}
         />
         <QuickAction
           icon="plus.circle"
@@ -424,7 +425,7 @@ const styles = StyleSheet.create({
 });
 
 type QuickActionProps = {
-  icon: Parameters<typeof IconSymbol>[0]['name'];
+  icon: Parameters<typeof IconSymbol>[0]['name'] | React.ReactElement;
   label: string;
   tint: string;
   onPress: () => void;
@@ -435,7 +436,11 @@ function QuickAction({ icon, label, tint, onPress }: QuickActionProps) {
   return (
     <TouchableOpacity style={styles.quickAction} activeOpacity={0.8} onPress={onPress}>
       <View style={styles.quickActionCircle}>
-        <IconSymbol name={icon} size={24} color={tint} />
+        {typeof icon === 'string' ? (
+          <IconSymbol name={icon} size={24} color={tint} />
+        ) : (
+          icon
+        )}
       </View>
       <Text style={[styles.quickActionLabel, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{label}</Text>
     </TouchableOpacity>

@@ -469,7 +469,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.md,
     borderRadius: borderRadius.lg,
-    borderWidth: 1,
   },
   participantInfo: {
     flexDirection: 'row',
@@ -516,7 +515,6 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: spacing.lg,
-    borderTopWidth: 1,
   },
   finishButton: {
     backgroundColor: '#5A7D9A',

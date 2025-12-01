@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { DiscoverEvent } from '@types';
+import { useEffect, useState } from 'react';
 
 /**
  * Explore検索フィルター
@@ -101,7 +101,8 @@ export function useExplore(
             display_name,
             avatar_url,
             level,
-            languages
+            languages,
+            users!profiles_user_id_fkey(role)
           )
         `)
         .eq('status', 'open')
@@ -262,6 +263,7 @@ export function useExplore(
           photoUrl: photoUrls[0] || null,
           photoUrls,
           hostUserId: event.host_user_id,
+          hostRole: event.profiles?.users?.role || 'user',
         };
       });
 

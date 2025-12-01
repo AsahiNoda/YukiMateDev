@@ -19,6 +19,7 @@ export type EventParticipant = {
   userId: string;
   displayName: string | null;
   avatarUrl: string | null;
+  role: string;
 };
 
 // Event chat thread
