@@ -2,6 +2,9 @@
   "name": "yukimate",
   "main": "expo-router/entry",
   "version": "1.0.0",
+  "react-native": {
+    "ws": "./shims/ws/index.js"
+  },
   "scripts": {
     "start": "npx expo start",
     "android": "npx expo start --android",
@@ -49,6 +52,7 @@
     "react-native-svg": "^15.12.1",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-web": "~0.21.0",
+    "react-native-worklets": "0.5.1",
     "readable-stream": "^4.7.0",
     "stream-browserify": "^3.0.0",
     "stream-http": "^3.2.0"
@@ -56,6 +60,7 @@
   "devDependencies": {
     "@types/react": "~19.1.0",
     "react-native-svg-transformer": "^1.5.2",
+    "supabase": "^2.65.6",
     "typescript": "~5.9.2"
   },
   "private": true

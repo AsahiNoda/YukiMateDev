@@ -21,6 +21,20 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
 
     const load = async () => {
       try {
+        // 0. リゾート名を取得（天気APIに必要）
+        const { data: resortData, error: resortError } = await supabase
+          .from('resorts')
+          .select('name')
+          .eq('id', resortId)
+          .single();
+
+        if (resortError) {
+          console.warn('リゾート名取得エラー:', resortError);
+        }
+
+        const resortName = resortData?.name || resortId;
+        console.log(`[useSnowfeed] Resort: ${resortName} (ID: ${resortId})`);
+
         // 1. レーティングサマリーを取得
         const { data: ratingData, error: ratingError } = await supabase
           .from('resort_rating_summary')
@@ -46,30 +60,47 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
           console.warn('天気データ取得エラー:', weatherError);
         }
 
-        // 2.5. DBに天気データがない場合、APIから取得
+        // 2.5. DBに天気データがない、または古い場合、APIから取得
         let apiWeatherData = null;
-        if (!weatherData) {
-          console.log('DBに天気データがないため、APIから取得します...');
-          apiWeatherData = await fetchWeatherData(resortId);
+        const today = new Date().toISOString().split('T')[0];
+        const isDataStale = !weatherData || weatherData.date !== today;
 
-          if (apiWeatherData) {
-            // APIから取得したデータをDBに保存
-            const { error: insertError } = await supabase
-              .from('weather_daily_cache')
-              .insert({
-                resort_id: resortId,
-                date: new Date().toISOString().split('T')[0],
-                temp_c: apiWeatherData.tempC,
-                new_snow_cm: apiWeatherData.newSnowCm,
-                base_depth_cm: apiWeatherData.baseDepthCm,
-                wind_ms: apiWeatherData.windMs,
-                visibility: apiWeatherData.visibility,
-                snow_quality: apiWeatherData.snowQuality,
-              });
+        if (isDataStale) {
+          console.log(
+            weatherData
+              ? `天気データが古い（${weatherData.date}）ため、APIから最新データを取得します...`
+              : 'DBに天気データがないため、APIから取得します...'
+          );
+          try {
+            // リゾート名を使用して天気データを取得
+            apiWeatherData = await fetchWeatherData(resortName);
 
-            if (insertError) {
-              console.warn('天気データのDB保存エラー:', insertError);
+            if (apiWeatherData) {
+              // APIから取得したデータをDBに保存（既存データがあればUPSERT）
+              const { error: upsertError } = await supabase
+                .from('weather_daily_cache')
+                .upsert({
+                  resort_id: resortId,
+                  date: new Date().toISOString().split('T')[0],
+                  temp_c: apiWeatherData.tempC,
+                  new_snow_cm: apiWeatherData.newSnowCm,
+                  base_depth_cm: apiWeatherData.baseDepthCm,
+                  wind_ms: apiWeatherData.windMs,
+                  visibility: apiWeatherData.visibility,
+                  snow_quality: apiWeatherData.snowQuality,
+                  weather_code: apiWeatherData.weatherCode,
+                }, {
+                  onConflict: 'resort_id,date'
+                });
+
+              if (upsertError) {
+                console.warn('天気データのDB保存エラー:', upsertError);
+              }
+            } else {
+              console.warn('天気APIからデータを取得できませんでした（nullが返されました）');
             }
+          } catch (apiError) {
+            console.error('天気API取得中にエラーが発生:', apiError);
           }
         }
 
@@ -159,16 +190,8 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
             }
           : null;
 
-        const weather: SnowfeedWeather | null = weatherData
-          ? {
-              tempC: weatherData.temp_c ? Number(weatherData.temp_c) : null,
-              newSnowCm: weatherData.new_snow_cm ? Number(weatherData.new_snow_cm) : null,
-              baseDepthCm: weatherData.base_depth_cm ? Number(weatherData.base_depth_cm) : null,
-              windMs: weatherData.wind_ms ? Number(weatherData.wind_ms) : null,
-              visibility: weatherData.visibility as SnowfeedWeather['visibility'],
-              snowQuality: weatherData.snow_quality as SnowfeedWeather['snowQuality'],
-            }
-          : apiWeatherData
+        // APIから取得した新しいデータを優先
+        const weather: SnowfeedWeather | null = apiWeatherData
           ? {
               tempC: apiWeatherData.tempC,
               newSnowCm: apiWeatherData.newSnowCm,
@@ -176,6 +199,17 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
               windMs: apiWeatherData.windMs,
               visibility: apiWeatherData.visibility,
               snowQuality: apiWeatherData.snowQuality,
+              weatherCode: apiWeatherData.weatherCode,
+            }
+          : weatherData
+          ? {
+              tempC: weatherData.temp_c ? Number(weatherData.temp_c) : null,
+              newSnowCm: weatherData.new_snow_cm ? Number(weatherData.new_snow_cm) : null,
+              baseDepthCm: weatherData.base_depth_cm ? Number(weatherData.base_depth_cm) : null,
+              windMs: weatherData.wind_ms ? Number(weatherData.wind_ms) : null,
+              visibility: weatherData.visibility as SnowfeedWeather['visibility'],
+              snowQuality: weatherData.snow_quality as SnowfeedWeather['snowQuality'],
+              weatherCode: weatherData.weather_code ? Number(weatherData.weather_code) : null,
             }
           : null;
 

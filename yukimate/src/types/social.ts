@@ -52,6 +52,7 @@ export type SnowfeedWeather = {
   windMs: number | null;
   visibility: 'good' | 'moderate' | 'poor' | null;
   snowQuality: 'powder' | 'packed' | 'slushy' | 'icy' | null;
+  weatherCode: number | null; // WMO Weather interpretation codes
 };
 
 // Complete snowfeed data

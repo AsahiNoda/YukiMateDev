@@ -3,6 +3,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useExplore, type ExploreFilters, type SortOptions } from '@/hooks/useExplore';
+import { useResorts } from '@/hooks/useResorts';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -11,6 +12,7 @@ import {
   Modal,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -54,7 +56,35 @@ export default function ExploreScreen() {
 
   // UI状態
   const [showSortModal, setShowSortModal] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [selectedResort, setSelectedResort] = useState<string | null>(null);
+  const [showResortModal, setShowResortModal] = useState(false);
+  const [expandedArea, setExpandedArea] = useState<string | null>(null);
+
+  // リゾート一覧を取得
+  const resortsState = useResorts();
+
+  // Group resorts by area
+  const resortsByArea = React.useMemo(() => {
+    if (resortsState.status !== 'success') return {};
+
+    const grouped: Record<string, typeof resortsState.resorts> = {};
+    resortsState.resorts.forEach((resort) => {
+      if (!grouped[resort.area]) {
+        grouped[resort.area] = [];
+      }
+      grouped[resort.area].push(resort);
+    });
+
+    // Sort areas alphabetically
+    const sortedGrouped: Record<string, typeof resortsState.resorts> = {};
+    Object.keys(grouped)
+      .sort()
+      .forEach((area) => {
+        sortedGrouped[area] = grouped[area];
+      });
+
+    return sortedGrouped;
+  }, [resortsState]);
 
   // デバウンス処理
   useEffect(() => {
@@ -69,6 +99,7 @@ export default function ExploreScreen() {
   const combinedFilters: ExploreFilters = {
     keyword: debouncedQuery || undefined,
     category: selectedCategory ? selectedCategory : undefined,
+    resortIds: selectedResort ? [selectedResort] : undefined,
   };
 
   // データ取得
@@ -156,29 +187,22 @@ export default function ExploreScreen() {
         ))}
       </View>
 
-      {/* List/Map切り替え & 結果数 */}
+      {/* スキー場フィルター & 結果数 */}
       <View style={styles.controlsRow}>
         <Text style={[styles.resultsText, { color: colors.textSecondary }]}>
           {status === 'success' ? `${events?.length || 0} 件の検索結果を表示中` : 'ロード中...'}
         </Text>
-        <View style={[styles.viewControls, { backgroundColor: colors.backgroundSecondary }]}>
-          <TouchableOpacity
-            style={[styles.viewButton, viewMode === 'list' && [styles.viewButtonActive, { backgroundColor: colors.backgroundTertiary }]]}
-            onPress={() => setViewMode('list')}
-          >
-            <Text style={[styles.viewButtonText, { color: colors.icon }, viewMode === 'list' && [styles.viewButtonTextActive, { color: colors.text }]]}>
-              リスト
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.viewButton, viewMode === 'map' && [styles.viewButtonActive, { backgroundColor: colors.backgroundTertiary }]]}
-            onPress={() => setViewMode('map')}
-          >
-            <Text style={[styles.viewButtonText, { color: colors.icon }, viewMode === 'map' && [styles.viewButtonTextActive, { color: colors.text }]]}>
-              地図
-            </Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={[styles.resortFilter, { backgroundColor: colors.backgroundSecondary }]}
+          onPress={() => setShowResortModal(true)}
+        >
+          <Text style={[styles.resortFilterText, { color: colors.text }]}>
+            {selectedResort && resortsState.status === 'success'
+              ? resortsState.resorts.find(r => r.id === selectedResort)?.name || 'スキー場で検索'
+              : 'スキー場で検索'}
+          </Text>
+          <IconSymbol name="chevron.down" size={14} color={colors.icon} />
+        </TouchableOpacity>
       </View>
 
       {/* イベントリスト */}
@@ -234,6 +258,105 @@ export default function ExploreScreen() {
           contentContainerStyle={styles.listContent}
         />
       )}
+
+      {/* スキー場選択モーダル */}
+      <Modal
+        visible={showResortModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowResortModal(false)}
+      >
+        <Pressable style={styles.modalOverlay} onPress={() => setShowResortModal(false)}>
+          <View style={[styles.modalContent, { backgroundColor: colors.backgroundSecondary }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>スキー場で検索</Text>
+
+            <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+              {/* すべて表示オプション */}
+              <TouchableOpacity
+                style={[
+                  styles.modalOption,
+                  !selectedResort && [styles.modalOptionActive, { backgroundColor: colors.backgroundTertiary }],
+                ]}
+                onPress={() => {
+                  setSelectedResort(null);
+                  setShowResortModal(false);
+                }}
+              >
+                <Text
+                  style={[
+                    styles.modalOptionText,
+                    { color: colors.textSecondary },
+                    !selectedResort && [styles.modalOptionTextActive, { color: colors.text }],
+                  ]}
+                >
+                  すべて
+                </Text>
+                {!selectedResort && (
+                  <IconSymbol name="checkmark" size={20} color={colors.tint} />
+                )}
+              </TouchableOpacity>
+
+              {/* リゾート一覧（エリア別トグル） */}
+              {resortsState.status === 'loading' && (
+                <View style={styles.modalLoading}>
+                  <ActivityIndicator size="small" color={colors.tint} />
+                </View>
+              )}
+              {resortsState.status === 'success' && Object.entries(resortsByArea).map(([area, resorts]) => (
+                <View key={area} style={styles.areaSection}>
+                  {/* Area Header (Toggle) */}
+                  <TouchableOpacity
+                    style={styles.areaHeader}
+                    onPress={() => setExpandedArea(expandedArea === area ? null : area)}
+                  >
+                    <Text style={[styles.areaHeaderText, { color: colors.text }]}>
+                      {area} ({resorts.length})
+                    </Text>
+                    <IconSymbol
+                      name={expandedArea === area ? 'chevron.up' : 'chevron.down'}
+                      size={20}
+                      color={colors.icon}
+                    />
+                  </TouchableOpacity>
+
+                  {/* Resort List (Collapsible) */}
+                  {expandedArea === area && (
+                    <View style={styles.resortListContainer}>
+                      {resorts.map((resort) => (
+                        <TouchableOpacity
+                          key={resort.id}
+                          style={[
+                            styles.resortItem,
+                            selectedResort === resort.id && [styles.resortItemActive, { backgroundColor: colors.backgroundTertiary }],
+                          ]}
+                          onPress={() => {
+                            setSelectedResort(resort.id);
+                            setShowResortModal(false);
+                            setExpandedArea(null);
+                          }}
+                        >
+                          <Text
+                            style={[
+                              styles.resortItemText,
+                              { color: colors.textSecondary },
+                              selectedResort === resort.id && [styles.resortItemTextActive, { color: colors.text }],
+                            ]}
+                          >
+                            {resort.name}
+                          </Text>
+                          {selectedResort === resort.id && (
+                            <IconSymbol name="checkmark" size={16} color={colors.tint} />
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
 
       {/* ソートモーダル */}
       <Modal
@@ -349,26 +472,18 @@ const styles = StyleSheet.create({
     fontSize: 13,
     // color is set dynamically in the component
   },
-  viewControls: {
+  resortFilter: {
     flexDirection: 'row',
+    alignItems: 'center',
     // backgroundColor is set dynamically in the component
     borderRadius: 8,
-    padding: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
   },
-  viewButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  viewButtonActive: {
-    // backgroundColor is set dynamically in the component
-  },
-  viewButtonText: {
+  resortFilterText: {
     fontSize: 13,
     fontWeight: '600',
-    // color is set dynamically in the component
-  },
-  viewButtonTextActive: {
     // color is set dynamically in the component
   },
   listContent: {
@@ -454,6 +569,9 @@ const styles = StyleSheet.create({
     // color is set dynamically in the component
     marginBottom: 20,
   },
+  modalScrollView: {
+    maxHeight: 400,
+  },
   modalOption: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -462,6 +580,46 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 12,
     marginBottom: 8,
+  },
+  areaSection: {
+    marginBottom: 8,
+  },
+  areaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  areaHeaderText: {
+    fontSize: 16,
+    fontWeight: '600',
+    // color is set dynamically in the component
+  },
+  resortListContainer: {
+    paddingLeft: 8,
+  },
+  resortItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  resortItemActive: {
+    // backgroundColor is set dynamically in the component
+  },
+  resortItemText: {
+    fontSize: 15,
+    // color is set dynamically in the component
+  },
+  resortItemTextActive: {
+    // color is set dynamically in the component
+    fontWeight: '600',
   },
   modalOptionActive: {
     // backgroundColor is set dynamically in the component
@@ -473,5 +631,14 @@ const styles = StyleSheet.create({
   modalOptionTextActive: {
     // color is set dynamically in the component
     fontWeight: '600',
+  },
+  modalOptionSubtext: {
+    fontSize: 12,
+    marginTop: 2,
+    // color is set dynamically in the component
+  },
+  modalLoading: {
+    paddingVertical: 20,
+    alignItems: 'center',
   },
 });

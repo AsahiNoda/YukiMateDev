@@ -134,6 +134,31 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* General Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>一般</Text>
+
+          <TouchableOpacity
+            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+            onPress={() => router.push('/blocked-users')}
+          >
+            <View style={styles.menuItemLeft}>
+              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>ブロック中のユーザー</Text>
+            </View>
+            <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+            onPress={() => router.push('/starred-users')}
+          >
+            <View style={styles.menuItemLeft}>
+              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>★登録ユーザー</Text>
+            </View>
+            <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
         {/* Settings Options */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>設定</Text>
@@ -200,6 +225,15 @@ export default function SettingsScreen() {
         >
           <IconSymbol name="arrow.right.square" size={20} color={colors.error} />
           <Text style={[styles.logoutButtonText, { color: colors.error }]}>ログアウト</Text>
+        </TouchableOpacity>
+
+        {/* Delete Account Button */}
+        <TouchableOpacity
+          style={[styles.deleteButton]}
+          onPress={() => router.push('/delete-account')}
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.deleteButtonText, { color: colors.error }]}>アカウントを削除</Text>
         </TouchableOpacity>
 
         <Text style={[styles.versionText, { color: colors.textSecondary }]}>Version 0.0.0</Text>
@@ -317,6 +351,16 @@ const styles = StyleSheet.create({
   logoutButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  deleteButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    marginTop: 8,
+  },
+  deleteButtonText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
   versionText: {
     fontSize: 12,

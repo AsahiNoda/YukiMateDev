@@ -7,8 +7,8 @@ import { useColorScheme } from '@hooks/use-color-scheme';
 import { useProfile } from '@hooks/useProfile';
 import { supabase } from '@lib/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -46,7 +46,8 @@ const EditIcon = ({ color, size = 24 }: { color: string; size?: number }) => (
 
 function ProfileScreen({ userId }: { userId?: string }) {
   const { user: currentUser } = useAuth();
-  const profileState = useProfile(userId);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const profileState = useProfile(userId, refreshKey);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   // MVP: Gear showcase is disabled
@@ -61,6 +62,16 @@ function ProfileScreen({ userId }: { userId?: string }) {
   const [isBlocked, setIsBlocked] = useState(false);
   // const [currentGearIndex, setCurrentGearIndex] = useState(0);
 
+  // 画面がフォーカスされた時にプロフィールをリフレッシュ
+  useFocusEffect(
+    useCallback(() => {
+      // 自分のプロフィールの場合のみリフレッシュ
+      if (!userId || userId === currentUser?.id) {
+        setRefreshKey(prev => prev + 1);
+      }
+    }, [userId, currentUser?.id])
+  );
+
   // Load profile images and gear images
   useEffect(() => {
     const loadImages = async () => {
@@ -72,10 +83,15 @@ function ProfileScreen({ userId }: { userId?: string }) {
       if (profile.avatarUrl) {
         // avatarUrlがフルパスの場合はそのまま使用、そうでない場合はストレージから取得
         if (profile.avatarUrl.startsWith('http')) {
-          setAvatarUrl(profile.avatarUrl);
+          // URLにキャッシュバスターが既に含まれている場合はそのまま使用
+          // 含まれていない場合は追加（例: 古いデータの場合）
+          const url = profile.avatarUrl.includes('?t=')
+            ? profile.avatarUrl
+            : `${profile.avatarUrl}?t=${Date.now()}`;
+          setAvatarUrl(url);
         } else {
           const { data } = supabase.storage.from('profile_avatar').getPublicUrl(profile.avatarUrl);
-          setAvatarUrl(data.publicUrl);
+          setAvatarUrl(`${data.publicUrl}?t=${Date.now()}`);
         }
       } else {
         setAvatarUrl(null);
@@ -85,10 +101,15 @@ function ProfileScreen({ userId }: { userId?: string }) {
       if (profile.headerUrl) {
         // headerUrlがフルパスの場合はそのまま使用、そうでない場合はストレージから取得
         if (profile.headerUrl.startsWith('http')) {
-          setHeaderUrl(profile.headerUrl);
+          // URLにキャッシュバスターが既に含まれている場合はそのまま使用
+          // 含まれていない場合は追加（例: 古いデータの場合）
+          const url = profile.headerUrl.includes('?t=')
+            ? profile.headerUrl
+            : `${profile.headerUrl}?t=${Date.now()}`;
+          setHeaderUrl(url);
         } else {
           const { data } = supabase.storage.from('profile_header').getPublicUrl(profile.headerUrl);
-          setHeaderUrl(data.publicUrl);
+          setHeaderUrl(`${data.publicUrl}?t=${Date.now()}`);
         }
       } else {
         setHeaderUrl(null);

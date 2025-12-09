@@ -7,7 +7,7 @@ type ProfileState =
   | { status: 'error'; error: string }
   | { status: 'success'; data: ProfileData };
 
-export function useProfile(userId?: string): ProfileState {
+export function useProfile(userId?: string, refreshKey?: number): ProfileState {
   const [state, setState] = useState<ProfileState>({ status: 'loading' });
 
   useEffect(() => {
@@ -229,7 +229,7 @@ export function useProfile(userId?: string): ProfileState {
     return () => {
       isMounted = false;
     };
-  }, [userId]);
+  }, [userId, refreshKey]);
 
   return state;
 }
@@ -238,6 +238,7 @@ export async function updateProfile(
   updates: Partial<{
     displayName: string;
     avatarUrl: string;
+    headerUrl: string;
     countryCode: string;
     languages: string[];
     level: SkillLevel;
@@ -262,6 +263,7 @@ export async function updateProfile(
 
     if (updates.displayName !== undefined) updateData.display_name = updates.displayName;
     if (updates.avatarUrl !== undefined) updateData.avatar_url = updates.avatarUrl;
+    if (updates.headerUrl !== undefined) updateData.header_url = updates.headerUrl;
     if (updates.countryCode !== undefined) updateData.country_code = updates.countryCode;
     if (updates.languages !== undefined) updateData.languages = updates.languages;
     if (updates.level !== undefined) updateData.level = updates.level;

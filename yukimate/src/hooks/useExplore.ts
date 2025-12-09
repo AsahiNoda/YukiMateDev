@@ -8,7 +8,7 @@ import { useEffect, useState } from 'react';
 export interface ExploreFilters {
   keyword?: string;
   category?: 'event' | 'lesson' | 'filming' | 'group';
-  resortIds?: number[];
+  resortIds?: string[];
   skillLevel?: 'beginner' | 'intermediate' | 'advanced';
   dateRange?: {
     start?: string;

@@ -10,6 +10,7 @@ export interface FetchedWeatherData {
   windMs: number;
   visibility: 'good' | 'moderate' | 'poor';
   snowQuality: 'powder' | 'packed' | 'slushy' | 'icy';
+  weatherCode: number; // WMO Weather interpretation codes
 }
 
 export interface DailyForecast {
@@ -81,6 +82,13 @@ const RESORT_COORDINATES: Record<string, { lat: number; lon: number }> = {
   'かぐら': { lat: 36.8431, lon: 138.8544 },
   'GALA湯沢': { lat: 36.9242, lon: 138.7883 },
   'ガーラ湯沢': { lat: 36.9242, lon: 138.7883 },
+  'ニュー・グリーンピア津南スキー場': { lat: 37.0328, lon: 138.6528 },
+  'ニューグリーンピア津南': { lat: 37.0328, lon: 138.6528 },
+  'グリーンピア津南': { lat: 37.0328, lon: 138.6528 },
+
+  // 群馬エリア
+  'ホワイトワールド尾瀬岩鞍': { lat: 36.7806, lon: 139.2553 },
+  '尾瀬岩鞍': { lat: 36.7806, lon: 139.2553 },
 
   // デフォルト（白馬エリアの中心）
   'default': { lat: 36.7, lon: 137.85 },
@@ -92,37 +100,72 @@ const RESORT_COORDINATES: Record<string, { lat: number; lon: number }> = {
 function getResortCoordinates(resortIdOrName: string): { lat: number; lon: number } {
   console.log(`[getResortCoordinates] Searching for: "${resortIdOrName}"`);
 
+  // 入力を正規化（全角→半角、スペース除去、小文字化）
+  const normalize = (str: string) =>
+    str
+      .replace(/[Ａ-Ｚａ-ｚ０-９]/g, (s) => String.fromCharCode(s.charCodeAt(0) - 0xfee0))
+      .replace(/\s+/g, '')
+      .toLowerCase();
+
+  const normalizedInput = normalize(resortIdOrName);
+
   // 1. 完全一致検索
   if (RESORT_COORDINATES[resortIdOrName]) {
     console.log(`[getResortCoordinates] Exact match found: ${resortIdOrName}`);
     return RESORT_COORDINATES[resortIdOrName];
   }
 
-  // 2. 部分一致検索（リゾート名に含まれるキーワード）
+  // 2. 正規化して完全一致検索
   for (const [key, coords] of Object.entries(RESORT_COORDINATES)) {
     if (key === 'default') continue;
+    const normalizedKey = normalize(key);
 
-    // リゾート名がキーを含むか、キーがリゾート名を含むか
-    if (resortIdOrName.includes(key) || key.includes(resortIdOrName)) {
+    if (normalizedInput === normalizedKey) {
+      console.log(`[getResortCoordinates] Normalized exact match found: ${key} for ${resortIdOrName}`);
+      return coords;
+    }
+  }
+
+  // 3. 部分一致検索（正規化済み）
+  for (const [key, coords] of Object.entries(RESORT_COORDINATES)) {
+    if (key === 'default') continue;
+    const normalizedKey = normalize(key);
+
+    // より柔軟な部分一致（順序を変えて両方向チェック）
+    if (normalizedInput.includes(normalizedKey) || normalizedKey.includes(normalizedInput)) {
       console.log(`[getResortCoordinates] Partial match found: ${key} for ${resortIdOrName}`);
       return coords;
     }
   }
 
-  // 3. 正規化して再検索（小文字、スペース除去）
-  const normalized = resortIdOrName.toLowerCase().replace(/\s+/g, '-');
-  for (const [key, coords] of Object.entries(RESORT_COORDINATES)) {
-    if (key === 'default') continue;
-    const normalizedKey = key.toLowerCase().replace(/\s+/g, '-');
+  // 4. キーワード抽出して検索（例: "ニセコグランヒラフスキー場" → "ニセコ", "ヒラフ"）
+  const keywords = [
+    'ニセコ', 'ヒラフ', 'アンヌプリ', 'ルスツ', 'キロロ', 'トマム', 'サホロ',
+    '白馬', '八方', 'hakuba', '五竜', '栂池', '岩岳',
+    '野沢', '志賀', '竜王',
+    '妙高', '赤倉', '杉ノ原',
+    '苗場', 'かぐら', 'gala', 'ガーラ', 'ばんけい',
+    '津南', 'グリーンピア',
+    '尾瀬', '岩鞍', 'ホワイトワールド'
+  ];
 
-    if (normalized.includes(normalizedKey) || normalizedKey.includes(normalized)) {
-      console.log(`[getResortCoordinates] Normalized match found: ${key} for ${resortIdOrName}`);
-      return coords;
+  for (const keyword of keywords) {
+    const normalizedKeyword = normalize(keyword);
+    if (normalizedInput.includes(normalizedKeyword)) {
+      // キーワードに一致するリゾートを探す
+      for (const [key, coords] of Object.entries(RESORT_COORDINATES)) {
+        if (key === 'default') continue;
+        const normalizedKey = normalize(key);
+        if (normalizedKey.includes(normalizedKeyword)) {
+          console.log(`[getResortCoordinates] Keyword match found: ${key} (keyword: ${keyword}) for ${resortIdOrName}`);
+          return coords;
+        }
+      }
     }
   }
 
-  // 4. マッチしない場合はデフォルト
-  console.log(`[getResortCoordinates] No match found for "${resortIdOrName}", using default coordinates`);
+  // 5. マッチしない場合はデフォルト
+  console.warn(`[getResortCoordinates] No match found for "${resortIdOrName}", using default coordinates`);
   return RESORT_COORDINATES['default'];
 }
 
@@ -138,6 +181,17 @@ function categorizeSnowQuality(tempC: number, newSnowCm: number): 'powder' | 'pa
 }
 
 /**
+ * 視界を判定（風速と降雪から推測）
+ */
+function categorizeVisibility(windMs: number, newSnowCm: number): 'good' | 'moderate' | 'poor' {
+  // 強風 + 降雪 → 視界不良
+  if (windMs > 10 && newSnowCm > 5) return 'poor';
+  if (windMs > 15) return 'poor'; // 強風のみでも視界不良
+  if (windMs > 8 || newSnowCm > 10) return 'moderate'; // 中程度の風または大雪
+  return 'good'; // それ以外は良好
+}
+
+/**
  * Open-Meteo APIから天気データを取得
  */
 export async function fetchWeatherData(
@@ -150,10 +204,11 @@ export async function fetchWeatherData(
     const url = new URL('https://api.open-meteo.com/v1/forecast');
     url.searchParams.append('latitude', lat.toString());
     url.searchParams.append('longitude', lon.toString());
-    url.searchParams.append('current', 'temperature_2m,wind_speed_10m');
-    url.searchParams.append('daily', 'snowfall_sum,snow_depth_max');
+    url.searchParams.append('current', 'temperature_2m,wind_speed_10m,weather_code');
+    url.searchParams.append('daily', 'snowfall_sum');
+    url.searchParams.append('hourly', 'snow_depth');
     url.searchParams.append('timezone', 'Asia/Tokyo');
-    url.searchParams.append('forecast_days', '1');
+    url.searchParams.append('forecast_days', '3'); // 3日分取得して精度向上
 
     console.log('Weather API URL:', url.toString());
 
@@ -166,50 +221,67 @@ export async function fetchWeatherData(
     }
 
     const data: any = await response.json();
-    console.log('Weather API response:', data);
 
-    // データを変換
-    const tempC = data.current?.temperature_2m
-      ? Math.round(data.current.temperature_2m)
-      : -3;
+    // デバッグ用：重要なデータのみログ出力
+    console.log('[Weather API] Current:', {
+      temp: data.current?.temperature_2m,
+      wind: data.current?.wind_speed_10m,
+      weather_code: data.current?.weather_code,
+    });
+    console.log('[Weather API] Daily snowfall:', data.daily?.snowfall_sum);
+    console.log('[Weather API] Hourly snow_depth (first 5):', data.hourly?.snow_depth?.slice(0, 5));
 
-    const newSnowCm = data.daily?.snowfall_sum?.[0]
-      ? Math.round(data.daily.snowfall_sum[0] * 10) / 10
-      : Math.round(Math.random() * 20);
+    // データを変換（APIデータがない場合はnullを返す）
+    const tempC = data.current?.temperature_2m ?? null;
+    const tempCRounded = tempC !== null ? Math.round(tempC) : null;
 
-    const baseDepthCm = data.daily?.snow_depth_max?.[0]
-      ? Math.round(data.daily.snow_depth_max[0] * 100) // m → cm
-      : Math.round(Math.random() * 100 + 100);
+    // 降雪量（過去24時間の合計）- Open-Meteo APIはcm単位で返す
+    const newSnowCm = data.daily?.snowfall_sum?.[0] ?? null;
+    const newSnowCmRounded = newSnowCm !== null ? Math.round(newSnowCm * 10) / 10 : null;
 
-    const windMs = data.current?.wind_speed_10m
-      ? Math.round(data.current.wind_speed_10m / 3.6 * 10) / 10 // km/h → m/s
-      : Math.round(Math.random() * 10);
+    // 積雪深度（最新の時間データ）- Open-Meteo APIはcm単位
+    // 注意: 日本のスキー場ではsnow_depthデータがnullの場合が多い
+    const snowDepthArray = data.hourly?.snow_depth || [];
+    const baseDepthCm = snowDepthArray.length > 0 ? snowDepthArray[0] ?? null : null;
+    const baseDepthCmRounded = baseDepthCm !== null ? Math.round(baseDepthCm) : null;
 
-    // 視界はAPIから取得できないので、ランダムに設定
-    const visibilityOptions: Array<'good' | 'moderate' | 'poor'> = ['good', 'moderate', 'poor'];
-    const visibility = visibilityOptions[Math.floor(Math.random() * 3)];
+    console.log('[Weather API] Parsed values:', {
+      tempC: tempCRounded,
+      newSnowCm: newSnowCmRounded,
+      baseDepthCm: baseDepthCmRounded,
+    });
 
-    const snowQuality = categorizeSnowQuality(tempC, newSnowCm);
+    // 風速 - Open-Meteoはkm/h単位なのでm/sに変換
+    const windKmh = data.current?.wind_speed_10m ?? null;
+    const windMs = windKmh !== null ? Math.round((windKmh / 3.6) * 10) / 10 : null;
+
+    // 天気コード（WMO Weather interpretation codes）
+    const weatherCode = data.current?.weather_code ?? null;
+
+    // データが不足している場合はnullを返す
+    if (tempCRounded === null || windMs === null || weatherCode === null) {
+      console.warn('Weather data incomplete, returning null');
+      return null;
+    }
+
+    // 視界を風速と降雪量から推測
+    const visibility = categorizeVisibility(windMs, newSnowCmRounded ?? 0);
+
+    const snowQuality = categorizeSnowQuality(tempCRounded, newSnowCmRounded ?? 0);
 
     return {
-      tempC,
-      newSnowCm,
-      baseDepthCm,
-      windMs,
+      tempC: tempCRounded,
+      newSnowCm: newSnowCmRounded ?? 0,
+      baseDepthCm: baseDepthCmRounded ?? 0,
+      windMs: windMs,
       visibility,
       snowQuality,
+      weatherCode,
     };
   } catch (error) {
     console.error('Error fetching weather data:', error);
-    // エラーの場合はダミーデータを返す
-    return {
-      tempC: -3,
-      newSnowCm: Math.round(Math.random() * 20),
-      baseDepthCm: Math.round(Math.random() * 100 + 100),
-      windMs: Math.round(Math.random() * 10),
-      visibility: 'good',
-      snowQuality: 'powder',
-    };
+    // エラーの場合はnullを返す（ダミーデータは返さない）
+    return null;
   }
 }
 

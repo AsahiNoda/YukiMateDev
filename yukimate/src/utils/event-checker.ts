@@ -24,6 +24,18 @@ export async function checkPendingEventActions(
     try {
         console.log('[EventChecker] 🔍 Checking pending event actions for user:', userId);
 
+        // まず、ユーザーがホストのイベントも確認
+        console.log('[EventChecker] 📡 Checking events where user is host...');
+        const { data: hostedEvents, error: hostedError } = await supabase
+            .from('posts_events')
+            .select('id, start_at, host_user_id')
+            .eq('host_user_id', userId);
+
+        console.log('[EventChecker] 👑 Hosted events:', JSON.stringify(hostedEvents, null, 2));
+        if (hostedError) {
+            console.error('[EventChecker] ❌ Error fetching hosted events:', hostedError);
+        }
+
         // ユーザーが参加している全イベントを取得（left_at=null のもののみ）
         console.log('[EventChecker] 📡 Querying event_participants table...');
         const { data: participations, error: participationsError } = await supabase
@@ -49,29 +61,47 @@ export async function checkPendingEventActions(
 
         console.log('[EventChecker] ✅ Query successful, raw data:', JSON.stringify(participations, null, 2));
 
-        if (!participations || participations.length === 0) {
-            console.log('[EventChecker] ℹ️ No active event participations found');
+        // 参加イベントとホストイベントを統合
+        const allEvents: Array<{ id: string; start_at: string; host_user_id: string }> = [];
+
+        // 参加イベントを追加
+        if (participations && participations.length > 0) {
+            participations.forEach((p: any) => {
+                if (p.posts_events) {
+                    allEvents.push(p.posts_events);
+                }
+            });
+        }
+
+        // ホストイベントを追加（重複を避ける）
+        if (hostedEvents && hostedEvents.length > 0) {
+            hostedEvents.forEach((event) => {
+                if (!allEvents.find((e) => e.id === event.id)) {
+                    allEvents.push(event);
+                }
+            });
+        }
+
+        console.log('[EventChecker] 📋 Total events to check:', allEvents.length);
+        console.log('[EventChecker] 📋 Events breakdown:', {
+            participations: participations?.length || 0,
+            hosted: hostedEvents?.length || 0,
+            total: allEvents.length,
+        });
+
+        if (allEvents.length === 0) {
+            console.log('[EventChecker] ℹ️ No active events found');
             return null;
         }
 
-        console.log('[EventChecker] 📋 Found active participations:', participations.length);
-
         const now = new Date();
         console.log('[EventChecker] 🕐 Current time:', now.toISOString());
-        console.log('[EventChecker] 🔁 Starting loop through', participations.length, 'participations...');
+        console.log('[EventChecker] 🔁 Starting loop through', allEvents.length, 'events...');
 
         // 各イベントをチェック
-        for (let i = 0; i < participations.length; i++) {
-            const participation = participations[i];
-            console.log(`[EventChecker] 📌 Processing participation ${i + 1}/${participations.length}`);
-
-            const event = (participation as any).posts_events;
-
-            if (!event) {
-                console.log('[EventChecker] ⚠️ Event data missing for participation, skipping...');
-                console.log('[EventChecker] 📄 Participation data:', JSON.stringify(participation, null, 2));
-                continue;
-            }
+        for (let i = 0; i < allEvents.length; i++) {
+            const event = allEvents[i];
+            console.log(`[EventChecker] 📌 Processing event ${i + 1}/${allEvents.length}`);
 
             const eventId = event.id;
             const eventStartTime = new Date(event.start_at);
@@ -220,7 +250,7 @@ export async function checkPendingEventActions(
             }
         }
 
-        console.log('[EventChecker] 🔁 Finished checking all', participations.length, 'participations');
+        console.log('[EventChecker] 🔁 Finished checking all', allEvents.length, 'events');
 
         console.log('[EventChecker] ✅ No pending event actions found');
         return null;

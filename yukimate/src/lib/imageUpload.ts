@@ -101,13 +101,15 @@ async function uploadImageToSupabase(
 
     console.log('✅ Upload successful:', data);
 
-    // パブリックURLを取得して返す
+    // パブリックURLを取得して返す（キャッシュバスターを追加）
     const { data: urlData } = supabase.storage
       .from(bucketName)
       .getPublicUrl(filePath);
 
-    console.log('🔗 Public URL:', urlData.publicUrl);
-    return urlData.publicUrl;
+    // キャッシュバスター（タイムスタンプ）を追加して常に最新の画像を取得
+    const publicUrlWithCacheBuster = `${urlData.publicUrl}?t=${Date.now()}`;
+    console.log('🔗 Public URL:', publicUrlWithCacheBuster);
+    return publicUrlWithCacheBuster;
   } catch (error) {
     console.error('❌ Error uploading to Supabase:', error);
     throw error;

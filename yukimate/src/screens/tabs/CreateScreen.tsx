@@ -767,8 +767,6 @@ export default function CreateEventScreen() {
           <Text style={styles.label}>集合場所</Text>
           <TextInput
             style={styles.input}
-            placeholder="ゴンドラ山頂駅前"
-            placeholderTextColor={colors.textSecondary}
             value={meetingPlace}
             onChangeText={setMeetingPlace}
           />

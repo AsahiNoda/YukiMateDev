@@ -5,7 +5,6 @@ import { useAuth } from '@contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { updateProfile, useProfile } from '@hooks/useProfile';
 import { pickAndUploadImage } from '@lib/imageUpload';
-import { supabase } from '@lib/supabase';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -43,7 +42,8 @@ export default function EditProfileScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
-  const profileState = useProfile();
+  const [refreshKey, setRefreshKey] = useState(0);
+  const profileState = useProfile(undefined, refreshKey);
 
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
@@ -72,8 +72,33 @@ export default function EditProfileScreen() {
       setCountryCode(profile.countryCode || 'JP');
       setLanguages(profile.languages || []);
       setRidingStyle((profile.styles as RidingStyle[]) || []);
-      setAvatarUrl(profile.avatarUrl);
-      setHeaderUrl(profile.headerUrl);
+
+      // 画像URLは、既にローカルステートに最新のものがある場合はそれを維持
+      // （アップロード直後の場合、ローカルステートの方が新しいため）
+      setAvatarUrl(prev => {
+        // 既に値がセットされている場合（アップロード直後）はそれを維持
+        if (prev && prev.includes('?t=')) return prev;
+        // そうでない場合はプロフィールから取得し、キャッシュバスターを追加
+        if (profile.avatarUrl) {
+          // 既にキャッシュバスターが含まれている場合はそのまま、なければ追加
+          return profile.avatarUrl.includes('?t=')
+            ? profile.avatarUrl
+            : `${profile.avatarUrl}?t=${Date.now()}`;
+        }
+        return profile.avatarUrl;
+      });
+      setHeaderUrl(prev => {
+        // 既に値がセットされている場合（アップロード直後）はそれを維持
+        if (prev && prev.includes('?t=')) return prev;
+        // そうでない場合はプロフィールから取得し、キャッシュバスターを追加
+        if (profile.headerUrl) {
+          // 既にキャッシュバスターが含まれている場合はそのまま、なければ追加
+          return profile.headerUrl.includes('?t=')
+            ? profile.headerUrl
+            : `${profile.headerUrl}?t=${Date.now()}`;
+        }
+        return profile.headerUrl;
+      });
     }
   }, [profileState]);
 
@@ -100,7 +125,18 @@ export default function EditProfileScreen() {
     setUploadingAvatar(true);
     const url = await pickAndUploadImage(user.id, 'avatar');
     if (url) {
-      setAvatarUrl(url);
+      // キャッシュバスターを除去してベースURLのみを取得
+      const baseUrl = url.split('?')[0];
+
+      setAvatarUrl(url); // 表示用には最新のキャッシュバスター付きURL
+      // 画像アップロード直後にDBに保存（ベースURLのみ）
+      const result = await updateProfile({ avatarUrl: baseUrl });
+      if (result.success) {
+        // プロフィールを再読み込みして最新のデータを取得
+        setRefreshKey(prev => prev + 1);
+      } else {
+        Alert.alert('エラー', 'アバター画像の保存に失敗しました');
+      }
     }
     setUploadingAvatar(false);
   };
@@ -112,7 +148,18 @@ export default function EditProfileScreen() {
     setUploadingHeader(true);
     const url = await pickAndUploadImage(user.id, 'header');
     if (url) {
-      setHeaderUrl(url);
+      // キャッシュバスターを除去してベースURLのみを取得
+      const baseUrl = url.split('?')[0];
+
+      setHeaderUrl(url); // 表示用には最新のキャッシュバスター付きURL
+      // 画像アップロード直後にDBに保存（ベースURLのみ）
+      const result = await updateProfile({ headerUrl: baseUrl });
+      if (result.success) {
+        // プロフィールを再読み込みして最新のデータを取得
+        setRefreshKey(prev => prev + 1);
+      } else {
+        Alert.alert('エラー', 'ヘッダー画像の保存に失敗しました');
+      }
     }
     setUploadingHeader(false);
   };
@@ -130,6 +177,10 @@ export default function EditProfileScreen() {
 
     setIsSaving(true);
     try {
+      // キャッシュバスターを除去してベースURLのみを保存
+      const cleanAvatarUrl = avatarUrl ? avatarUrl.split('?')[0] : undefined;
+      const cleanHeaderUrl = headerUrl ? headerUrl.split('?')[0] : undefined;
+
       const result = await updateProfile({
         displayName: displayName.trim(),
         bio: bio.trim() || undefined,
@@ -137,21 +188,11 @@ export default function EditProfileScreen() {
         countryCode,
         languages,
         styles: ridingStyle,
+        avatarUrl: cleanAvatarUrl,
+        headerUrl: cleanHeaderUrl,
       });
 
       if (result.success) {
-        // Update avatar and header URLs if changed
-        if (avatarUrl || headerUrl) {
-          const updates: any = {};
-          if (avatarUrl) updates.avatar_url = avatarUrl;
-          if (headerUrl) updates.header_url = headerUrl;
-
-          await supabase
-            .from('profiles')
-            .update(updates)
-            .eq('user_id', user?.id);
-        }
-
         Alert.alert('成功', 'プロフィールを更新しました', [
           {
             text: 'OK',

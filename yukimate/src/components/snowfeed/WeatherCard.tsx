@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { IconSymbol } from '@components/ui/icon-symbol';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
-import { spacing, fontSize, borderRadius, fontWeight } from '@/constants/spacing';
+import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import type { SnowfeedWeather } from '@types';
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 interface WeatherCardProps {
   resortName: string;
@@ -15,58 +15,60 @@ export function WeatherCard({ resortName, weather }: WeatherCardProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  // 天気状態を判定して絵文字を返す
-  const getWeatherEmoji = () => {
-    if (weather.newSnowCm && weather.newSnowCm > 20) {
-      return '🌨️'; // 大雪
-    } else if (weather.newSnowCm && weather.newSnowCm > 5) {
-      return '🌨️'; // 雪
-    } else if (weather.newSnowCm && weather.newSnowCm > 0) {
-      return '☁️'; // 曇り（少し雪）
-    } else if (weather.tempC && weather.tempC > 0) {
-      return '🌧️'; // 雨
-    } else if (weather.tempC && weather.tempC > -5) {
-      return '⛅'; // 晴れ時々曇り
-    }
-    return '☀️'; // 快晴
+  // WMO Weather interpretation codes から天気アイコンを返す
+  const getWeatherIcon = () => {
+    const code = weather.weatherCode ?? 0;
+
+    // 0: Clear sky
+    if (code === 0) return 'sun.max.fill';
+
+    // 1, 2, 3: Mainly clear, partly cloudy, and overcast
+    if (code <= 3) return 'cloud.sun.fill';
+
+    // 45, 48: Fog
+    if (code === 45 || code === 48) return 'cloud.fog.fill';
+
+    // 51-57: Drizzle
+    if (code >= 51 && code <= 57) return 'cloud.drizzle.fill';
+
+    // 61-67: Rain
+    if (code >= 61 && code <= 67) return 'cloud.rain.fill';
+
+    // 71-77: Snow fall
+    if (code >= 71 && code <= 77) return 'snowflake';
+
+    // 80-82: Rain showers
+    if (code >= 80 && code <= 82) return 'cloud.heavyrain.fill';
+
+    // 85, 86: Snow showers
+    if (code === 85 || code === 86) return 'cloud.snow.fill';
+
+    // 95-99: Thunderstorm
+    if (code >= 95) return 'cloud.bolt.rain.fill';
+
+    return 'cloud.fill';
   };
 
-  // コンディションバッジを判定
-  const getConditionBadge = () => {
-    if (weather.newSnowCm && weather.newSnowCm >= 30) {
-      return { text: '🎿 Powder Day!', color: '#10B981', emoji: '✨' }; // Green
-    } else if (weather.newSnowCm && weather.newSnowCm >= 10) {
-      return { text: '❄️ Fresh Snow', color: '#5A7D9A', emoji: '🎉' }; // Blue
-    } else if (weather.snowQuality === 'powder') {
-      return { text: '⛷️ Good Powder', color: '#8B5CF6', emoji: '👍' }; // Purple
-    } else if (weather.snowQuality === 'packed') {
-      return { text: '🏂 Packed Snow', color: '#F59E0B', emoji: '⚡' }; // Orange
-    } else if (weather.visibility === 'poor' || weather.snowQuality === 'icy') {
-      return { text: '⚠️ Caution', color: '#EF4444', emoji: '🛑' }; // Red
-    }
-    return null;
-  };
-
-  // 天気状態のテキスト
+  // 天気状態のテキスト（WMOコードベース）
   const getWeatherDescription = () => {
-    if (weather.newSnowCm && weather.newSnowCm >= 30) {
-      return 'Heavy Snowfall';
-    } else if (weather.newSnowCm && weather.newSnowCm >= 10) {
-      return 'Light Snowfall';
-    } else if (weather.snowQuality === 'powder') {
-      return 'Powder Snow';
-    } else if (weather.snowQuality === 'packed') {
-      return 'Packed Snow';
-    } else if (weather.snowQuality === 'slushy') {
-      return 'Slushy Snow';
-    } else if (weather.snowQuality === 'icy') {
-      return 'Icy Conditions';
-    }
-    return 'Clear';
+    const code = weather.weatherCode ?? 0;
+
+    if (code === 0) return 'Clear';
+    if (code === 1) return 'Mainly Clear';
+    if (code === 2) return 'Partly Cloudy';
+    if (code === 3) return 'Overcast';
+    if (code === 45 || code === 48) return 'Foggy';
+    if (code >= 51 && code <= 57) return 'Drizzle';
+    if (code >= 61 && code <= 67) return 'Rainy';
+    if (code >= 71 && code <= 77) return 'Snowy';
+    if (code >= 80 && code <= 82) return 'Rain Showers';
+    if (code === 85 || code === 86) return 'Snow Showers';
+    if (code >= 95) return 'Thunderstorm';
+
+    return 'Unknown';
   };
 
-  const badge = getConditionBadge();
-  const weatherEmoji = getWeatherEmoji();
+  const weatherIcon = getWeatherIcon();
   const weatherDesc = getWeatherDescription();
 
   return (
@@ -87,7 +89,7 @@ export function WeatherCard({ resortName, weather }: WeatherCardProps) {
         {/* Weather Icon & Description */}
         <View style={styles.weatherInfo}>
           <View style={styles.iconContainer}>
-            <Text style={styles.weatherEmoji}>{weatherEmoji}</Text>
+            <IconSymbol name={weatherIcon as any} size={64} color={colors.accent} />
           </View>
           <Text style={[styles.weatherDescription, { color: colors.text }]}>{weatherDesc}</Text>
         </View>
@@ -129,25 +131,9 @@ export function WeatherCard({ resortName, weather }: WeatherCardProps) {
           </Text>
           <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Wind</Text>
         </View>
-
-        {/* Visibility */}
-        <View style={styles.statItem}>
-          <View style={styles.statIconContainer}>
-            <IconSymbol name="eye" size={20} color={colors.accent} />
-          </View>
-          <Text style={[styles.statValue, { color: colors.text }]}>
-            {weather.visibility ? weather.visibility.charAt(0).toUpperCase() + weather.visibility.slice(1) : 'N/A'}
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Visibility</Text>
-        </View>
       </View>
 
-      {/* Condition Badge */}
-      {badge && (
-        <View style={[styles.conditionBadge, { backgroundColor: badge.color }]}>
-          <Text style={styles.badgeText}>{badge.text}</Text>
-        </View>
-      )}
+
     </View>
   );
 }
@@ -200,9 +186,6 @@ const styles = StyleSheet.create({
     height: 80,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  weatherEmoji: {
-    fontSize: 64,
   },
   weatherDescription: {
     fontSize: fontSize.md,
