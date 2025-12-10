@@ -21,19 +21,27 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
 
     const load = async () => {
       try {
-        // 0. リゾート名を取得（天気APIに必要）
+        // 0. リゾート情報を取得（名前、座標、都道府県）
         const { data: resortData, error: resortError } = await supabase
           .from('resorts')
-          .select('name')
+          .select('name, latitude, longitude, area')
           .eq('id', resortId)
           .single();
 
         if (resortError) {
-          console.warn('リゾート名取得エラー:', resortError);
+          console.warn('リゾート情報取得エラー:', resortError);
         }
 
         const resortName = resortData?.name || resortId;
-        console.log(`[useSnowfeed] Resort: ${resortName} (ID: ${resortId})`);
+        const resortCoords = resortData?.latitude && resortData?.longitude
+          ? { latitude: resortData.latitude, longitude: resortData.longitude }
+          : undefined;
+        const resortPrefecture = resortData?.area;
+
+        console.log(`[useSnowfeed] Resort: ${resortName} (ID: ${resortId})`, {
+          coords: resortCoords || 'no coordinates',
+          prefecture: resortPrefecture || 'no prefecture'
+        });
 
         // 1. レーティングサマリーを取得
         const { data: ratingData, error: ratingError } = await supabase
@@ -72,8 +80,8 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
               : 'DBに天気データがないため、APIから取得します...'
           );
           try {
-            // リゾート名を使用して天気データを取得
-            apiWeatherData = await fetchWeatherData(resortName);
+            // リゾート名、座標、都道府県を使用して天気データを取得
+            apiWeatherData = await fetchWeatherData(resortName, resortCoords, resortPrefecture);
 
             if (apiWeatherData) {
               // APIから取得したデータをDBに保存（既存データがあればUPSERT）

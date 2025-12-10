@@ -9,17 +9,17 @@ import { format } from 'date-fns';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Image,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  tivityIndicator,
+  ert,
+  atList,
+  age,
+  yboardAvoidingView,
+  atform,
+  yleSheet,
+  xt,
+  xtInput,
+  uchableOpacity,
+  ew,
 } from 'react-native';
 
 interface EventDetail extends Event {

@@ -1,10 +1,22 @@
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
-import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import type { SnowfeedWeather } from '@types';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+// Weather icons
+import CloudIcon from '../../../assets/images/icons/weather/cloud.svg';
+import CloudyIcon from '../../../assets/images/icons/weather/cloudy.svg';
+import DayCloudyIcon from '../../../assets/images/icons/weather/day-cloudy.svg';
+import DayRainIcon from '../../../assets/images/icons/weather/day-rain.svg';
+import DaySnowIcon from '../../../assets/images/icons/weather/day-snow.svg';
+import DaySunnyOvercastIcon from '../../../assets/images/icons/weather/day-sunny-overcast.svg';
+import DaySunnyIcon from '../../../assets/images/icons/weather/day-sunny.svg';
+import FogIcon from '../../../assets/images/icons/weather/fog.svg';
+import RainIcon from '../../../assets/images/icons/weather/rain.svg';
+import ShowersIcon from '../../../assets/images/icons/weather/showers.svg';
+import SnowIcon from '../../../assets/images/icons/weather/snow.svg';
+import StormShowersIcon from '../../../assets/images/icons/weather/storm-showers.svg';
 
 interface WeatherCardProps {
   resortName: string;
@@ -15,60 +27,71 @@ export function WeatherCard({ resortName, weather }: WeatherCardProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
-  // WMO Weather interpretation codes から天気アイコンを返す
+  // デバッグ: weatherデータを確認
+  console.log('[WeatherCard] Weather data:', weather);
+
+  // WMO Weather interpretation codes から天気アイコンコンポーネントを返す
   const getWeatherIcon = () => {
     const code = weather.weatherCode ?? 0;
+    console.log('[WeatherCard] Weather code:', code);
 
-    // 0: Clear sky
-    if (code === 0) return 'sun.max.fill';
+    // 0: Clear sky → 快晴
+    if (code === 0) return DaySunnyIcon;
 
-    // 1, 2, 3: Mainly clear, partly cloudy, and overcast
-    if (code <= 3) return 'cloud.sun.fill';
+    // 1: Mainly clear → 晴れ
+    if (code === 1) return DaySunnyOvercastIcon;
 
-    // 45, 48: Fog
-    if (code === 45 || code === 48) return 'cloud.fog.fill';
+    // 2: Partly cloudy → 晴れ時々曇り
+    if (code === 2) return DayCloudyIcon;
 
-    // 51-57: Drizzle
-    if (code >= 51 && code <= 57) return 'cloud.drizzle.fill';
+    // 3: Overcast → 曇り
+    if (code === 3) return CloudyIcon;
 
-    // 61-67: Rain
-    if (code >= 61 && code <= 67) return 'cloud.rain.fill';
+    // 45, 48: Fog → 霧
+    if (code === 45 || code === 48) return FogIcon;
 
-    // 71-77: Snow fall
-    if (code >= 71 && code <= 77) return 'snowflake';
+    // 51-57: Drizzle → 小雨
+    if (code >= 51 && code <= 57) return DayRainIcon;
 
-    // 80-82: Rain showers
-    if (code >= 80 && code <= 82) return 'cloud.heavyrain.fill';
+    // 61-67: Rain → 雨
+    if (code >= 61 && code <= 67) return RainIcon;
 
-    // 85, 86: Snow showers
-    if (code === 85 || code === 86) return 'cloud.snow.fill';
+    // 71-77: Snow fall → 雪
+    if (code >= 71 && code <= 77) return SnowIcon;
 
-    // 95-99: Thunderstorm
-    if (code >= 95) return 'cloud.bolt.rain.fill';
+    // 80-82: Rain showers → にわか雨
+    if (code >= 80 && code <= 82) return ShowersIcon;
 
-    return 'cloud.fill';
+    // 85, 86: Snow showers → にわか雪
+    if (code === 85 || code === 86) return DaySnowIcon;
+
+    // 95-99: Thunderstorm → 雷雨
+    if (code >= 95) return StormShowersIcon;
+
+    // Default → 曇り
+    return CloudIcon;
   };
 
   // 天気状態のテキスト（WMOコードベース）
   const getWeatherDescription = () => {
     const code = weather.weatherCode ?? 0;
 
-    if (code === 0) return 'Clear';
-    if (code === 1) return 'Mainly Clear';
-    if (code === 2) return 'Partly Cloudy';
-    if (code === 3) return 'Overcast';
-    if (code === 45 || code === 48) return 'Foggy';
-    if (code >= 51 && code <= 57) return 'Drizzle';
-    if (code >= 61 && code <= 67) return 'Rainy';
-    if (code >= 71 && code <= 77) return 'Snowy';
-    if (code >= 80 && code <= 82) return 'Rain Showers';
-    if (code === 85 || code === 86) return 'Snow Showers';
-    if (code >= 95) return 'Thunderstorm';
+    if (code === 0) return '快晴';
+    if (code === 1) return '晴れ';
+    if (code === 2) return '晴れ時々曇り';
+    if (code === 3) return '曇り';
+    if (code === 45 || code === 48) return '霧';
+    if (code >= 51 && code <= 57) return '小雨';
+    if (code >= 61 && code <= 67) return '雨';
+    if (code >= 71 && code <= 77) return '雪';
+    if (code >= 80 && code <= 82) return 'にわか雨';
+    if (code === 85 || code === 86) return 'にわか雪';
+    if (code >= 95) return '雷雨';
 
-    return 'Unknown';
+    return '不明';
   };
 
-  const weatherIcon = getWeatherIcon();
+  const WeatherIcon = getWeatherIcon();
   const weatherDesc = getWeatherDescription();
 
   return (
@@ -89,50 +112,11 @@ export function WeatherCard({ resortName, weather }: WeatherCardProps) {
         {/* Weather Icon & Description */}
         <View style={styles.weatherInfo}>
           <View style={styles.iconContainer}>
-            <IconSymbol name={weatherIcon as any} size={64} color={colors.accent} />
+            <WeatherIcon width={100} height={100} color={colors.text} />
           </View>
           <Text style={[styles.weatherDescription, { color: colors.text }]}>{weatherDesc}</Text>
         </View>
       </View>
-
-      {/* Snow Depth Display */}
-      {weather.baseDepthCm !== null && (
-        <View style={[styles.snowDepthContainer, { backgroundColor: colors.backgroundSecondary }]}>
-          <IconSymbol name="snow" size={24} color={colors.accent} />
-          <Text style={[styles.snowDepthValue, { color: colors.text }]}>
-            {weather.baseDepthCm}
-          </Text>
-          <Text style={[styles.snowDepthLabel, { color: colors.textSecondary }]}>
-            cm Current Snow Depth
-          </Text>
-        </View>
-      )}
-
-      {/* Stats Row */}
-      <View style={styles.statsRow}>
-        {/* New Snow */}
-        <View style={styles.statItem}>
-          <View style={styles.statIconContainer}>
-            <IconSymbol name="snow" size={20} color={colors.accent} />
-          </View>
-          <Text style={[styles.statValue, { color: colors.text }]}>
-            {weather.newSnowCm ?? '--'}cm
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>New Snow</Text>
-        </View>
-
-        {/* Wind Speed */}
-        <View style={styles.statItem}>
-          <View style={styles.statIconContainer}>
-            <IconSymbol name="wind" size={20} color={colors.accent} />
-          </View>
-          <Text style={[styles.statValue, { color: colors.text }]}>
-            {weather.windMs ?? '--'}m/s
-          </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Wind</Text>
-        </View>
-      </View>
-
 
     </View>
   );
@@ -187,25 +171,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  weatherIcon: {
+    width: 74,
+    height: 74,
+  },
   weatherDescription: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
-  },
-  snowDepthContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.md,
-    borderRadius: borderRadius.lg,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  snowDepthValue: {
-    fontSize: fontSize.xxl,
-    fontWeight: fontWeight.bold,
-  },
-  snowDepthLabel: {
-    fontSize: fontSize.sm,
   },
   statsRow: {
     flexDirection: 'row',

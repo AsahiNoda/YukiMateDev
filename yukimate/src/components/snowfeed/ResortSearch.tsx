@@ -1,23 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  FlatList,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
-import { IconSymbol } from '@components/ui/icon-symbol';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
-import { spacing, fontSize, borderRadius, fontWeight } from '@/constants/spacing';
+import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { supabase } from '@lib/supabase';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  SectionList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 interface Resort {
   id: string;
   name: string;
+  region: string;
+}
+
+interface ResortSection {
+  title: string;
+  data: Resort[];
 }
 
 interface ResortSearchProps {
@@ -36,13 +42,40 @@ export function ResortSearch({ onSelectResort, onClose, isFirstTime = false, has
   const [filteredResorts, setFilteredResorts] = useState<Resort[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // エリアの順序を定義（北から南）
+  const regionOrder = [
+    'Hokkaido',
+    'Tohoku',
+    'Kanto',
+    'Chubu',
+    'Kansai',
+    'Chugoku',
+    'Shikoku',
+    'Kyushu'
+  ];
+
+  // エリア名を日本語に変換
+  const getRegionName = (region: string): string => {
+    const regionNames: { [key: string]: string } = {
+      'Hokkaido': '北海道',
+      'Tohoku': '東北',
+      'Kanto': '関東',
+      'Chubu': '中部',
+      'Kansai': '関西',
+      'Chugoku': '中国',
+      'Shikoku': '四国',
+      'Kyushu': '九州'
+    };
+    return regionNames[region] || region;
+  };
+
   // リゾートデータを取得
   useEffect(() => {
     const fetchResorts = async () => {
       try {
         const { data, error } = await supabase
           .from('resorts')
-          .select('id, name')
+          .select('id, name, region')
           .order('name', { ascending: true });
 
         if (error) throw error;
@@ -70,6 +103,37 @@ export function ResortSearch({ onSelectResort, onClose, isFirstTime = false, has
       setFilteredResorts(filtered);
     }
   }, [searchQuery, resorts]);
+
+  // エリアごとにグループ化してセクションデータを作成
+  const sectionData = useMemo(() => {
+    // エリアごとにグループ化
+    const grouped = filteredResorts.reduce((acc, resort) => {
+      const region = resort.region || 'Other';
+      if (!acc[region]) {
+        acc[region] = [];
+      }
+      acc[region].push(resort);
+      return acc;
+    }, {} as { [key: string]: Resort[] });
+
+    // セクション配列を作成し、北から南の順にソート
+    const sections: ResortSection[] = Object.keys(grouped)
+      .sort((a, b) => {
+        const indexA = regionOrder.indexOf(a);
+        const indexB = regionOrder.indexOf(b);
+        // 見つからない場合は最後に配置
+        if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+        if (indexA === -1) return 1;
+        if (indexB === -1) return -1;
+        return indexA - indexB;
+      })
+      .map(region => ({
+        title: getRegionName(region),
+        data: grouped[region]
+      }));
+
+    return sections;
+  }, [filteredResorts]);
 
   const handleSelectResort = (resort: Resort) => {
     // If first time, directly set as home without confirmation
@@ -155,18 +219,22 @@ export function ResortSearch({ onSelectResort, onClose, isFirstTime = false, has
           <ActivityIndicator size="large" color={colors.accent} />
         </View>
       ) : (
-        <FlatList
-          data={filteredResorts}
+        <SectionList
+          sections={sectionData}
           keyExtractor={(item) => item.id}
+          renderSectionHeader={({ section: { title } }) => (
+            <View style={[styles.sectionHeader, { backgroundColor: colors.backgroundSecondary }]}>
+              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{title}</Text>
+            </View>
+          )}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={[styles.resortItem, { borderBottomColor: colors.border }]}
+              style={[styles.resortItem, { borderBottomColor: colors.border, backgroundColor: colors.background }]}
               onPress={() => handleSelectResort(item)}>
               <View style={styles.resortInfo}>
-                <IconSymbol name="mountain.2.fill" size={20} color={colors.accent} />
                 <Text style={[styles.resortName, { color: colors.text }]}>{item.name}</Text>
               </View>
-              <IconSymbol name="chevron.right" size={20} color={colors.icon} />
+              <IconSymbol name="chevron.right" size={18} color={colors.icon} />
             </TouchableOpacity>
           )}
           ListEmptyComponent={
@@ -177,6 +245,7 @@ export function ResortSearch({ onSelectResort, onClose, isFirstTime = false, has
               </Text>
             </View>
           }
+          stickySectionHeadersEnabled={true}
         />
       )}
     </View>
@@ -192,7 +261,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: spacing.md,
-    borderBottomWidth: 1,
+    paddingTop: spacing.lg,
     zIndex: 10,
   },
   backButton: {
@@ -222,7 +291,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     margin: spacing.md,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     gap: spacing.sm,
   },
@@ -234,9 +303,10 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    margin: spacing.md,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.sm,
     padding: spacing.sm,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     gap: spacing.sm,
   },
   searchInput: {
@@ -249,11 +319,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  sectionHeader: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  sectionTitle: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
   resortItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
     borderBottomWidth: 1,
   },
   resortInfo: {
@@ -264,7 +345,7 @@ const styles = StyleSheet.create({
   },
   resortName: {
     fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
+    fontWeight: fontWeight.medium,
   },
   emptyContainer: {
     alignItems: 'center',

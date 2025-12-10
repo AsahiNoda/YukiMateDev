@@ -7,8 +7,8 @@ import { WeatherForecast } from '@components/snowfeed/WeatherForecast';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { useSnowfeed } from '@hooks/useSnowfeed';
+import { supabase } from '@lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Modal,
@@ -19,6 +19,7 @@ import {
   View
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import RefreshDoubleIcon from '../../../assets/images/icons/refresh-double.svg';
 
 const HOME_RESORT_KEY = '@snowfeed_home_resort';
 const CURRENT_RESORT_KEY = '@snowfeed_current_resort';
@@ -83,10 +84,34 @@ export default function SnowfeedScreen() {
       const loadForecast = async () => {
         setForecastLoading(true);
         try {
-          // Use resort name instead of ID for coordinate matching
-          const forecastData = await fetch7DayForecast(selectedResortName);
+          // Fetch resort coordinates from database for accurate forecast
+          const { data: resortData, error: resortError } = await supabase
+            .from('resorts')
+            .select('latitude, longitude, area')
+            .eq('id', selectedResortId)
+            .single();
+
+          if (resortError) {
+            console.warn('Error fetching resort data for forecast:', resortError);
+          }
+
+          const resortCoords = resortData?.latitude && resortData?.longitude
+            ? { latitude: resortData.latitude, longitude: resortData.longitude }
+            : undefined;
+          const resortPrefecture = resortData?.area;
+
+          // Fetch 7-day forecast with resort-specific coordinates
+          const forecastData = await fetch7DayForecast(
+            selectedResortName,
+            resortCoords,
+            resortPrefecture
+          );
           setForecast(forecastData);
-          console.log(`Loaded forecast for: ${selectedResortName}`, forecastData);
+          console.log(`Loaded forecast for: ${selectedResortName}`, {
+            coords: resortCoords || 'using fallback',
+            prefecture: resortPrefecture,
+            data: forecastData
+          });
         } catch (error) {
           console.error('Error loading forecast:', error);
         } finally {
@@ -181,7 +206,7 @@ export default function SnowfeedScreen() {
   if (snowfeedState.status === 'loading') {
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.loadingText, { color: colors.text }]}>Loading feed...</Text>
+        <Text style={[styles.loadingText, { color: colors.text }]}>フィードをロード中...</Text>
       </View>
     );
   }
@@ -189,7 +214,7 @@ export default function SnowfeedScreen() {
   if (snowfeedState.status === 'error') {
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.error }]}>Failed to load feed</Text>
+        <Text style={[styles.errorText, { color: colors.error }]}>フィードの読み込みに失敗しました</Text>
         <Text style={[styles.errorSubtext, { color: colors.textSecondary }]}>
           {snowfeedState.error}
         </Text>
@@ -225,61 +250,64 @@ export default function SnowfeedScreen() {
     );
   };
 
+  const isViewingHome = homeResortId && selectedResortId === homeResortId;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header with Back Button and Search */}
-      <View style={[styles.header, { 
-        backgroundColor: colors.card, 
-        borderBottomColor: colors.border,
+      {/* Header with Home Button and Search */}
+      <View style={[styles.header, {
+        backgroundColor: isViewingHome ? colors.accent + '15' : colors.background,
         paddingTop: Math.max(insets.top, 16) + spacing.md
       }]}>
-        {/* Back/Home Button */}
-        {homeResortId && selectedResortId !== homeResortId ? (
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleReturnToHome}>
-            <IconSymbol name="house.fill" size={24} color={colors.accent} />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}>
-            <IconSymbol name="chevron.left" size={24} color={colors.text} />
-          </TouchableOpacity>
-        )}
+        {/* Home Button - Always visible */}
+        <TouchableOpacity
+          style={[styles.homeButton]}
+          onPress={handleReturnToHome}
+          disabled={!homeResortId}>
+          <IconSymbol
+            name="house.fill"
+            size={24}
+            color={isViewingHome ? colors.accent : colors.textSecondary}
+          />
+        </TouchableOpacity>
 
         {/* Search Box */}
         <TouchableOpacity
-          style={[styles.searchBox, { backgroundColor: colors.backgroundSecondary }]}
+          style={[styles.searchBox, {
+            backgroundColor: isViewingHome ? colors.background : colors.backgroundSecondary,
+            borderWidth: isViewingHome ? 1 : 0,
+            borderColor: isViewingHome ? colors.accent + '40' : 'transparent'
+          }]}
           onPress={() => {
             setIsChangingHome(false);
             setShowSearch(true);
           }}
           activeOpacity={0.7}>
           <IconSymbol name="magnifyingglass" size={20} color={colors.textSecondary} />
-          <Text style={[styles.searchBoxText, { color: colors.textSecondary }]}>
+          <Text style={[styles.searchBoxText, { color: isViewingHome ? colors.text : colors.textSecondary }]}>
             {selectedResortName || '雪山を検索...'}
           </Text>
         </TouchableOpacity>
 
         {/* Change Home Button - Only show when on home resort */}
-        {homeResortId === selectedResortId && (
+        {isViewingHome && (
           <TouchableOpacity
-            style={[styles.changeHomeButton, { backgroundColor: colors.accent }]}
+            style={[styles.changeHomeButton, { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.accent + '40' }]}
             onPress={() => {
               setIsChangingHome(true);
               setShowSearch(true);
             }}>
-            <IconSymbol name="house.fill" size={16} color="#FFFFFF" />
+            <RefreshDoubleIcon width={20} height={20} color={colors.textSecondary} />
+
           </TouchableOpacity>
         )}
       </View>
 
-      <ScrollView 
-        style={styles.content} 
-        contentContainerStyle={{ 
-          paddingTop: spacing.md, 
-          paddingBottom: 120 
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={{
+          paddingTop: spacing.md,
+          paddingBottom: 120
         }}
       >
         {/* Weather Card */}
@@ -318,7 +346,7 @@ export default function SnowfeedScreen() {
 
         {/* Posts Feed */}
         <View style={styles.postsSection}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>Community Posts</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>コミュニティ投稿</Text>
           {posts.map((post) => (
             <View key={post.id} style={[styles.postCard, { backgroundColor: colors.card }]}>
               <View style={styles.postHeader}>
@@ -378,7 +406,7 @@ export default function SnowfeedScreen() {
             <View style={styles.emptyState}>
               <IconSymbol name="snow" size={48} color={colors.icon} />
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                No posts yet for this resort
+                このスキー場には投稿がまだありません
               </Text>
             </View>
           )}
@@ -447,12 +475,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    borderBottomWidth: 1,
+    paddingBottom: spacing.md,
     gap: spacing.sm,
   },
-  backButton: {
-    padding: spacing.xs,
+  homeButton: {
+    padding: spacing.sm,
+    borderRadius: borderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   searchBox: {
     flex: 1,
@@ -460,18 +490,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     gap: spacing.sm,
   },
   searchBoxText: {
     fontSize: fontSize.md,
     flex: 1,
+    fontWeight: fontWeight.medium,
   },
   changeHomeButton: {
     padding: spacing.sm,
     borderRadius: borderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  changeHomeIcon: {
+    width: 20,
+    height: 20,
   },
   headerContent: {
     flexDirection: 'row',
@@ -567,7 +602,9 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
     marginBottom: spacing.md,
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   voteCount: {
     fontSize: fontSize.sm,
@@ -621,8 +658,10 @@ const styles = StyleSheet.create({
   },
   postCard: {
     padding: spacing.md,
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   postHeader: {
     flexDirection: 'row',

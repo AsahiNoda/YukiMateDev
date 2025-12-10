@@ -57,6 +57,17 @@ const MAPPING = {
   'star.fill': 'star',
   'hand.thumbsup.fill': 'thumb-up',
   'person.crop.circle.badge.checkmark': 'verified-user',
+  // Weather icons
+  'sun.max.fill': 'wb-sunny',
+  'cloud.sun.fill': 'wb-cloudy',
+  'cloud.fill': 'cloud',
+  'cloud.fog.fill': 'cloud',
+  'cloud.drizzle.fill': 'grain',
+  'cloud.rain.fill': 'water-drop',
+  'snowflake': 'ac-unit',
+  'cloud.heavyrain.fill': 'water-drop',
+  'cloud.snow.fill': 'ac-unit',
+  'cloud.bolt.rain.fill': 'thunderstorm',
 } as IconMapping;
 
 /**

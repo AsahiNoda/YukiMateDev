@@ -63,6 +63,33 @@ export default function ExploreScreen() {
   // リゾート一覧を取得
   const resortsState = useResorts();
 
+  // エリアの並び順（北から南）
+  const AREA_ORDER = [
+    '北海道',
+    '青森県',
+    '岩手県',
+    '宮城県',
+    '秋田県',
+    '山形県',
+    '福島県',
+    '群馬県',
+    '栃木県',
+    '新潟県',
+    '長野県',
+    '山梨県',
+    '神奈川県',
+    '岐阜県',
+    '富山県',
+    '石川県',
+    '福井県',
+    '静岡県',
+    '兵庫県',
+    '滋賀県',
+    '広島県',
+    '鳥取県',
+    '島根県',
+  ];
+
   // Group resorts by area
   const resortsByArea = React.useMemo(() => {
     if (resortsState.status !== 'success') return {};
@@ -75,9 +102,16 @@ export default function ExploreScreen() {
       grouped[resort.area].push(resort);
     });
 
-    // Sort areas alphabetically
+    // Sort areas by AREA_ORDER
     const sortedGrouped: Record<string, typeof resortsState.resorts> = {};
+    AREA_ORDER.forEach((area) => {
+      if (grouped[area]) {
+        sortedGrouped[area] = grouped[area];
+      }
+    });
+    // Add any areas not in AREA_ORDER at the end
     Object.keys(grouped)
+      .filter((area) => !AREA_ORDER.includes(area))
       .sort()
       .forEach((area) => {
         sortedGrouped[area] = grouped[area];

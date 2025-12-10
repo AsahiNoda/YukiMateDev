@@ -38,6 +38,20 @@ const SKILL_LEVELS: { value: SkillLevel | ''; label: string }[] = [
   { value: 'advanced', label: '上級' },
 ];
 
+// 5分刻みの時刻オプションを生成 (00:00 ~ 23:55)
+const generateTimeOptions = (): string[] => {
+  const options: string[] = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 5) {
+      const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+      options.push(timeStr);
+    }
+  }
+  return options;
+};
+
+const TIME_OPTIONS = generateTimeOptions();
+
 export default function CreateEventScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
@@ -69,9 +83,30 @@ export default function CreateEventScreen() {
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
   const [showResortPicker, setShowResortPicker] = useState(false);
   const [showLevelPicker, setShowLevelPicker] = useState(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
   // Resort filter states
   const [expandedArea, setExpandedArea] = useState<string | null>(null);
+
+  // ScrollView refs for time pickers
+  const startTimeScrollRef = React.useRef<ScrollView>(null);
+  const endTimeScrollRef = React.useRef<ScrollView>(null);
+
+  // スクロール位置を選択中の時刻に合わせる
+  const scrollToSelectedTime = (scrollRef: React.RefObject<ScrollView | null>, selectedTime: string) => {
+    const index = TIME_OPTIONS.indexOf(selectedTime);
+    if (index !== -1) {
+      // 各アイテムの高さは約49px（padding 12*2 + borderBottom 1 + fontSize 16 + line-height）
+      const itemHeight = 49;
+      const scrollToY = Math.max(0, (index * itemHeight) - 75); // 選択中のアイテムを中央付近に表示
+
+      // setTimeoutで確実にレンダリング後にスクロール
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({ y: scrollToY, animated: true });
+      }, 50);
+    }
+  };
 
   // Load event data for edit mode
   useEffect(() => {
@@ -140,6 +175,33 @@ export default function CreateEventScreen() {
     }
   };
 
+  // エリアの並び順（北から南）
+  const AREA_ORDER = [
+    '北海道',
+    '青森県',
+    '岩手県',
+    '宮城県',
+    '秋田県',
+    '山形県',
+    '福島県',
+    '群馬県',
+    '栃木県',
+    '新潟県',
+    '長野県',
+    '山梨県',
+    '神奈川県',
+    '岐阜県',
+    '富山県',
+    '石川県',
+    '福井県',
+    '静岡県',
+    '兵庫県',
+    '滋賀県',
+    '広島県',
+    '鳥取県',
+    '島根県',
+  ];
+
   // Group resorts by area
   const resortsByArea = React.useMemo(() => {
     if (resortsState.status !== 'success') return {};
@@ -152,9 +214,16 @@ export default function CreateEventScreen() {
       grouped[resort.area].push(resort);
     });
 
-    // Sort areas alphabetically
+    // Sort areas by AREA_ORDER
     const sortedGrouped: Record<string, typeof resortsState.resorts> = {};
+    AREA_ORDER.forEach((area) => {
+      if (grouped[area]) {
+        sortedGrouped[area] = grouped[area];
+      }
+    });
+    // Add any areas not in AREA_ORDER at the end
     Object.keys(grouped)
+      .filter((area) => !AREA_ORDER.includes(area))
       .sort()
       .forEach((area) => {
         sortedGrouped[area] = grouped[area];
@@ -682,23 +751,93 @@ export default function CreateEventScreen() {
         <View style={styles.row}>
           <View style={styles.rowItem}>
             <Text style={styles.label}>開始時刻 *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="HH:MM (例: 10:00)"
-              placeholderTextColor={colors.textSecondary}
-              value={startTime}
-              onChangeText={setStartTime}
-            />
+            <TouchableOpacity
+              style={styles.picker}
+              onPress={() => setShowStartTimePicker(!showStartTimePicker)}
+            >
+              <Text style={styles.pickerText}>{startTime}</Text>
+              <IconSymbol name="chevron.down" size={20} color={colors.icon} />
+            </TouchableOpacity>
+            {showStartTimePicker && (
+              <ScrollView
+                ref={startTimeScrollRef}
+                style={styles.timePickerOptions}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={true}
+                onLayout={() => {
+                  // レイアウト完了後にスクロール
+                  scrollToSelectedTime(startTimeScrollRef, startTime);
+                }}
+              >
+                {TIME_OPTIONS.map((time) => (
+                  <TouchableOpacity
+                    key={time}
+                    style={styles.timePickerOption}
+                    onPress={() => {
+                      setStartTime(time);
+                      setShowStartTimePicker(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.pickerOptionText,
+                        startTime === time && styles.pickerOptionTextActive,
+                      ]}
+                    >
+                      {time}
+                    </Text>
+                    {startTime === time && (
+                      <IconSymbol name="checkmark" size={16} color={colors.tint} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
           </View>
           <View style={styles.rowItem}>
             <Text style={styles.label}>終了時刻</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="HH:MM (例: 15:00)"
-              placeholderTextColor={colors.textSecondary}
-              value={endTime}
-              onChangeText={setEndTime}
-            />
+            <TouchableOpacity
+              style={styles.picker}
+              onPress={() => setShowEndTimePicker(!showEndTimePicker)}
+            >
+              <Text style={styles.pickerText}>{endTime}</Text>
+              <IconSymbol name="chevron.down" size={20} color={colors.icon} />
+            </TouchableOpacity>
+            {showEndTimePicker && (
+              <ScrollView
+                ref={endTimeScrollRef}
+                style={styles.timePickerOptions}
+                nestedScrollEnabled
+                showsVerticalScrollIndicator={true}
+                onLayout={() => {
+                  // レイアウト完了後にスクロール
+                  scrollToSelectedTime(endTimeScrollRef, endTime);
+                }}
+              >
+                {TIME_OPTIONS.map((time) => (
+                  <TouchableOpacity
+                    key={time}
+                    style={styles.timePickerOption}
+                    onPress={() => {
+                      setEndTime(time);
+                      setShowEndTimePicker(false);
+                    }}
+                  >
+                    <Text
+                      style={[
+                        styles.pickerOptionText,
+                        endTime === time && styles.pickerOptionTextActive,
+                      ]}
+                    >
+                      {time}
+                    </Text>
+                    {endTime === time && (
+                      <IconSymbol name="checkmark" size={16} color={colors.tint} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
           </View>
         </View>
 
@@ -954,7 +1093,23 @@ function createStyles(colors: typeof Colors.light) {
       borderRadius: 8,
       maxHeight: 200,
     },
+    timePickerOptions: {
+      marginTop: 8,
+      backgroundColor: colors.backgroundSecondary,
+      borderRadius: 8,
+      maxHeight: 200,
+      // Note: スクロールバーの太さはプラットフォームのデフォルト設定に依存します
+      // iOSとAndroidではネイティブのスクロールバーが使用されます
+    },
     pickerOption: {
+      padding: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    timePickerOption: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
       padding: 12,
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
