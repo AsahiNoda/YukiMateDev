@@ -8,7 +8,7 @@ type SnowfeedState =
   | { status: 'error'; error: string }
   | { status: 'success'; data: SnowfeedData };
 
-export function useSnowfeed(resortId: string | null): SnowfeedState {
+export function useSnowfeed(resortId: string | null, refreshKey?: number): SnowfeedState {
   const [state, setState] = useState<SnowfeedState>({ status: 'loading' });
 
   useEffect(() => {
@@ -136,11 +136,16 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
           throw new Error(`投稿取得エラー: ${postsError.message}`);
         }
 
-        // 3.5. ユーザープロフィールを取得
+        // 3.5. ユーザープロフィールとロールを取得
         const userIds = postsData?.map((p: any) => p.user_id) || [];
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
-          .select('user_id, display_name, avatar_url')
+          .select(`
+            user_id,
+            display_name,
+            avatar_url,
+            users!profiles_user_id_fkey(role)
+          `)
           .in('user_id', userIds);
 
         if (profilesError) {
@@ -151,7 +156,11 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
         const profilesMap = new Map();
         if (profilesData) {
           profilesData.forEach((profile: any) => {
-            profilesMap.set(profile.user_id, profile);
+            profilesMap.set(profile.user_id, {
+              display_name: profile.display_name,
+              avatar_url: profile.avatar_url,
+              role: profile.users?.role || 'user',
+            });
           });
         }
 
@@ -230,6 +239,7 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
             userId: row.user_id,
             userName: profile?.display_name || 'Unknown',
             userAvatar: profile?.avatar_url || null,
+            userRole: profile?.role || 'user',
             resortId: row.resort_id,
             resortName: resort?.name || null,
             type: row.type,
@@ -262,7 +272,7 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
     return () => {
       isMounted = false;
     };
-  }, [resortId]);
+  }, [resortId, refreshKey]);
 
   return state;
 }

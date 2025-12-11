@@ -1,6 +1,8 @@
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
 import { DailyForecast, fetch7DayForecast } from '@/services/weatherApi';
+import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
+import { PostCreateModal } from '@components/snowfeed/PostCreateModal';
 import { ResortSearch } from '@components/snowfeed/ResortSearch';
 import { WeatherCard } from '@components/snowfeed/WeatherCard';
 import { WeatherForecast } from '@components/snowfeed/WeatherForecast';
@@ -11,6 +13,7 @@ import { supabase } from '@lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
 import {
+  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -20,9 +23,30 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import RefreshDoubleIcon from '../../../assets/images/icons/refresh-double.svg';
+import PostIcon from '../../../assets/images/icons/post.svg';
 
 const HOME_RESORT_KEY = '@snowfeed_home_resort';
 const CURRENT_RESORT_KEY = '@snowfeed_current_resort';
+
+// 投稿日時をフォーマット
+const formatPostDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'たった今';
+  if (diffMins < 60) return `${diffMins}分前`;
+  if (diffHours < 24) return `${diffHours}時間前`;
+  if (diffDays < 7) return `${diffDays}日前`;
+
+  // 1週間以上前は日付を表示
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${month}月${day}日`;
+};
 
 export default function SnowfeedScreen() {
   const insets = useSafeAreaInsets();
@@ -36,9 +60,11 @@ export default function SnowfeedScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [forecast, setForecast] = useState<DailyForecast[]>([]);
   const [forecastLoading, setForecastLoading] = useState(false);
+  const [showPostCreate, setShowPostCreate] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const snowfeedState = useSnowfeed(selectedResortId);
+  const snowfeedState = useSnowfeed(selectedResortId, refreshKey);
 
   // Load home resort and current resort on mount
   useEffect(() => {
@@ -120,7 +146,7 @@ export default function SnowfeedScreen() {
       };
       loadForecast();
     }
-  }, [selectedResortId, selectedResortName]);
+  }, [selectedResortId, selectedResortName, refreshKey]);
 
   // Handle resort selection from search
   const handleSelectResort = async (resortId: string, resortName: string, setAsHome: boolean = false) => {
@@ -144,6 +170,21 @@ export default function SnowfeedScreen() {
         setHomeResortId(resortId);
         setHomeResortName(resortName);
         setIsFirstTime(false);
+
+        // Update database profile with new home resort
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { error: updateError } = await supabase
+            .from('profiles')
+            .update({ home_resort_id: resortId })
+            .eq('user_id', user.id);
+
+          if (updateError) {
+            console.error('Error updating home resort in database:', updateError);
+          } else {
+            console.log('✅ Home resort updated in database:', resortName);
+          }
+        }
       }
     } catch (error) {
       console.error('Error saving resort preference:', error);
@@ -315,6 +356,7 @@ export default function SnowfeedScreen() {
           <WeatherCard
             resortName={selectedResortName}
             weather={weather}
+            isHomeResort={!!isViewingHome}
           />
         )}
 
@@ -349,29 +391,44 @@ export default function SnowfeedScreen() {
           <Text style={[styles.cardTitle, { color: colors.text }]}>コミュニティ投稿</Text>
           {posts.map((post) => (
             <View key={post.id} style={[styles.postCard, { backgroundColor: colors.card }]}>
+              {/* Post Header with Avatar */}
               <View style={styles.postHeader}>
-                <View style={styles.postAuthor}>
-                  <View
-                    style={[styles.avatar, { backgroundColor: colors.backgroundSecondary }]}>
-                    <Text style={[styles.avatarText, { color: colors.text }]}>
-                      {post.userName.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View>
-                    <Text style={[styles.authorName, { color: colors.text }]}>
-                      {post.userName}
-                    </Text>
-                    <Text style={[styles.postMeta, { color: colors.textSecondary }]}>
-                      {post.resortName || 'Unknown Resort'} • {post.type}
-                    </Text>
-                  </View>
+                <RoleBasedAvatar
+                  avatarUrl={post.userAvatar}
+                  role={post.userRole}
+                  size={40}
+                  showBadge={true}
+                />
+                <View style={styles.postAuthorInfo}>
+                  <Text style={[styles.authorName, { color: colors.text }]}>
+                    {post.userName}
+                  </Text>
+                  <Text style={[styles.postMeta, { color: colors.textSecondary }]}>
+                    {formatPostDate(post.createdAt)}
+                  </Text>
                 </View>
               </View>
 
+              {/* Post Images */}
+              {post.photos && post.photos.length > 0 && (
+                <View style={styles.postImagesContainer}>
+                  {post.photos.map((photo, index) => (
+                    <Image
+                      key={index}
+                      source={{ uri: photo }}
+                      style={styles.postImage}
+                      resizeMode="cover"
+                    />
+                  ))}
+                </View>
+              )}
+
+              {/* Post Text */}
               {post.text && (
                 <Text style={[styles.postText, { color: colors.text }]}>{post.text}</Text>
               )}
 
+              {/* Post Tags */}
               {post.tags && post.tags.length > 0 && (
                 <View style={styles.tagContainer}>
                   {post.tags.map((tag, index) => (
@@ -381,24 +438,6 @@ export default function SnowfeedScreen() {
                   ))}
                 </View>
               )}
-
-              <View style={styles.postActions}>
-                <TouchableOpacity style={styles.actionButton}>
-                  <IconSymbol name="heart" size={20} color={colors.icon} />
-                  <Text style={[styles.actionText, { color: colors.textSecondary }]}>
-                    {post.likeCount}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton}>
-                  <IconSymbol name="message" size={20} color={colors.icon} />
-                  <Text style={[styles.actionText, { color: colors.textSecondary }]}>
-                    {post.commentCount}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.actionButton}>
-                  <IconSymbol name="square.and.arrow.up" size={20} color={colors.icon} />
-                </TouchableOpacity>
-              </View>
             </View>
           ))}
 
@@ -426,6 +465,36 @@ export default function SnowfeedScreen() {
           isChangingHome={isChangingHome}
         />
       </Modal>
+
+      {/* Post Create Modal */}
+      {selectedResortId && selectedResortName && (
+        <PostCreateModal
+          visible={showPostCreate}
+          resortId={selectedResortId}
+          resortName={selectedResortName}
+          onClose={() => setShowPostCreate(false)}
+          onPostCreated={() => {
+            // Refresh feed data after post creation
+            setRefreshKey((prev) => prev + 1);
+          }}
+        />
+      )}
+
+      {/* Floating Action Button */}
+      {selectedResortId && (
+        <TouchableOpacity
+          style={[
+            styles.fab,
+            {
+              backgroundColor: colors.accent,
+              bottom: insets.bottom + 80,
+            },
+          ]}
+          onPress={() => setShowPostCreate(true)}
+          activeOpacity={0.8}>
+          <PostIcon width={28} height={28} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -665,13 +734,17 @@ const styles = StyleSheet.create({
   },
   postHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   postAuthor: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  postAuthorInfo: {
+    flex: 1,
   },
   avatar: {
     width: 40,
@@ -691,6 +764,17 @@ const styles = StyleSheet.create({
   postMeta: {
     fontSize: fontSize.xs,
   },
+  postImagesContainer: {
+    marginBottom: spacing.md,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+  },
+  postImage: {
+    width: '100%',
+    height: 300,
+    borderRadius: borderRadius.md,
+    marginBottom: spacing.xs,
+  },
   postText: {
     fontSize: fontSize.md,
     lineHeight: 20,
@@ -700,7 +784,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.xs,
-    marginBottom: spacing.md,
   },
   tag: {
     paddingHorizontal: spacing.sm,
@@ -732,6 +815,23 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: fontSize.md,
+  },
+  fab: {
+    position: 'absolute',
+    right: spacing.md,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
 });
 

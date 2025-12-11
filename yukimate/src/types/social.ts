@@ -11,6 +11,7 @@ export type SnowfeedPost = {
   userId: string;
   userName: string;
   userAvatar: string | null;
+  userRole: string;
   resortId: string | null;
   resortName: string | null;
   type: PostType;

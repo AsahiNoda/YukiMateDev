@@ -1,3 +1,4 @@
+import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
 import React, { useEffect } from 'react';
 import {
@@ -29,7 +30,6 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const state = useHomeData();
   const colorScheme = useColorScheme();
-  const tint = Colors[colorScheme ?? 'light'].tint;
   const { width: screenWidth } = Dimensions.get('window');
 
   // Supabase connection test: runs once when HomeScreen mounts
@@ -52,7 +52,7 @@ export default function HomeScreen() {
     return (
       <View style={[styles.centered, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
         <ActivityIndicator />
-        <Text style={[styles.loadingText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>Loading today&apos;s conditions...</Text>
+        <Text style={[styles.loadingText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>今日のコンディションを読み込み中...</Text>
       </View>
     );
   }
@@ -60,7 +60,7 @@ export default function HomeScreen() {
   if (state.status === 'error') {
     return (
       <View style={[styles.centered, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-        <Text style={[styles.errorText, { color: Colors[colorScheme ?? 'light'].error }]}>Failed to load home data.</Text>
+        <Text style={[styles.errorText, { color: Colors[colorScheme ?? 'light'].error }]}>データの読み込みに失敗しました</Text>
         <Text style={[styles.errorSubText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{state.error}</Text>
       </View>
     );
@@ -107,10 +107,35 @@ export default function HomeScreen() {
           </View>
 
           {/* 2. Weather Card レイヤー (半透明のガラス表現) */}
-          <View style={styles.weatherCard}>
+          <View style={[
+            styles.weatherCard,
+            {
+              borderColor: colorScheme === 'dark'
+                ? 'rgba(255, 255, 255, 0.15)'
+                : 'rgba(255, 255, 255, 0.4)',
+              shadowColor: colorScheme === 'dark' ? '#000' : '#fff',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.1,
+              shadowRadius: 12,
+              elevation: 8,
+            }
+          ]}>
+            {/* Blur背景 */}
+            <BlurView
+              intensity={colorScheme === 'dark' ? 40 : 60}
+              tint={colorScheme === 'dark' ? 'dark' : 'light'}
+              style={StyleSheet.absoluteFill}
+            />
 
-            {/* カード内の半透明背景色 */}
-            <View style={[StyleSheet.absoluteFill, styles.weatherCardGlass]} />
+            {/* 半透明オーバーレイ */}
+            <View style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: colorScheme === 'dark'
+                  ? 'rgba(20, 30, 50, 0.3)'
+                  : 'rgba(255, 255, 255, 0.5)',
+              }
+            ]} />
 
             {/* コンテンツ */}
             <View style={styles.weatherCardContent}>
@@ -118,28 +143,21 @@ export default function HomeScreen() {
 
               <View style={styles.weatherTopRow}>
                 <Text style={[styles.weatherTemp, { color: Colors[colorScheme ?? 'light'].text }]}>{weather.temperatureC}°C</Text>
-                <View style={styles.weatherSnowRow}>
-                  <Text style={styles.weatherSnowIcon}>❄️</Text>
-                  <Text style={[styles.weatherBody, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{weather.snowDepthCm}cm</Text>
-                </View>
-                <Text style={[styles.weatherBody, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>New Snow: {weather.newSnowCm}cm</Text>
+                <Text style={[styles.weatherBody, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>新雪: {weather.newSnowCm}cm</Text>
               </View>
 
-              <View style={styles.weatherChipRow}>
-                <WeatherChip label="Today" active />
-                <WeatherChip label="7-Day Forecast" />
-                <WeatherChip label="Historical Data" />
-                <WeatherChip label="Depth Chart" />
-              </View>
 
               <View style={styles.weatherBottomRow}>
                 <View style={styles.metaColumn}>
-                  <Text style={[styles.metaText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>Wind: {weather.windSpeedMs} m/s</Text>
-                  <Text style={[styles.metaText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>Humidity: 85%</Text>
+                  <Text style={[styles.metaText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>風速: {weather.windSpeedMs} m/s</Text>
+
                 </View>
                 <View style={styles.metaColumn}>
-                  <Text style={[styles.metaText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>Visibility: Good</Text>
-                  <Text style={[styles.metaText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>Snow Quality: Powder</Text>
+                  {weather.visibility && (
+                    <Text style={[styles.metaText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>
+                      視界: {weather.visibility.charAt(0).toUpperCase() + weather.visibility.slice(1)}
+                    </Text>
+                  )}
                 </View>
               </View>
             </View>
@@ -151,26 +169,26 @@ export default function HomeScreen() {
       <View style={styles.quickActionsRow}>
         <QuickAction
           icon="safari"
-          label="Discover"
-          tint={tint}
+          label="発見"
+          iconColor={Colors[colorScheme ?? 'light'].icon}
           onPress={() => router.push('/(tabs)/discover')}
         />
         <QuickAction
           icon="message.fill"
-          label="Chat"
-          tint={tint}
+          label="チャット"
+          iconColor={Colors[colorScheme ?? 'light'].icon}
           onPress={() => router.push('/(tabs)/chat')}
         />
         <QuickAction
-          icon={<DocumentIcon width={24} height={24} color={tint} />}
-          label="My Posts"
-          tint={tint}
+          icon={<DocumentIcon width={24} height={24} color={Colors[colorScheme ?? 'light'].icon} />}
+          label="マイ投稿"
+          iconColor={Colors[colorScheme ?? 'light'].icon}
           onPress={() => router.push('/my-posts' as any)}
         />
         <QuickAction
           icon="plus.circle"
-          label="Post"
-          tint={tint}
+          label="投稿"
+          iconColor={Colors[colorScheme ?? 'light'].icon}
           onPress={() => router.push('/(tabs)/create')}
         />
       </View>
@@ -199,7 +217,7 @@ export default function HomeScreen() {
       {/* Local hub / trend section (Snowfeed) */}
       {trendingPosts.length > 0 && (
         <View style={[styles.section, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
-          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>Local Hub Spotlight</Text>
+          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>話題の投稿</Text>
           {trendingPosts.map((post) => (
             <TouchableOpacity
               key={post.id}
@@ -211,7 +229,7 @@ export default function HomeScreen() {
                 {post.resortName} · {post.snowTag}
               </Text>
               <Text style={[styles.cardBody, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{post.comment}</Text>
-              <Text style={[styles.cardMeta, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{post.likeCount} likes</Text>
+              <Text style={[styles.cardMeta, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{post.likeCount} いいね</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -276,37 +294,33 @@ const styles = StyleSheet.create({
   weatherCard: {
     // position: 'relative'でzIndexコンテキストを作る
     zIndex: 1, // 画像より前
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255, 255, 255, 0.3)', // 薄い境界線
+    borderRadius: 16,
+    borderWidth: 1.5,
     overflow: 'hidden', // カード内の角丸用
     minHeight: 200,
-  },
-  weatherCardGlass: {
-    backgroundColor: 'rgba(20, 30, 50, 0.4)', // カードの背景色（半透明）
   },
   weatherCardContent: {
     padding: 20,
   },
   weatherResort: {
-    fontSize: 18,
+    fontSize: 24,
     fontWeight: '700',
     // color is set dynamically in the component
-    marginBottom: 4,
+    marginBottom: 8,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   weatherBody: {
-    fontSize: 14,
+    fontSize: 16,
     // color is set dynamically in the component
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   weatherTemp: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 36,
+    fontWeight: '700',
     // color is set dynamically in the component
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
@@ -316,7 +330,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginTop: 12,
   },
   weatherSnowRow: {
     flexDirection: 'row',
@@ -336,13 +350,13 @@ const styles = StyleSheet.create({
   weatherBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 12,
+    marginTop: 20,
   },
   metaColumn: {
     flex: 1,
   },
   metaText: {
-    fontSize: 12,
+    fontSize: 14,
     // color is set dynamically in the component
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
@@ -371,9 +385,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   quickActionCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 57,
+    height: 57,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -475,17 +489,17 @@ const styles = StyleSheet.create({
 type QuickActionProps = {
   icon: Parameters<typeof IconSymbol>[0]['name'] | React.ReactElement;
   label: string;
-  tint: string;
+  iconColor: string;
   onPress: () => void;
 };
 
-function QuickAction({ icon, label, tint, onPress }: QuickActionProps) {
+function QuickAction({ icon, label, iconColor, onPress }: QuickActionProps) {
   const colorScheme = useColorScheme();
   return (
     <TouchableOpacity style={styles.quickAction} activeOpacity={0.8} onPress={onPress}>
       <View style={styles.quickActionCircle}>
         {typeof icon === 'string' ? (
-          <IconSymbol name={icon} size={24} color={tint} />
+          <IconSymbol name={icon} size={24} color={iconColor} />
         ) : (
           icon
         )}

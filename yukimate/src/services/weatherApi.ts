@@ -1,10 +1,7 @@
 /**
- * 気象庁 (Japan Meteorological Agency) Weather API Service
- * https://www.jma.go.jp/bosai/
- *
- * データソース優先順位:
- * 1. 気象庁アメダス（最も正確な観測データ）
- * 2. Open-Meteo（フォールバック）
+ * Weather API Service
+ * Using Open-Meteo API for reliable weather data
+ * https://open-meteo.com/
  */
 
 export interface FetchedWeatherData {
@@ -100,139 +97,6 @@ function categorizeVisibility(windMs: number, newSnowCm: number): 'good' | 'mode
   return 'good'; // それ以外は良好
 }
 
-/**
- * 度分表記を十進法に変換
- */
-function degreesMinutesToDecimal(degrees: number, minutes: number): number {
-  return degrees + minutes / 60;
-}
-
-/**
- * 最寄りのアメダス観測点を検索
- * @param lat 緯度（十進法）
- * @param lon 経度（十進法）
- * @param stationTable アメダス観測点テーブル
- * @returns 最寄りの観測点ID
- */
-function findNearestAmedasStation(
-  lat: number,
-  lon: number,
-  stationTable: any
-): string | null {
-  let nearestId: string | null = null;
-  let minDistance = Infinity;
-
-  for (const [stationId, station] of Object.entries<any>(stationTable)) {
-    // 座標を十進法に変換
-    const stationLat = degreesMinutesToDecimal(station.lat[0], station.lat[1]);
-    const stationLon = degreesMinutesToDecimal(station.lon[0], station.lon[1]);
-
-    // 距離を計算（簡易版：平面近似）
-    const distance = Math.sqrt(
-      Math.pow(lat - stationLat, 2) + Math.pow(lon - stationLon, 2)
-    );
-
-    if (distance < minDistance) {
-      minDistance = distance;
-      nearestId = stationId;
-    }
-  }
-
-  console.log(`[JMA API] Nearest station: ${nearestId}, distance: ${minDistance.toFixed(4)}°`);
-  return nearestId;
-}
-
-/**
- * 気象庁アメダスAPIから観測データを取得
- * @param lat 緯度（十進法）
- * @param lon 経度（十進法）
- * @returns 観測データ（気温、風速、積雪、降水量）
- */
-async function fetchJMAData(
-  lat: number,
-  lon: number
-): Promise<{
-  tempC: number | null;
-  windMs: number | null;
-  snowDepthCm: number | null;
-  precipitation24h: number | null;
-  weatherCode: number | null;
-} | null> {
-  try {
-    // Step 1: アメダス観測点テーブルを取得
-    console.log('[JMA API] Fetching station table...');
-    const stationResponse = await fetch('https://www.jma.go.jp/bosai/amedas/const/amedastable.json');
-    if (!stationResponse.ok) {
-      console.error('[JMA API] Failed to fetch station table');
-      return null;
-    }
-    const stationTable = await stationResponse.json();
-
-    // Step 2: 最寄りの観測点を検索
-    const nearestStationId = findNearestAmedasStation(lat, lon, stationTable);
-    if (!nearestStationId) {
-      console.error('[JMA API] No nearby station found');
-      return null;
-    }
-
-    const station = stationTable[nearestStationId];
-    console.log(`[JMA API] Using station: ${station.kjName} (${nearestStationId})`);
-
-    // Step 3: 最新の観測時刻を取得
-    const timeResponse = await fetch('https://www.jma.go.jp/bosai/amedas/data/latest_time.txt');
-    if (!timeResponse.ok) {
-      console.error('[JMA API] Failed to fetch latest time');
-      return null;
-    }
-    const latestTime = (await timeResponse.text()).trim();
-    const timestamp = latestTime.replace(/[-:T+]/g, '').substring(0, 12) + '00';
-    console.log(`[JMA API] Latest observation time: ${latestTime} -> ${timestamp}`);
-
-    // Step 4: 観測データを取得
-    const dataUrl = `https://www.jma.go.jp/bosai/amedas/data/map/${timestamp}.json`;
-    console.log(`[JMA API] Fetching data from: ${dataUrl}`);
-    const dataResponse = await fetch(dataUrl);
-    if (!dataResponse.ok) {
-      console.error('[JMA API] Failed to fetch observation data');
-      return null;
-    }
-    const allData = await dataResponse.json();
-
-    // Step 5: 対象観測点のデータを抽出
-    const observationData = allData[nearestStationId];
-    if (!observationData) {
-      console.error(`[JMA API] No data for station ${nearestStationId}`);
-      return null;
-    }
-
-    console.log(`[JMA API] Raw observation data:`, observationData);
-
-    // データ抽出（[値, 品質フラグ]の配列形式）
-    const tempC = observationData.temp?.[0] ?? null;
-    const windMs = observationData.wind?.[0] ?? null;
-    const snowDepthCm = observationData.snow?.[0] ?? null;
-    const precipitation24h = observationData.precipitation24h?.[0] ?? null;
-
-    console.log('[JMA API] Extracted data:', {
-      tempC,
-      windMs,
-      snowDepthCm,
-      precipitation24h,
-    });
-
-    // 天気コードは取得できないのでnull
-    return {
-      tempC,
-      windMs,
-      snowDepthCm,
-      precipitation24h,
-      weatherCode: null,
-    };
-  } catch (error) {
-    console.error('[JMA API] Error:', error);
-    return null;
-  }
-}
 
 /**
  * 気象庁の天気コードをWMOコードに変換
@@ -254,7 +118,7 @@ function jmaWeatherCodeToWMO(jmaCode: number): number {
 }
 
 /**
- * 天気データを取得（気象庁API優先、Open-Meteoフォールバック）
+ * Open-Meteo APIから天気データを取得
  * @param resortIdOrName スキー場名またはID
  * @param coordinates オプション: 直接座標を指定（データベースから取得した座標など）
  * @param prefecture オプション: 都道府県名（座標がない場合のフォールバック）
@@ -281,12 +145,7 @@ export async function fetchWeatherData(
 
     console.log(`[Weather API] Fetching weather data for: ${resortIdOrName} at (${lat}, ${lon})`);
 
-    // 優先度1: 気象庁アメダスAPIから観測データを取得
-    console.log('[Weather API] Attempting JMA API first...');
-    const jmaData = await fetchJMAData(lat, lon);
-
-    // 優先度2: Open-Meteo APIから予測データを取得（フォールバック）
-    console.log('[Weather API] Fetching Open-Meteo data...');
+    // Open-Meteo APIから全データ取得
     const url = new URL('https://api.open-meteo.com/v1/forecast');
     url.searchParams.append('latitude', lat.toString());
     url.searchParams.append('longitude', lon.toString());
@@ -299,83 +158,53 @@ export async function fetchWeatherData(
     const response = await fetch(url.toString());
 
     if (!response.ok) {
-      console.error(`[Open-Meteo] HTTP Error: ${response.status}`);
+      console.error(`[Weather API] HTTP Error: ${response.status}`);
       return null;
     }
 
-    const openMeteoData: any = await response.json();
+    const data: any = await response.json();
 
-    console.log(`[Open-Meteo] Raw API response for ${resortIdOrName}:`, JSON.stringify(openMeteoData.current, null, 2));
+    console.log(`[Weather API] Raw API response for ${resortIdOrName}:`, JSON.stringify(data.current, null, 2));
 
-    // データマージ: 気象庁データを優先、なければOpen-Meteo
-    let tempC: number | null = null;
-    let windMs: number | null = null;
-    let baseDepthCm: number | null = null;
-    let newSnowCm: number = 0;
-    let weatherCode: number = 3;
+    // 現在気温
+    const tempC = data.current?.temperature_2m ?? null;
+    const tempCRounded = tempC !== null ? Math.round(tempC) : null;
 
-    // 気温: 気象庁 > Open-Meteo
-    if (jmaData?.tempC !== null && jmaData?.tempC !== undefined) {
-      tempC = Math.round(jmaData.tempC);
-      console.log(`[Weather API] Using JMA temperature: ${tempC}°C`);
-    } else if (openMeteoData.current?.temperature_2m !== null) {
-      tempC = Math.round(openMeteoData.current.temperature_2m);
-      console.log(`[Weather API] Using Open-Meteo temperature: ${tempC}°C`);
-    }
+    // 風速 (km/h → m/s)
+    const windKmh = data.current?.wind_speed_10m ?? null;
+    const windMs = windKmh !== null ? Math.round((windKmh / 3.6) * 10) / 10 : null;
 
-    // 風速: 気象庁 > Open-Meteo
-    if (jmaData?.windMs !== null && jmaData?.windMs !== undefined) {
-      windMs = Math.round(jmaData.windMs * 10) / 10;
-      console.log(`[Weather API] Using JMA wind speed: ${windMs} m/s`);
-    } else {
-      const windKmh = openMeteoData.current?.wind_speed_10m ?? null;
-      windMs = windKmh !== null ? Math.round((windKmh / 3.6) * 10) / 10 : null;
-      console.log(`[Weather API] Using Open-Meteo wind speed: ${windMs} m/s`);
-    }
+    // 天気コード
+    const weatherCode = data.current?.weather_code ?? 3;
 
-    // 積雪深度: 気象庁 > Open-Meteo
-    if (jmaData?.snowDepthCm !== null && jmaData?.snowDepthCm !== undefined) {
-      baseDepthCm = Math.round(jmaData.snowDepthCm);
-      console.log(`[Weather API] Using JMA snow depth: ${baseDepthCm} cm`);
-    } else {
-      baseDepthCm = Math.round(openMeteoData.hourly?.snow_depth?.[0] ?? 0);
-      console.log(`[Weather API] Using Open-Meteo snow depth: ${baseDepthCm} cm`);
-    }
+    // 24時間降雪量
+    const newSnowCm = data.daily?.snowfall_sum?.[0] ?? 0;
+    const newSnowCmRounded = Math.round(newSnowCm * 10) / 10;
 
-    // 24時間降雪量: 気象庁の降水量から推定、なければOpen-Meteo
-    if (jmaData?.precipitation24h !== null && jmaData?.precipitation24h !== undefined && tempC !== null && tempC < 0) {
-      // 気温が0度未満なら降水量≒降雪量と仮定（簡易推定）
-      newSnowCm = Math.round(jmaData.precipitation24h * 10) / 10;
-      console.log(`[Weather API] Estimated snow from JMA precipitation: ${newSnowCm} cm`);
-    } else {
-      newSnowCm = Math.round((openMeteoData.daily?.snowfall_sum?.[0] ?? 0) * 10) / 10;
-      console.log(`[Weather API] Using Open-Meteo snowfall: ${newSnowCm} cm`);
-    }
+    // 積雪深度
+    const baseDepthCm = data.hourly?.snow_depth?.[0] ?? 0;
+    const baseDepthCmRounded = Math.round(baseDepthCm);
 
-    // 天気コード: Open-Meteoのみ（気象庁アメダスには天気コードがない）
-    weatherCode = openMeteoData.current?.weather_code ?? 3;
-    console.log(`[Weather API] Using Open-Meteo weather code: ${weatherCode}`);
-
-    console.log('[Weather API] Final merged data:', {
-      temp: tempC,
+    console.log('[Weather API] Data:', {
+      temp: tempCRounded,
       wind: windMs,
       code: weatherCode,
-      newSnow: newSnowCm,
-      baseDepth: baseDepthCm,
+      newSnow: newSnowCmRounded,
+      baseDepth: baseDepthCmRounded,
     });
 
-    if (tempC === null || windMs === null) {
+    if (tempCRounded === null || windMs === null) {
       console.error('[Weather API] Missing essential data');
       return null;
     }
 
-    const visibility = categorizeVisibility(windMs, newSnowCm);
-    const snowQuality = categorizeSnowQuality(tempC, newSnowCm);
+    const visibility = categorizeVisibility(windMs, newSnowCmRounded);
+    const snowQuality = categorizeSnowQuality(tempCRounded, newSnowCmRounded);
 
     return {
-      tempC,
-      newSnowCm,
-      baseDepthCm: baseDepthCm ?? 0,
+      tempC: tempCRounded,
+      newSnowCm: newSnowCmRounded,
+      baseDepthCm: baseDepthCmRounded,
       windMs,
       visibility,
       snowQuality,

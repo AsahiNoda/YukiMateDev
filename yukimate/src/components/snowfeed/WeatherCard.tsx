@@ -12,6 +12,7 @@ import DayRainIcon from '../../../assets/images/icons/weather/day-rain.svg';
 import DaySnowIcon from '../../../assets/images/icons/weather/day-snow.svg';
 import DaySunnyOvercastIcon from '../../../assets/images/icons/weather/day-sunny-overcast.svg';
 import DaySunnyIcon from '../../../assets/images/icons/weather/day-sunny.svg';
+import DayWindyIcon from '../../../assets/images/icons/weather/day-windy.svg';
 import FogIcon from '../../../assets/images/icons/weather/fog.svg';
 import RainIcon from '../../../assets/images/icons/weather/rain.svg';
 import ShowersIcon from '../../../assets/images/icons/weather/showers.svg';
@@ -21,9 +22,10 @@ import StormShowersIcon from '../../../assets/images/icons/weather/storm-showers
 interface WeatherCardProps {
   resortName: string;
   weather: SnowfeedWeather;
+  isHomeResort?: boolean;
 }
 
-export function WeatherCard({ resortName, weather }: WeatherCardProps) {
+export function WeatherCard({ resortName, weather, isHomeResort = false }: WeatherCardProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
 
@@ -94,10 +96,26 @@ export function WeatherCard({ resortName, weather }: WeatherCardProps) {
   const WeatherIcon = getWeatherIcon();
   const weatherDesc = getWeatherDescription();
 
+  // 視界のテキスト変換
+  const getVisibilityText = () => {
+    if (!weather.visibility) return '--';
+    switch (weather.visibility) {
+      case 'good': return '良好';
+      case 'moderate': return '中等';
+      case 'poor': return '不良';
+      default: return '--';
+    }
+  };
+
   return (
     <View style={[styles.card, { backgroundColor: colors.card }]}>
       {/* Resort Name */}
-      <Text style={[styles.resortName, { color: colors.textSecondary }]}>{resortName}</Text>
+      <View style={styles.resortNameContainer}>
+        <Text style={[styles.resortName, { color: colors.textSecondary }]}>{resortName}</Text>
+        {isHomeResort && (
+          <Text style={[styles.homeLabel, { color: colors.accent }]}>（ホームゲレンデ）</Text>
+        )}
+      </View>
 
       {/* Main Weather Display */}
       <View style={styles.mainWeather}>
@@ -118,6 +136,42 @@ export function WeatherCard({ resortName, weather }: WeatherCardProps) {
         </View>
       </View>
 
+      {/* Weather Stats Row */}
+      <View style={[styles.statsRow, { borderTopColor: colors.border }]}>
+        {/* Wind Speed */}
+        <View style={styles.statItem}>
+          <View style={styles.statIconContainer}>
+            <DayWindyIcon width={24} height={24} color={colors.icon} />
+          </View>
+          <Text style={[styles.statValue, { color: colors.text }]}>
+            {weather.windMs ?? '--'} m/s
+          </Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>風速</Text>
+        </View>
+
+        {/* Visibility */}
+        <View style={styles.statItem}>
+          <View style={styles.statIconContainer}>
+            <FogIcon width={24} height={24} color={colors.icon} />
+          </View>
+          <Text style={[styles.statValue, { color: colors.text }]}>
+            {getVisibilityText()}
+          </Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>視界</Text>
+        </View>
+
+        {/* New Snow */}
+        <View style={styles.statItem}>
+          <View style={styles.statIconContainer}>
+            <SnowIcon width={24} height={24} color={colors.icon} />
+          </View>
+          <Text style={[styles.statValue, { color: colors.text }]}>
+            {weather.newSnowCm ?? '--'} cm
+          </Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>新雪</Text>
+        </View>
+      </View>
+
     </View>
   );
 }
@@ -133,12 +187,22 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
+  resortNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
   resortName: {
     fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
-    marginBottom: spacing.sm,
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  homeLabel: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.medium,
   },
   mainWeather: {
     flexDirection: 'row',

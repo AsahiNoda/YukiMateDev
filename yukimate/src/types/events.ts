@@ -16,7 +16,7 @@ export type HomeEvent = {
   levelRequired: SkillLevel;
   pricePerPersonJpy: number;
   isOfficial?: boolean;
-  photoUrl?: string | null;
+  photoUrl: string | null;
   hostRole?: string;
 };
 
