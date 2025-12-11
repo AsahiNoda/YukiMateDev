@@ -665,45 +665,6 @@ export default function EventDetailScreen() {
     );
   };
 
-  const handleDeleteEvent = async () => {
-    if (!event) return;
-
-    Alert.alert(
-      'イベントを削除',
-      'このイベントを削除してもよろしいですか？この操作は取り消せません。',
-      [
-        {
-          text: 'キャンセル',
-          style: 'cancel',
-        },
-        {
-          text: '削除',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const { error } = await supabase
-                .from('posts_events')
-                .delete()
-                .eq('id', event.id);
-
-              if (error) throw error;
-
-              Alert.alert('削除完了', 'イベントを削除しました', [
-                {
-                  text: 'OK',
-                  onPress: () => router.back(),
-                },
-              ]);
-            } catch (err) {
-              console.error('Error deleting event:', err);
-              Alert.alert('エラー', 'イベントの削除に失敗しました');
-            }
-          },
-        },
-      ]
-    );
-  };
-
   const toggleBookmark = async () => {
     const success = await handleToggleBookmark();
     if (!success) {
@@ -790,8 +751,8 @@ export default function EventDetailScreen() {
           <IconSymbol name="chevron.left" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
 
-        {/* ブックマークボタン（自分の投稿以外のみ表示）/ 削除ボタン（自分の投稿のみ表示） */}
-        {!event.isHost ? (
+        {/* ブックマークボタン（自分の投稿以外のみ表示） */}
+        {!event.isHost && (
           <TouchableOpacity
             style={styles.headerButton}
             onPress={toggleBookmark}
@@ -802,18 +763,6 @@ export default function EventDetailScreen() {
               name={isBookmarked ? "bookmark.fill" : "bookmark"}
               size={24}
               color={isBookmarked ? colors.warning : colors.textSecondary}
-            />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={handleDeleteEvent}
-            activeOpacity={0.7}
-          >
-            <IconSymbol
-              name="trash"
-              size={24}
-              color={colors.error}
             />
           </TouchableOpacity>
         )}

@@ -163,7 +163,10 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>設定</Text>
 
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+            onPress={() => router.push('/account-settings')}
+          >
             <View style={styles.menuItemLeft}>
               <IconSymbol name="person.circle" size={20} color={colors.textSecondary} />
               <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>アカウント設定</Text>
@@ -171,7 +174,10 @@ export default function SettingsScreen() {
             <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+            onPress={() => router.push('/notification-settings')}
+          >
             <View style={styles.menuItemLeft}>
               <IconSymbol name="bell" size={20} color={colors.textSecondary} />
               <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>通知設定</Text>
@@ -200,7 +206,10 @@ export default function SettingsScreen() {
             <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+            onPress={() => router.push('/terms-of-service')}
+          >
             <View style={styles.menuItemLeft}>
               <IconSymbol name="doc.text" size={20} color={colors.textSecondary} />
               <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>利用規約</Text>
@@ -208,7 +217,10 @@ export default function SettingsScreen() {
             <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity
+            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+            onPress={() => router.push('/privacy-policy')}
+          >
             <View style={styles.menuItemLeft}>
               <IconSymbol name="shield" size={20} color={colors.textSecondary} />
               <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>プライバシーポリシー</Text>

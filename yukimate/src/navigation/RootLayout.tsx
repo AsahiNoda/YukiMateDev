@@ -6,6 +6,7 @@ import { LocaleProvider } from '@/contexts/LocaleContext';
 import { checkPendingEventActions } from '@/utils/event-checker';
 import { useNotifications } from '@/hooks/useNotifications';
 import { supabase } from '@lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
@@ -43,33 +44,51 @@ export default function RootLayout() {
       try {
         console.log('🔄 Checking session...');
 
-        // 初期セッションチェック（タイムアウト付き - 10秒に延長）
-        const sessionPromise = supabase.auth.getSession();
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Session check timeout')), 10000)
-        );
-
+        // 高速化: getSession()は遅い場合があるので、短いタイムアウトを設定
         let session;
         try {
+          const sessionPromise = supabase.auth.getSession();
+          const timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('Session check timeout')), 2000)
+          );
+
           const result = await Promise.race([
             sessionPromise,
             timeoutPromise,
-          ]) as any;
+          ]);
           session = result.data.session;
+          console.log('✅ Session check done (fast):', session ? 'Logged in' : 'Guest');
         } catch (error: any) {
-          if (error.message === 'Session check timeout') {
-            console.error('❌ Session check timed out after 10s');
-            // タイムアウト時はサインイン画面へ
+          // タイムアウトまたはエラーの場合、ローカルストレージから直接読み込む
+          console.warn('⚠️  Session check slow/failed, checking local storage...');
+          try {
+            // AsyncStorageから直接セッション情報を取得（高速）
+            const sessionStr = await AsyncStorage.getItem('sb-rmdpetmotoafaddkvyrk-auth-token');
+            if (sessionStr) {
+              const sessionData = JSON.parse(sessionStr);
+              if (sessionData?.currentSession?.access_token) {
+                console.log('✅ Found session in local storage');
+                session = sessionData.currentSession;
+              } else {
+                console.log('⚠️  Invalid session in local storage');
+              }
+            } else {
+              console.log('⚠️  No session in local storage');
+            }
+          } catch (storageError) {
+            console.error('❌ Error reading from local storage:', storageError);
+          }
+
+          // ローカルストレージにもセッションがない場合
+          if (!session) {
+            console.log('➡️  No valid session found, redirecting to sign-in');
             if (mounted) {
               setIsReady(true);
               router.replace('/(auth)/sign-in');
             }
             return;
           }
-          throw error;
         }
-
-        console.log('✅ Session check done:', session ? 'Logged in' : 'Guest');
 
         // セッションがない場合、サインイン画面へリダイレクト
         if (!session) {
@@ -101,24 +120,32 @@ export default function RootLayout() {
           } else if (profile) {
             console.log('✅ Profile exists');
 
-            // ペンディング中のイベントアクションをチェック
-            console.log('🔍 Checking for pending event actions...');
-            const pendingEvent = await checkPendingEventActions(session.user.id);
-
-            if (pendingEvent) {
-              console.log('🚀 Found pending event action, redirecting to post-event-action');
-              if (mounted) {
-                setIsReady(true);
-                router.replace({
-                  pathname: '/post-event-action/[eventId]',
-                  params: {
-                    eventId: pendingEvent.eventId,
-                    participants: JSON.stringify(pendingEvent.participants),
-                  },
-                } as any);
-              }
-              return;
+            // ペンディング中のイベントアクションをバックグラウンドでチェック
+            // アプリ起動を遅らせないように、先にローディング解除してから非同期で実行
+            if (mounted) {
+              setIsReady(true);
             }
+
+            // バックグラウンドでチェック（起動時間に影響しない）
+            checkPendingEventActions(session.user.id).then((pendingEvent) => {
+              if (pendingEvent && mounted) {
+                console.log('🚀 Found pending event action, redirecting to post-event-action');
+                // 少し遅延させてからナビゲーション（ホーム画面が表示された後）
+                setTimeout(() => {
+                  router.push({
+                    pathname: '/post-event-action/[eventId]',
+                    params: {
+                      eventId: pendingEvent.eventId,
+                      participants: JSON.stringify(pendingEvent.participants),
+                    },
+                  } as any);
+                }, 1000);
+              }
+            }).catch((error) => {
+              console.error('❌ Error checking pending event actions:', error);
+            });
+
+            return; // 早期リターンしてすぐにローディング解除
           }
         }
 

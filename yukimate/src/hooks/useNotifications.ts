@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
-import { router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
-import { registerForPushNotificationsAsync } from '@/utils/notifications';
 import { saveNotificationToken } from '@/services/notificationService';
+import { registerForPushNotificationsAsync } from '@/utils/notifications';
+import * as Notifications from 'expo-notifications';
+import { router } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 
 /**
  * 通知機能を管理するカスタムフック
@@ -16,6 +16,13 @@ export function useNotifications() {
   const responseListener = useRef<Notifications.Subscription>();
 
   useEffect(() => {
+    // TODO: Firebase未設定のため、Androidでは一時的に無効化
+    // Firebase設定後に削除してください
+    if (Platform.OS === 'android') {
+      console.log('⚠️  Push notifications disabled on Android (Firebase not configured)');
+      return;
+    }
+
     // プッシュ通知トークンの登録
     registerForPushNotificationsAsync().then(async (token) => {
       if (token) {
@@ -44,10 +51,10 @@ export function useNotifications() {
 
     return () => {
       if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
+        notificationListener.current.remove();
       }
       if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+        responseListener.current.remove();
       }
     };
   }, []);
