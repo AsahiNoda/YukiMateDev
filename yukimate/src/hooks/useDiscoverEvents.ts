@@ -44,7 +44,7 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
 
         const blockedUserIds = blocks?.map(b => b.blocked_user_id) || [];
 
-        // 3.5. 自分がapprovedされたイベントIDリストを取得
+        // 3.5. 自分が参加中のイベントIDリストを取得（approvedまたはevent_participantsに存在）
         const { data: approvedApplications } = await supabase
           .from('event_applications')
           .select('event_id')
@@ -52,6 +52,18 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
           .eq('status', 'approved');
 
         const approvedEventIds = approvedApplications?.map(a => a.event_id) || [];
+
+        // 自分が参加中のイベント（left_atがnull）も取得
+        const { data: participatingEvents } = await supabase
+          .from('event_participants')
+          .select('event_id')
+          .eq('user_id', userId)
+          .is('left_at', null);
+
+        const participatingEventIds = participatingEvents?.map(p => p.event_id) || [];
+
+        // 両方のリストを結合して重複を除去
+        const excludedEventIds = [...new Set([...approvedEventIds, ...participatingEventIds])];
 
         // 4. イベントデータを取得
         let query = supabase
@@ -110,33 +122,46 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
 
         if (!isMounted) return;
 
-        // 5. ブロックユーザーのイベントとapprovedされたイベントを除外
+        // 5. ブロックユーザーのイベントと参加中のイベントを除外
         const filteredEvents = events?.filter(
-          event => !blockedUserIds.includes(event.host_user_id) && !approvedEventIds.includes(event.id)
+          event => !blockedUserIds.includes(event.host_user_id) && !excludedEventIds.includes(event.id)
         ) || [];
 
-        // 6. 参加者数を取得
+        // 6. ★登録したユーザーIDリストを取得
+        const { data: starredUsers } = await supabase
+          .from('stars')
+          .select('target_user_id')
+          .eq('user_id', userId);
+
+        const starredUserIds = starredUsers?.map(s => s.target_user_id) || [];
+
+        // 7. 参加者数と★登録された参加者を取得
         const eventsWithParticipants = await Promise.all(
           filteredEvents.map(async (event) => {
-            const { count } = await supabase
+            const { count, data: participants } = await supabase
               .from('event_participants')
-              .select('*', { count: 'exact', head: true })
+              .select('user_id', { count: 'exact' })
               .eq('event_id', event.id)
               .is('left_at', null);
+
+            // ★登録された参加者をフィルター
+            const participantUserIds = participants?.map(p => p.user_id) || [];
+            const starredParticipants = participantUserIds.filter(id => starredUserIds.includes(id));
 
             return {
               ...event,
               spotsTaken: count || 0,
+              starredParticipants,
             };
           })
         );
 
-        // 6.5. 満員のイベントを除外
+        // 7.5. 満員のイベントを除外
         const availableEvents = eventsWithParticipants.filter(
           event => event.spotsTaken < (event.capacity_total || 0)
         );
 
-        // 7. パーソナライゼーション（スコアリング）
+        // 8. パーソナライゼーション（スコアリング）
         const scoredEvents = availableEvents.map(event => {
           let score = 0;
 
@@ -177,10 +202,10 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
           };
         });
 
-        // 8. スコア順にソート
+        // 9. スコア順にソート
         const sortedEvents = scoredEvents.sort((a, b) => b.score - a.score);
 
-        // 9. DiscoverEvent型に変換
+        // 10. DiscoverEvent型に変換
         const discoverEvents: DiscoverEvent[] = sortedEvents.map(event => {
           // event_imagesストレージから画像URLを取得（全画像）
           const photoUrls: string[] = [];
@@ -233,6 +258,8 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
             photoUrls, // 全画像
             hostUserId: event.host_user_id,
             hostRole: event.profiles?.users?.role || 'user',
+            isHostStarred: starredUserIds.includes(event.host_user_id),
+            starredParticipants: event.starredParticipants || [],
           };
         });
 

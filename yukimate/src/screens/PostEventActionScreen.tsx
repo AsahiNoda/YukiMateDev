@@ -258,7 +258,7 @@ export default function PostEventActionScreen() {
           </Text>
 
           {/* メッセージ */}
-          <View style={styles.noParticipantsBox}>
+          <View style={[styles.noParticipantsBox, { backgroundColor: colors.backgroundSecondary }]}>
             <Text style={[styles.noParticipantsText, { color: colors.textSecondary }]}>
               今回は他の参加者がいなかったため、評価する相手がいません。
             </Text>
@@ -266,7 +266,7 @@ export default function PostEventActionScreen() {
 
           {/* 終了ボタン */}
           <TouchableOpacity
-            style={styles.finishButton}
+            style={[styles.finishButton, { backgroundColor: colors.tint }]}
             onPress={async () => {
               console.log('[PostEventActionScreen] ✅ Finish button pressed (no participants)');
 
@@ -285,7 +285,7 @@ export default function PostEventActionScreen() {
 
           {/* ホストのみ: 削除警告 */}
           {isHost && (
-            <Text style={styles.hostDeletionWarning}>
+            <Text style={[styles.hostDeletionWarning, { color: colors.error }]}>
               ⚠️ 投稿は一定時間後に自動で削除されます
             </Text>
           )}
@@ -306,11 +306,11 @@ export default function PostEventActionScreen() {
         </Text>
 
         {/* 説明テキスト */}
-        <View style={styles.infoBox}>
-          <Text style={[styles.infoText, { color: '#1e40af' }]}>
+        <View style={[styles.infoBox, { backgroundColor: colors.backgroundSecondary }]}>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
             ★登録: 今後おすすめに表示されやすくなります
           </Text>
-          <Text style={[styles.infoText, { color: '#1e40af' }]}>
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
             ブロック: この人のイベントは表示されなくなります
           </Text>
         </View>
@@ -403,7 +403,7 @@ export default function PostEventActionScreen() {
       {/* 完了ボタン */}
       <View style={[styles.footer, { borderTopColor: colors.border, paddingBottom: 120 }]}>
         <TouchableOpacity
-          style={[styles.finishButton, processing && styles.finishButtonDisabled]}
+          style={[styles.finishButton, { backgroundColor: colors.tint }, processing && styles.finishButtonDisabled]}
           onPress={handleFinish}
           disabled={processing}
         >
@@ -414,7 +414,7 @@ export default function PostEventActionScreen() {
 
         {/* ホストのみ: 削除警告 */}
         {isHost && (
-          <Text style={styles.hostDeletionWarning}>
+          <Text style={[styles.hostDeletionWarning, { color: colors.error }]}>
             ⚠️ 投稿は一定時間後に自動で削除されます
           </Text>
         )}
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   infoBox: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: Colors.light.backgroundSecondary, // Will be overridden dynamically
     padding: spacing.md,
     borderRadius: borderRadius.lg,
     marginTop: spacing.md,
@@ -469,6 +469,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     marginBottom: spacing.md,
     borderRadius: borderRadius.lg,
+    borderWidth: 1, // Add border width to make borderColor visible
   },
   participantInfo: {
     flexDirection: 'row',
@@ -515,9 +516,9 @@ const styles = StyleSheet.create({
   },
   footer: {
     padding: spacing.lg,
+    borderTopWidth: 1, // Add border width
   },
   finishButton: {
-    backgroundColor: '#5A7D9A',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     borderRadius: borderRadius.lg,
@@ -534,12 +535,10 @@ const styles = StyleSheet.create({
   hostDeletionWarning: {
     fontSize: fontSize.sm,
     fontWeight: fontWeight.bold,
-    color: '#ef4444',
     textAlign: 'center',
     marginTop: spacing.md,
   },
   noParticipantsBox: {
-    backgroundColor: '#f3f4f6',
     padding: spacing.xl,
     borderRadius: borderRadius.xl,
     marginBottom: spacing.xl,

@@ -24,8 +24,18 @@ import { testSupabaseSetup } from '@lib/testSupabaseSetup';
 
 // SVGコンポーネント
 import HomeBgMountain from '../../../assets/images/home-bg-mountain.svg';
+import BookmarkIcon from '../../../assets/images/icons/bookmark.svg';
 import DocumentIcon from '../../../assets/images/icons/document.svg';
 
+
+const DISCOVERY_CATEGORIES = [
+  { id: 'all', label: 'すべて', icon: 'square.grid.2x2' },
+  { id: 'powder', label: 'パウダー', icon: 'snowflake' },
+  { id: 'carpool', label: '相乗り', icon: 'car.fill' },
+  { id: 'beginner', label: '初心者', icon: 'figure.skiing.downhill' },
+  { id: 'park', label: 'パーク', icon: 'flag.fill' },
+  { id: 'onsen', label: '温泉', icon: 'cup.and.saucer.fill' },
+] as const;
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const state = useHomeData();
@@ -93,6 +103,7 @@ export default function HomeScreen() {
       </View>
 
       {/* Weather Section (Container for Image + Card) */}
+      {/* Weather Section (Container for Image + Card) */}
       {weather && (
         <View style={styles.weatherSectionWrapper}>
 
@@ -139,7 +150,13 @@ export default function HomeScreen() {
 
             {/* コンテンツ */}
             <View style={styles.weatherCardContent}>
-              <Text style={[styles.weatherResort, { color: Colors[colorScheme ?? 'light'].text }]}>{weather.resortName}</Text>
+              <View style={styles.weatherHeaderRow}>
+                <Text style={[styles.weatherResort, { color: Colors[colorScheme ?? 'light'].text }]}>{weather.resortName}</Text>
+                <View style={styles.liveBadge}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.liveText}>LIVE</Text>
+                </View>
+              </View>
 
               <View style={styles.weatherTopRow}>
                 <Text style={[styles.weatherTemp, { color: Colors[colorScheme ?? 'light'].text }]}>{weather.temperatureC}°C</Text>
@@ -165,6 +182,43 @@ export default function HomeScreen() {
         </View>
       )}
 
+      {/* Discovery Chips
+      <View style={styles.discoverySection}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.discoveryList}
+        >
+          {DISCOVERY_CATEGORIES.map((cat, index) => (
+            <TouchableOpacity
+              key={cat.id}
+              style={[
+                styles.discoveryChip,
+                {
+                  backgroundColor: index === 0 ? Colors[colorScheme ?? 'light'].tint : Colors[colorScheme ?? 'light'].card,
+                  borderColor: Colors[colorScheme ?? 'light'].border,
+                  borderWidth: index === 0 ? 0 : 1,
+                }
+              ]}
+              activeOpacity={0.7}
+              onPress={() => router.push('/(tabs)/search')}
+            >
+              <IconSymbol
+                name={cat.icon as any}
+                size={16}
+                color={index === 0 ? '#FFF' : Colors[colorScheme ?? 'light'].text}
+              />
+              <Text style={[
+                styles.discoveryText,
+                { color: index === 0 ? '#FFF' : Colors[colorScheme ?? 'light'].text }
+              ]}>
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View> */}
+
       {/* Quick actions – Discover / Chat / Local Info / Post */}
       <View style={styles.quickActionsRow}>
         <QuickAction
@@ -174,10 +228,10 @@ export default function HomeScreen() {
           onPress={() => router.push('/(tabs)/discover')}
         />
         <QuickAction
-          icon="message.fill"
-          label="チャット"
+          icon={<BookmarkIcon width={24} height={24} color={Colors[colorScheme ?? 'light'].icon} />}
+          label="保存"
           iconColor={Colors[colorScheme ?? 'light'].icon}
-          onPress={() => router.push('/(tabs)/chat')}
+          onPress={() => router.push('/saved-posts' as any)}
         />
         <QuickAction
           icon={<DocumentIcon width={24} height={24} color={Colors[colorScheme ?? 'light'].icon} />}
@@ -187,7 +241,7 @@ export default function HomeScreen() {
         />
         <QuickAction
           icon="plus.circle"
-          label="投稿"
+          label="作成"
           iconColor={Colors[colorScheme ?? 'light'].icon}
           onPress={() => router.push('/(tabs)/create')}
         />
@@ -214,7 +268,7 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Local hub / trend section (Snowfeed) */}
+      {/* Local hub / trend section (Snowfeed)
       {trendingPosts.length > 0 && (
         <View style={[styles.section, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
           <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>話題の投稿</Text>
@@ -233,7 +287,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </View>
-      )}
+      )} */}
     </ScrollView>
   );
 }
@@ -422,13 +476,14 @@ const styles = StyleSheet.create({
     paddingRight: 16,
   },
   featuredCard: {
-    width: 160,
-    height: 250,
-    marginRight: 22,
-    borderRadius: 12,
+    width: 260,
+    height: 340,
+    marginRight: 16,
+    borderRadius: 24,
     marginTop: 8,
     overflow: 'hidden',
   },
+
   featuredImage: {
     flex: 1,
     justifyContent: 'flex-end',
@@ -444,12 +499,92 @@ const styles = StyleSheet.create({
     paddingTop: 40,
   },
   featuredTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 22,
+    fontWeight: '800',
     color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 1 },
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+    marginBottom: 8,
+  },
+  featuredSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  participantBadgeContainer: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    zIndex: 10,
+  },
+  participantBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  participantBadgeText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+
+  discoverySection: {
+    marginBottom: 24,
+  },
+  discoveryList: {
+    paddingRight: 16,
+    gap: 12,
+  },
+  discoveryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 100,
+    gap: 6,
+  },
+  discoveryText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  weatherHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 59, 48, 0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFF',
+  },
+  liveText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  snowInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   roleBadgeContainer: {
     position: 'absolute',
@@ -460,6 +595,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(26, 32, 44, 0.8)', // Dark background for contrast
     borderRadius: 12,
     padding: 2,
+  },
+  roleBadgeContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  roleBadgeText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
   },
   centered: {
     flex: 1,
@@ -537,6 +684,7 @@ type FeaturedEventCardProps = {
     title: string;
     photoUrl: string | null;
     hostRole?: string;
+    spotsTaken: number;
   };
   colorScheme: 'light' | 'dark';
   onPress: () => void;
@@ -554,6 +702,14 @@ function FeaturedEventCard({ event, colorScheme, onPress }: FeaturedEventCardPro
           style={styles.featuredImage}
           resizeMode="cover"
         >
+          {/* 参加者数バッジ (左上) */}
+          <View style={styles.participantBadgeContainer}>
+            <View style={styles.participantBadge}>
+              <IconSymbol name="person.fill" size={12} color="#FFF" />
+              <Text style={styles.participantBadgeText}>{event.spotsTaken}人が参加中</Text>
+            </View>
+          </View>
+
           {/* グラデーションオーバーレイ（黒の半透明） */}
           <View style={[StyleSheet.absoluteFill, {
             backgroundColor: 'transparent',
@@ -564,14 +720,22 @@ function FeaturedEventCard({ event, colorScheme, onPress }: FeaturedEventCardPro
                 <Text style={styles.featuredTitle} numberOfLines={2}>
                   {event.title}
                 </Text>
+                <Text style={styles.featuredSubtitle}>
+                  📍 白馬八方尾根
+                </Text>
               </View>
             </View>
           </View>
-          {/* ロールバッジ */}
+          {/* ロールバッジとテキスト */}
           {hasBadge && event.hostRole && (
             <View style={styles.roleBadgeContainer}>
               <View style={styles.roleBadgeBackground}>
-                <OfficialBadge color={getBadgeColor(event.hostRole)} size={24} />
+                <View style={styles.roleBadgeContent}>
+                  <Text style={styles.roleBadgeText}>
+                    {event.hostRole === 'official' ? '公式' : '開発者'}
+                  </Text>
+                  <OfficialBadge color={getBadgeColor(event.hostRole)} size={24} />
+                </View>
               </View>
             </View>
           )}
@@ -583,11 +747,25 @@ function FeaturedEventCard({ event, colorScheme, onPress }: FeaturedEventCardPro
             <Text style={styles.featuredTitle} numberOfLines={2}>
               {event.title}
             </Text>
+            <Text style={styles.featuredSubtitle}>
+              📍 白馬八方尾根
+            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+              <IconSymbol name="person.fill" size={14} color="rgba(255,255,255,0.8)" />
+              <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>
+                {event.spotsTaken}人が参加中
+              </Text>
+            </View>
           </View>
           {hasBadge && event.hostRole && (
             <View style={styles.roleBadgeContainer}>
               <View style={styles.roleBadgeBackground}>
-                <OfficialBadge color={getBadgeColor(event.hostRole)} size={24} />
+                <View style={styles.roleBadgeContent}>
+                  <Text style={styles.roleBadgeText}>
+                    {event.hostRole === 'official' ? '公式' : '開発者'}
+                  </Text>
+                  <OfficialBadge color={getBadgeColor(event.hostRole)} size={24} />
+                </View>
               </View>
             </View>
           )}

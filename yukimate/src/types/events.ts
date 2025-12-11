@@ -41,6 +41,8 @@ export type DiscoverEvent = {
   photoUrls: string[]; // 全画像のURL配列
   hostUserId: string;
   hostRole: string;
+  isHostStarred?: boolean; // ホストが★登録されているか
+  starredParticipants?: string[]; // ★登録された参加者のユーザーID配列
 };
 
 // Event filter options

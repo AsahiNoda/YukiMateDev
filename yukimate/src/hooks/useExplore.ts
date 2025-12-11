@@ -66,7 +66,7 @@ export function useExplore(
 
       const blockedUserIds = blocks?.map(b => b.blocked_user_id) || [];
 
-      // 自分がapprovedされたイベントIDリストを取得
+      // 自分が参加中のイベントIDリストを取得（approvedまたはevent_participantsに存在）
       const { data: approvedApplications } = await supabase
         .from('event_applications')
         .select('event_id')
@@ -74,6 +74,18 @@ export function useExplore(
         .eq('status', 'approved');
 
       const approvedEventIds = approvedApplications?.map(a => a.event_id) || [];
+
+      // 自分が参加中のイベント（left_atがnull）も取得
+      const { data: participatingEvents } = await supabase
+        .from('event_participants')
+        .select('event_id')
+        .eq('user_id', userId)
+        .is('left_at', null);
+
+      const participatingEventIds = participatingEvents?.map(p => p.event_id) || [];
+
+      // 両方のリストを結合して重複を除去
+      const excludedEventIds = [...new Set([...approvedEventIds, ...participatingEventIds])];
 
       // ベースクエリ
       let query = supabase
@@ -114,9 +126,9 @@ export function useExplore(
         query = query.not('host_user_id', 'in', `(${blockedUserIds.join(',')})`);
       }
 
-      // approvedされたイベント除外
-      if (approvedEventIds.length > 0) {
-        query = query.not('id', 'in', `(${approvedEventIds.join(',')})`);
+      // 参加中のイベント除外
+      if (excludedEventIds.length > 0) {
+        query = query.not('id', 'in', `(${excludedEventIds.join(',')})`);
       }
 
       // キーワード検索（タイトル、説明、タグを検索）
@@ -169,18 +181,31 @@ export function useExplore(
 
       let results = data || [];
 
-      // 参加者数を取得
+      // ★登録したユーザーIDリストを取得
+      const { data: starredUsers } = await supabase
+        .from('stars')
+        .select('target_user_id')
+        .eq('user_id', userId);
+
+      const starredUserIds = starredUsers?.map(s => s.target_user_id) || [];
+
+      // 参加者数と★登録された参加者を取得
       const eventsWithParticipants = await Promise.all(
         results.map(async (event) => {
-          const { count } = await supabase
+          const { count, data: participants } = await supabase
             .from('event_participants')
-            .select('*', { count: 'exact', head: true })
+            .select('user_id', { count: 'exact' })
             .eq('event_id', event.id)
             .is('left_at', null);
+
+          // ★登録された参加者をフィルター
+          const participantUserIds = participants?.map(p => p.user_id) || [];
+          const starredParticipants = participantUserIds.filter(id => starredUserIds.includes(id));
 
           return {
             ...event,
             spotsTaken: count || 0,
+            starredParticipants,
           };
         })
       );
@@ -271,6 +296,8 @@ export function useExplore(
           photoUrls,
           hostUserId: event.host_user_id,
           hostRole: event.profiles?.users?.role || 'user',
+          isHostStarred: starredUserIds.includes(event.host_user_id),
+          starredParticipants: event.starredParticipants || [],
         };
       });
 

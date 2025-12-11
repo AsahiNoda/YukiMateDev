@@ -1,8 +1,8 @@
 import { supabase } from '@/lib/supabase';
-import { mockHomeData, type HomeData } from '@data/mockHomeData';
 import { fetchWeatherData } from '@/services/weatherApi';
-import { useEffect, useState, useCallback } from 'react';
+import { mockHomeData, type HomeData } from '@data/mockHomeData';
 import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useEffect, useState } from 'react';
 
 type HomeDataState =
   | { status: 'loading'; data: null }
@@ -36,7 +36,8 @@ export function useHomeData(): HomeDataState {
             profiles!posts_events_host_user_id_fkey(
               user_id,
               users!profiles_user_id_fkey(role)
-            )
+            ),
+            event_participants(count)
           `)
           .eq('status', 'open')
           .gte('start_at', new Date().toISOString())
@@ -59,7 +60,7 @@ export function useHomeData(): HomeDataState {
           startAt: '', // Not needed for featured cards
           endAt: '', // Not needed for featured cards
           levelRequired: 'beginner' as const, // Not needed for featured cards
-          spotsTaken: 0,
+          spotsTaken: event.event_participants?.[0]?.count || 0,
           capacityTotal: 0,
           pricePerPersonJpy: 0,
         })) || [];

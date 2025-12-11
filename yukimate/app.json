@@ -38,7 +38,8 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -46,7 +47,10 @@
     },
     "extra": {
       "supabaseUrl": "https://rmdpetmotoafaddkvyrk.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtZHBldG1vdG9hZmFkZGt2eXJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyNDc1NzEsImV4cCI6MjA3NDgyMzU3MX0.oaY0nv82XIG8OvHF7Z0q2cYdJFB74s1I-ys00Ab7lp8"
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtZHBldG1vdG9hZmFkZGt2eXJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyNDc1NzEsImV4cCI6MjA3NDgyMzU3MX0.oaY0nv82XIG8OvHF7Z0q2cYdJFB74s1I-ys00Ab7lp8",
+      "eas": {
+        "projectId": "your-project-id-here"
+      }
     }
   }
 }

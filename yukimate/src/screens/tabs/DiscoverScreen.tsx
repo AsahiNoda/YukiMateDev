@@ -476,6 +476,14 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
           </Text>
         </Animated.View>
 
+        {/* ★登録ユーザー参加中バッジ（画像の上、中央上部） */}
+        {event.starredParticipants && event.starredParticipants.length > 0 && (
+          <View style={styles.starredParticipantBadge}>
+            <IconSymbol name="star.fill" size={14} color="#FFFFFF" />
+            <Text style={styles.starredParticipantText}>ユーザーが参加中</Text>
+          </View>
+        )}
+
         {/* Content */}
         <View style={[styles.cardContent, { paddingTop: insets.top + 80, paddingBottom: insets.bottom + 24 }]}>
           {/* Top spacer */}
@@ -503,7 +511,12 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
                 />
               </View>
               <View style={styles.cardHostInfo}>
-                <Text style={styles.cardHostName}>{event.hostName}</Text>
+                <View style={styles.cardHostNameRow}>
+                  <Text style={styles.cardHostName}>{event.hostName}</Text>
+                  {event.isHostStarred && (
+                    <IconSymbol name="star.fill" size={16} color={colors.accent} style={styles.cardHostStar} />
+                  )}
+                </View>
                 <Text style={[styles.cardHostTags, { color: colors.textSecondary }]}>
                   {event.tags.slice(0, 2).map((tag) => `#${tag}`).join(' ')}
                 </Text>
@@ -685,6 +698,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     width: 20,
   },
+  starredParticipantBadge: {
+    position: 'absolute',
+    top: 120,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 193, 7, 0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 6,
+    zIndex: 7,
+  },
+  starredParticipantText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
   swipeOverlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
@@ -748,10 +783,18 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     flex: 1,
   },
+  cardHostNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   cardHostName: {
     fontSize: 17,
     fontWeight: '700',
     color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  cardHostStar: {
     marginBottom: 2,
   },
   cardHostTags: {

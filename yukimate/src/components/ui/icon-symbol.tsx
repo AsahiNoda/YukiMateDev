@@ -68,6 +68,11 @@ const MAPPING = {
   'cloud.heavyrain.fill': 'water-drop',
   'cloud.snow.fill': 'ac-unit',
   'cloud.bolt.rain.fill': 'thunderstorm',
+  'car.fill': 'directions-car',
+  'flag.fill': 'flag',
+  'cup.and.saucer.fill': 'local-cafe',
+  'figure.skiing.downhill': 'accessibility-new', // Using accessibility-new for beginner/easy
+  'square.grid.2x2': 'grid-view',
 } as IconMapping;
 
 /**

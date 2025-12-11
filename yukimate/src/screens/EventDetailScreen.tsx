@@ -53,6 +53,8 @@ interface EventDetail {
   isHost: boolean;
   hasApplied: boolean;
   applicationStatus: string | null;
+  isHostStarred?: boolean;
+  starredParticipantIds?: string[];
 }
 
 function createStyles(colors: typeof Colors.light) {
@@ -306,6 +308,9 @@ function createStyles(colors: typeof Colors.light) {
       color: colors.text,
       marginRight: 6,
     },
+    participantStar: {
+      marginRight: 4,
+    },
     participantFlag: {
       fontSize: 16,
     },
@@ -358,10 +363,18 @@ function createStyles(colors: typeof Colors.light) {
       color: colors.icon,
       marginBottom: 2,
     },
+    footerHostNameContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
     footerHostName: {
       fontSize: 14,
       fontWeight: '600',
       color: colors.text,
+    },
+    footerHostStar: {
+      marginLeft: 2,
     },
     actionButton: {
       paddingVertical: 14,
@@ -452,6 +465,14 @@ export default function EventDetailScreen() {
         .eq('event_id', params.eventId)
         .is('left_at', null);
 
+      // ★登録したユーザーIDリストを取得
+      const { data: starredUsers } = await supabase
+        .from('stars')
+        .select('target_user_id')
+        .eq('user_id', session.user.id);
+
+      const starredUserIds = starredUsers?.map(s => s.target_user_id) || [];
+
       // 参加者の詳細情報を取得
       const { data: participantsData } = await supabase
         .from('event_participants')
@@ -500,6 +521,15 @@ export default function EventDetailScreen() {
         .eq('applicant_user_id', session.user.id)
         .single();
 
+      // 参加中かどうかを確認（left_atがnull）
+      const { data: participation } = await supabase
+        .from('event_participants')
+        .select('user_id')
+        .eq('event_id', params.eventId)
+        .eq('user_id', session.user.id)
+        .is('left_at', null)
+        .single();
+
       // 画像URLを生成
       const photoUrls: string[] = [];
       if (eventData.photos && eventData.photos.length > 0) {
@@ -514,6 +544,11 @@ export default function EventDetailScreen() {
           }
         });
       }
+
+      // ★登録された参加者のIDリストを作成
+      const starredParticipantIds = formattedParticipants
+        .filter(p => starredUserIds.includes(p.userId))
+        .map(p => p.userId);
 
       const detail: EventDetail = {
         id: eventData.id,
@@ -536,8 +571,10 @@ export default function EventDetailScreen() {
         hostLevel: eventData.profiles?.level || null,
         hostRole: eventData.profiles?.users?.role || 'user',
         isHost: eventData.host_user_id === session.user.id,
-        hasApplied: !!application,
+        hasApplied: !!participation, // 参加中（left_atがnull）の場合にtrue
         applicationStatus: application?.status || null,
+        isHostStarred: starredUserIds.includes(eventData.host_user_id),
+        starredParticipantIds,
       };
 
       setEvent(detail);
@@ -562,6 +599,70 @@ export default function EventDetailScreen() {
     } else {
       Alert.alert('エラー', result.error || '申請に失敗しました');
     }
+  };
+
+  const handleWithdraw = async () => {
+    if (!event) return;
+
+    Alert.alert(
+      'イベントから退会',
+      'このイベントから退会してもよろしいですか？\n\n※退会したイベントは今後表示されません。',
+      [
+        {
+          text: 'キャンセル',
+          style: 'cancel',
+        },
+        {
+          text: '退会する',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setApplying(true);
+              const { data: { session } } = await supabase.auth.getSession();
+              if (!session?.user) {
+                throw new Error('ログインが必要です');
+              }
+
+              // イベント参加者テーブルから削除（left_atを設定）
+              const { error: participantError } = await supabase
+                .from('event_participants')
+                .update({ left_at: new Date().toISOString() })
+                .eq('event_id', event.id)
+                .eq('user_id', session.user.id)
+                .is('left_at', null);
+
+              if (participantError) throw participantError;
+
+              // イベント申請テーブルからも削除
+              const { error: applicationError } = await supabase
+                .from('event_applications')
+                .delete()
+                .eq('event_id', event.id)
+                .eq('applicant_user_id', session.user.id);
+
+              if (applicationError) throw applicationError;
+
+              // 状態を即座に更新
+              setEvent(prev => prev ? {
+                ...prev,
+                hasApplied: false,
+                applicationStatus: null,
+                spotsTaken: Math.max(0, prev.spotsTaken - 1)
+              } : null);
+
+              Alert.alert('退会完了', 'イベントから退会しました');
+              // 詳細を再読み込みして最新の状態を取得
+              loadEventDetail();
+            } catch (err) {
+              console.error('Error withdrawing from event:', err);
+              Alert.alert('エラー', 'イベントからの退会に失敗しました');
+            } finally {
+              setApplying(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleDeleteEvent = async () => {
@@ -875,7 +976,7 @@ export default function EventDetailScreen() {
 
                   {/* 参加者情報 */}
                   <View style={styles.participantInfo}>
-                    {/* 名前と国旗 */}
+                    {/* 名前と国旗と★マーク */}
                     <View style={styles.participantNameRow}>
                       <Text style={[styles.participantName, { color: colors.text }]}>
                         {participant.displayName}
@@ -884,6 +985,9 @@ export default function EventDetailScreen() {
                         <Text style={styles.participantFlag}>
                           {getFlagEmoji(participant.countryCode)}
                         </Text>
+                      )}
+                      {event.starredParticipantIds?.includes(participant.userId) && (
+                        <IconSymbol name="star.fill" size={14} color={colors.accent} style={styles.participantStar} />
                       )}
                     </View>
 
@@ -923,7 +1027,12 @@ export default function EventDetailScreen() {
           />
           <View style={styles.footerHostInfo}>
             <Text style={[styles.footerHostLabel, { color: colors.icon }]}>ホスト</Text>
-            <Text style={[styles.footerHostName, { color: colors.text }]}>{event.hostName}</Text>
+            <View style={styles.footerHostNameContainer}>
+              <Text style={[styles.footerHostName, { color: colors.text }]}>{event.hostName}</Text>
+              {event.isHostStarred && (
+                <IconSymbol name="star.fill" size={14} color={colors.accent} style={styles.footerHostStar} />
+              )}
+            </View>
           </View>
         </TouchableOpacity>
 
@@ -941,17 +1050,21 @@ export default function EventDetailScreen() {
           <TouchableOpacity
             style={[
               styles.actionButton,
-              { backgroundColor: colors.tint },
-              (event.hasApplied || applying) && [styles.actionButtonDisabled, { backgroundColor: colors.backgroundTertiary }],
+              event.hasApplied
+                ? { backgroundColor: colors.error }
+                : event.applicationStatus === 'pending'
+                ? { backgroundColor: colors.backgroundTertiary }
+                : { backgroundColor: colors.tint },
+              (applying || event.applicationStatus === 'pending') && [styles.actionButtonDisabled, { backgroundColor: colors.backgroundTertiary }],
             ]}
-            onPress={handleApply}
-            disabled={event.hasApplied || applying}
+            onPress={event.hasApplied ? handleWithdraw : handleApply}
+            disabled={applying || event.applicationStatus === 'pending'}
           >
             {applying ? (
               <ActivityIndicator color={colors.text} />
             ) : (
               <Text style={[styles.actionButtonText, { color: colors.text }]}>
-                {event.hasApplied ? '申請済み' : '参加申請'}
+                {event.hasApplied ? '退会する' : event.applicationStatus === 'pending' ? '申請中' : '参加申請'}
               </Text>
             )}
           </TouchableOpacity>

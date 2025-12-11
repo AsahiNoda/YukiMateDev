@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import type { EventApplication } from '@types';
 import { useEffect, useState } from 'react';
+import { notifyEventApplicationApproved, notifyEventApplicationRejected } from '@/services/notificationService';
 
 export interface EventApplicationWithDetails extends EventApplication {
   applicant: {
@@ -205,6 +206,18 @@ export function useEventApplications() {
       setApplications((prev) => prev.filter((app) => app.id !== applicationId));
 
       console.log('✅ Approval process completed successfully');
+
+      // 通知を送信
+      const application = applications.find(app => app.id === applicationId);
+      if (application?.event?.title) {
+        console.log('📤 Sending approval notification...');
+        await notifyEventApplicationApproved(
+          applicantUserId,
+          application.event.title,
+          eventId
+        );
+      }
+
       return { success: true };
     } catch (err: any) {
       console.error('❌ Approve application error:', err);
@@ -223,7 +236,18 @@ export function useEventApplications() {
       if (error) throw error;
 
       // 一覧から削除（pending以外は表示しない）
+      const application = applications.find(app => app.id === applicationId);
       setApplications((prev) => prev.filter((app) => app.id !== applicationId));
+
+      // 通知を送信
+      if (application?.event?.title && application?.applicant?.id) {
+        console.log('📤 Sending rejection notification...');
+        await notifyEventApplicationRejected(
+          application.applicant.id,
+          application.event.title,
+          application.event.id
+        );
+      }
 
       return { success: true };
     } catch (err: any) {

@@ -4,6 +4,7 @@ import 'react-native-url-polyfill/auto';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LocaleProvider } from '@/contexts/LocaleContext';
 import { checkPendingEventActions } from '@/utils/event-checker';
+import { useNotifications } from '@/hooks/useNotifications';
 import { supabase } from '@lib/supabase';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -19,6 +20,9 @@ export default function RootLayout() {
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
   const initRef = useRef(false);
+
+  // 通知機能を初期化
+  useNotifications();
 
   useEffect(() => {
     // すでに初期化済みの場合はスキップ（グローバル変数を使用）

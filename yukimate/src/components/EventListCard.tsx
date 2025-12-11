@@ -1,11 +1,11 @@
 import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
-import { saveEvent, unsaveEvent } from '@/hooks/useDiscoverEvents';
+import { useBookmark } from '@/hooks/useBookmark';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import type { DiscoverEvent } from '@types';
 import { BlurView } from 'expo-blur';
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Alert,
   Image,
@@ -32,8 +32,10 @@ interface EventListCardProps {
 export function EventListCard({ event, onPress }: EventListCardProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const [isSaved, setIsSaved] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+
+  // useBookmarkフックを使用
+  const { isBookmarked, loading: isSaving, toggleBookmark } = useBookmark(event.id);
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const month = date.getMonth() + 1;
@@ -90,23 +92,10 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
 
     if (isSaving) return;
 
-    setIsSaving(true);
+    const success = await toggleBookmark();
 
-    // 保存済みの場合は保存解除、未保存の場合は保存
-    const result = isSaved
-      ? await unsaveEvent(event.id)
-      : await saveEvent(event.id);
-
-    setIsSaving(false);
-
-    if (result.success) {
-      setIsSaved(!isSaved);
-      Alert.alert(
-        isSaved ? '保存解除' : '保存完了',
-        isSaved ? 'イベントの保存を解除しました' : 'イベントを保存しました'
-      );
-    } else {
-      Alert.alert('エラー', result.error || '操作に失敗しました');
+    if (!success) {
+      Alert.alert('エラー', 'ブックマークの更新に失敗しました');
     }
   };
 
@@ -149,6 +138,16 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
                 {event.spotsTaken}/{event.capacityTotal}
               </Text>
             </View>
+
+            {/* ★登録ユーザー参加中バッジ（右上、空き状況バッジの下） */}
+            {event.starredParticipants && event.starredParticipants.length > 0 && (
+              <View style={[styles.starredParticipantBadge, { backgroundColor: `${colors.accent}DD` }]}>
+                <IconSymbol name="star.fill" size={10} color={colors.text} />
+                <Text style={[styles.starredParticipantText, { color: colors.text }]}>
+                  ユーザーが参加中
+                </Text>
+              </View>
+            )}
 
             {/* レベルバッジ（右下） */}
             {event.levelRequired && (
@@ -202,9 +201,14 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
                   size={45}
                   showBadge={true}
                 />
-                <Text style={[styles.hostName, { color: colors.textSecondary }]} numberOfLines={1}>
-                  {event.hostName}
-                </Text>
+                <View style={styles.hostNameContainer}>
+                  <Text style={[styles.hostName, { color: colors.textSecondary }]} numberOfLines={1}>
+                    {event.hostName}
+                  </Text>
+                  {event.isHostStarred && (
+                    <IconSymbol name="star.fill" size={14} color={colors.accent} style={styles.hostStarIcon} />
+                  )}
+                </View>
               </View>
             </View>
 
@@ -224,23 +228,23 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
                 style={[
                   styles.saveButton,
                   { backgroundColor: `${colors.backgroundSecondary}1A`, borderColor: `${colors.border}1A` },
-                  isSaved && { backgroundColor: `${colors.tint}99`, borderColor: colors.accent },
+                  isBookmarked && { backgroundColor: `${colors.tint}99`, borderColor: colors.accent },
                 ]}
                 onPress={handleSave}
                 disabled={isSaving}
                 activeOpacity={0.7}
               >
                 <IconSymbol
-                  name={isSaved ? 'star.fill' : 'star'}
+                  name={isBookmarked ? 'star.fill' : 'star'}
                   size={18}
-                  color={isSaved ? colors.accent : colors.textSecondary}
+                  color={isBookmarked ? colors.accent : colors.textSecondary}
                 />
                 <Text style={[
                   styles.saveButtonText,
                   { color: colors.textSecondary },
-                  isSaved && { color: colors.accent },
+                  isBookmarked && { color: colors.accent },
                 ]}>
-                  {isSaved ? '保存済み' : '保存'}
+                  {isBookmarked ? '保存済み' : '保存'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -320,6 +324,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  starredParticipantBadge: {
+    position: 'absolute',
+    top: 48,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    // backgroundColor is set dynamically in the component
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    gap: 4,
+  },
+  starredParticipantText: {
+    // color is set dynamically in the component
+    fontSize: 10,
+    fontWeight: '600',
+  },
   content: {
     padding: 16,
   },
@@ -371,6 +392,11 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 8,
   },
+  hostNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   hostAvatar: {
     width: 45,
     height: 45,
@@ -394,7 +420,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     // color is set dynamically in the component
     fontWeight: '700',
-    flex: 1,
+  },
+  hostStarIcon: {
+    marginLeft: 0,
   },
   levelBadge: {
     paddingHorizontal: 10,
