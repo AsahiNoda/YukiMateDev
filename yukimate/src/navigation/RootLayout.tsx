@@ -7,6 +7,7 @@ import { checkPendingEventActions } from '@/utils/event-checker';
 import { useNotifications } from '@/hooks/useNotifications';
 import { supabase } from '@lib/supabase';
 import { initSentry } from '@lib/sentry';
+import { initAnalytics } from '@lib/analytics';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useRouter } from 'expo-router';
@@ -16,6 +17,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // Sentryを初期化（アプリ起動時に1回だけ実行）
 initSentry();
+// Amplitudeアナリティクスを初期化
+initAnalytics();
 
 // グローバル変数で初期化状態を管理（再マウント時もリセットされない）
 let globalInitialized = false;
