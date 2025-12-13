@@ -6,11 +6,15 @@ import { LocaleProvider } from '@/contexts/LocaleContext';
 import { checkPendingEventActions } from '@/utils/event-checker';
 import { useNotifications } from '@/hooks/useNotifications';
 import { supabase } from '@lib/supabase';
+import { initSentry } from '@lib/sentry';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+// Sentryを初期化（アプリ起動時に1回だけ実行）
+initSentry();
 
 // グローバル変数で初期化状態を管理（再マウント時もリセットされない）
 let globalInitialized = false;
