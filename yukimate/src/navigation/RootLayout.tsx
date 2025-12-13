@@ -7,6 +7,7 @@ import { checkPendingEventActions } from '@/utils/event-checker';
 import { useNotifications } from '@/hooks/useNotifications';
 import { supabase } from '@lib/supabase';
 import { initSentry } from '@lib/sentry';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -245,30 +246,32 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <LocaleProvider>
-        <AuthProvider>
-          {!isReady ? (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#5A7D9A" />
-            </View>
-          ) : (
-            <Stack
-              screenOptions={{
-                headerShown: false,
-              }}
-            >
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
-              <Stack.Screen name="event-detail" options={{ presentation: 'card' }} />
-              <Stack.Screen name="event-chat/[eventId]" options={{ presentation: 'card' }} />
-              <Stack.Screen name="post-event-action/[eventId]" options={{ presentation: 'card' }} />
-              <Stack.Screen name="profile-setup" options={{ headerShown: false }} />
-            </Stack>
-          )}
-        </AuthProvider>
-      </LocaleProvider>
-    </GestureHandlerRootView>
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <LocaleProvider>
+          <AuthProvider>
+            {!isReady ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#5A7D9A" />
+              </View>
+            ) : (
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                }}
+              >
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
+                <Stack.Screen name="event-detail" options={{ presentation: 'card' }} />
+                <Stack.Screen name="event-chat/[eventId]" options={{ presentation: 'card' }} />
+                <Stack.Screen name="post-event-action/[eventId]" options={{ presentation: 'card' }} />
+                <Stack.Screen name="profile-setup" options={{ headerShown: false }} />
+              </Stack>
+            )}
+          </AuthProvider>
+        </LocaleProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }
 
