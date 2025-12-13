@@ -15,6 +15,7 @@ import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { supabase } from '@lib/supabase';
+import { validateEmail, validatePassword } from '@/utils/validation';
 
 export default function SignInScreen() {
   const colorScheme = useColorScheme();
@@ -26,9 +27,26 @@ export default function SignInScreen() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
 
   const handleEmailPasswordAuth = async () => {
-    if (!email || !password) {
-      Alert.alert('エラー', 'メールアドレスとパスワードを入力してください');
+    // メールアドレスのバリデーション
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      Alert.alert('エラー', emailValidation.error);
       return;
+    }
+
+    // パスワードのバリデーション
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      // サインアップ時のみ厳格なバリデーション
+      if (mode === 'signup') {
+        Alert.alert('エラー', passwordValidation.error);
+        return;
+      }
+      // サインイン時は基本的なチェックのみ
+      if (!password || password.trim() === '') {
+        Alert.alert('エラー', 'パスワードを入力してください');
+        return;
+      }
     }
 
     setLoading(true);
@@ -74,8 +92,10 @@ export default function SignInScreen() {
   };
 
   const handleMagicLink = async () => {
-    if (!email) {
-      Alert.alert('エラー', 'メールアドレスを入力してください');
+    // メールアドレスのバリデーション
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      Alert.alert('エラー', emailValidation.error);
       return;
     }
 

@@ -3,6 +3,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from './supabase';
 import { Alert } from 'react-native';
 import { decode } from 'base64-arraybuffer';
+import { validateFileSize, validateImageFileType } from '@/utils/validation';
 
 export type ImageType = 'avatar' | 'header';
 
@@ -40,7 +41,23 @@ export async function pickAndUploadImage(
     }
 
     const imageUri = result.assets[0].uri;
-    console.log('📷 Image selected:', imageUri);
+    const mimeType = result.assets[0].mimeType || 'image/jpeg';
+    const fileSize = result.assets[0].fileSize || 0;
+    console.log('📷 Image selected:', imageUri, 'Type:', mimeType, 'Size:', fileSize);
+
+    // ファイルタイプのバリデーション
+    const typeValidation = validateImageFileType(mimeType);
+    if (!typeValidation.isValid) {
+      Alert.alert('エラー', typeValidation.error);
+      return null;
+    }
+
+    // ファイルサイズのバリデーション（10MB制限）
+    const sizeValidation = validateFileSize(fileSize, 10);
+    if (!sizeValidation.isValid) {
+      Alert.alert('エラー', sizeValidation.error);
+      return null;
+    }
 
     // 画像をアップロード
     console.log('⬆️  Starting upload...');
@@ -144,6 +161,22 @@ export async function takePhotoAndUpload(
     }
 
     const imageUri = result.assets[0].uri;
+    const mimeType = result.assets[0].mimeType || 'image/jpeg';
+    const fileSize = result.assets[0].fileSize || 0;
+
+    // ファイルタイプのバリデーション
+    const typeValidation = validateImageFileType(mimeType);
+    if (!typeValidation.isValid) {
+      Alert.alert('エラー', typeValidation.error);
+      return null;
+    }
+
+    // ファイルサイズのバリデーション（10MB制限）
+    const sizeValidation = validateFileSize(fileSize, 10);
+    if (!sizeValidation.isValid) {
+      Alert.alert('エラー', sizeValidation.error);
+      return null;
+    }
 
     // 画像をアップロード
     const url = await uploadImageToSupabase(userId, imageUri, imageType);
