@@ -117,6 +117,41 @@ jest.mock('expo-image-picker', () => ({
   ),
 }));
 
+// Mock NetInfo
+jest.mock('@react-native-community/netinfo', () => ({
+  addEventListener: jest.fn(() => jest.fn()),
+  fetch: jest.fn(() =>
+    Promise.resolve({
+      isConnected: true,
+      isInternetReachable: true,
+    })
+  ),
+}));
+
+// Mock React Query
+jest.mock('@tanstack/react-query', () => ({
+  QueryClient: jest.fn(() => ({
+    setOnlineMode: jest.fn(),
+    refetchQueries: jest.fn(),
+    invalidateQueries: jest.fn(),
+  })),
+  QueryClientProvider: ({ children }: any) => children,
+  useQuery: jest.fn(() => ({
+    data: [],
+    isLoading: false,
+    error: null,
+    isRefetching: false,
+  })),
+  useMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    mutateAsync: jest.fn(),
+    isLoading: false,
+  })),
+  useQueryClient: jest.fn(() => ({
+    invalidateQueries: jest.fn(),
+  })),
+}));
+
 // Silence console errors during tests (optional)
 // Uncomment if you want to suppress console output during tests
 // global.console = {
