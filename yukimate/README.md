@@ -97,7 +97,46 @@ yukimate/
 - 環境変数による認証情報管理
 - Supabase Row Level Security (RLS)
 - セッションベース認証
-- 入力値検証（実装中）
+- 包括的な入力値検証とサニタイズ
+- Sentryによるエラー追跡
+- グローバルエラーバウンダリ
+
+## 📦 ビルドとデプロイ
+
+### EAS Buildを使用したビルド
+
+```bash
+# 開発ビルド（開発用）
+npx eas build --profile development --platform ios
+npx eas build --profile development --platform android
+
+# プレビュービルド（内部テスト用）
+npx eas build --profile preview --platform ios
+npx eas build --profile preview --platform android
+
+# 本番ビルド（ストア提出用）
+npx eas build --profile production --platform ios
+npx eas build --profile production --platform android
+```
+
+### ストアへの提出
+
+```bash
+# iOS App Storeへ提出
+npx eas submit --platform ios
+
+# Google Play Storeへ提出
+npx eas submit --platform android
+```
+
+### 環境変数の設定（EAS Build用）
+
+```bash
+# 本番環境の環境変数を設定
+npx eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_URL --value your_value
+npx eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value your_value
+npx eas secret:create --scope project --name EXPO_PUBLIC_SENTRY_DSN --value your_value
+```
 
 ## 📄 ライセンス
 

@@ -1,6 +1,6 @@
 export default {
   expo: {
-    name: 'yukimate',
+    name: 'YukiMate',
     slug: 'yukimate',
     version: '1.0.0',
     orientation: 'portrait',
@@ -11,6 +11,10 @@ export default {
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.yukimate.app',
+      infoPlist: {
+        NSCameraUsageDescription: 'YukiMateはプロフィール写真やイベント写真の撮影にカメラを使用します。',
+        NSPhotoLibraryUsageDescription: 'YukiMateはプロフィール写真やイベント写真の選択にフォトライブラリを使用します。',
+      },
     },
     android: {
       adaptiveIcon: {
@@ -22,6 +26,13 @@ export default {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: 'com.yukimate.app',
+      permissions: [
+        'CAMERA',
+        'READ_EXTERNAL_STORAGE',
+        'WRITE_EXTERNAL_STORAGE',
+        'RECEIVE_BOOT_COMPLETED',
+        'VIBRATE',
+      ],
     },
     web: {
       output: 'static',
