@@ -1,19 +1,19 @@
 export default {
   expo: {
-    name: 'YukiMate',
-    slug: 'yukimate',
+    name: 'Slope Link',
+    slug: 'slopelink',
     version: '1.0.0',
     orientation: 'portrait',
     icon: './assets/images/icon.png',
-    scheme: 'yukimate',
+    scheme: 'slopelink',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
     ios: {
       supportsTablet: true,
-      bundleIdentifier: 'com.yukimate.app',
+      bundleIdentifier: 'com.slopelink.app',
       infoPlist: {
-        NSCameraUsageDescription: 'YukiMateはプロフィール写真やイベント写真の撮影にカメラを使用します。',
-        NSPhotoLibraryUsageDescription: 'YukiMateはプロフィール写真やイベント写真の選択にフォトライブラリを使用します。',
+        NSCameraUsageDescription: 'Slope Linkはプロフィール写真やイベント写真の撮影にカメラを使用します。',
+        NSPhotoLibraryUsageDescription: 'Slope Linkはプロフィール写真やイベント写真の選択にフォトライブラリを使用します。',
       },
     },
     android: {
@@ -25,7 +25,7 @@ export default {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
-      package: 'com.yukimate.app',
+      package: 'com.slopelink.app',
       permissions: [
         'CAMERA',
         'READ_EXTERNAL_STORAGE',

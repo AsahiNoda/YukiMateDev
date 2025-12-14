@@ -1,21 +1,21 @@
 # ストア申請ガイド
 
-このドキュメントでは、YukiMateアプリをApp StoreとGoogle Play Storeに申請するために必要な資材と手順を説明します。
+このドキュメントでは、Slope LinkアプリをApp StoreとGoogle Play Storeに申請するために必要な資材と手順を説明します。
 
 ## 必要な資材チェックリスト
 
 ### 共通資材
 
 - [ ] **アプリアイコン** (1024x1024px, PNG, 角丸なし)
-- [ ] **アプリ名**: YukiMate
+- [ ] **アプリ名**: Slope Link
 - [ ] **アプリの説明** (日本語・英語)
 - [ ] **キーワード** (App Store用、100文字以内)
 - [ ] **カテゴリー**: ソーシャルネットワーキング / ライフスタイル
 - [ ] **年齢制限**: 18歳以上推奨
-- [ ] **プライバシーポリシーURL**: https://yukimate.app/privacy (要準備)
-- [ ] **利用規約URL**: https://yukimate.app/terms (要準備)
-- [ ] **サポートURL**: https://yukimate.app/support (要準備)
-- [ ] **マーケティングURL**: https://yukimate.app (要準備)
+- [ ] **プライバシーポリシーURL**: https://slopelink.app/privacy (要準備)
+- [ ] **利用規約URL**: https://slopelink.app/terms (要準備)
+- [ ] **サポートURL**: https://slopelink.app/support (要準備)
+- [ ] **マーケティングURL**: https://slopelink.app (要準備)
 
 ### iOS (App Store)
 
@@ -29,7 +29,7 @@
 
 - [ ] **Apple Developer Account**
   - Team ID
-  - Bundle ID: `com.yukimate.app`
+  - Bundle ID: `com.slopelink.app`
   - App ID
 
 - [ ] **証明書とプロビジョニングプロファイル**
@@ -49,7 +49,7 @@
 
 - [ ] **Google Play Developer Account**
   - デベロッパーアカウント登録 ($25 一回払い)
-  - Package name: `com.yukimate.app`
+  - Package name: `com.slopelink.app`
 
 - [ ] **署名キー**
   - Keystore ファイル
@@ -79,7 +79,7 @@
 - 雪の結晶
 - 山のシルエット
 - スキー/スノーボード
-- 「YukiMate」の文字（オプション）
+- 「Slope Link」の文字（オプション）
 - ブランドカラー: #5A7D9A (青系)
 
 ---
@@ -131,7 +131,7 @@
 
 #### タイトル（30文字以内）
 ```
-YukiMate - スキー仲間探しアプリ
+Slope Link - スキー仲間探しアプリ
 ```
 
 #### サブタイトル（30文字以内、App Store）
@@ -142,7 +142,7 @@ YukiMate - スキー仲間探しアプリ
 #### 説明文（4000文字以内）
 
 ```
-YukiMateは、スキーやスノーボードを愛する人たちのためのソーシャルアプリです。
+Slope Linkは、スキーやスノーボードを愛する人たちのためのソーシャルアプリです。
 
 【主な機能】
 
@@ -181,24 +181,24 @@ YukiMateは、スキーやスノーボードを愛する人たちのためのソ
 
 【安全性とプライバシー】
 
-YukiMateは、ユーザーの安全とプライバシーを最優先に考えています。
+Slope Linkは、ユーザーの安全とプライバシーを最優先に考えています。
 - 18歳以上推奨
 - プロフィール情報は自分でコントロール
 - 不適切なユーザーの報告機能
 - 個人情報は厳重に保護
 
 ウィンタースポーツをもっと楽しく、もっと安全に。
-YukiMateで新しい出会いと冒険を始めましょう！
+Slope Linkで新しい出会いと冒険を始めましょう！
 
 ---
-お問い合わせ: support@yukimate.app
+お問い合わせ: support@slopelink.app
 ```
 
 ### 英語版
 
 #### Title (30 characters)
 ```
-YukiMate - Ski Buddy Finder
+Slope Link - Ski Buddy Finder
 ```
 
 #### Subtitle (30 characters, App Store)
@@ -209,7 +209,7 @@ Meet new friends on the slopes
 #### Description (4000 characters)
 
 ```
-YukiMate is the social app for ski and snowboard enthusiasts to connect, share experiences, and find riding buddies.
+Slope Link is the social app for ski and snowboard enthusiasts to connect, share experiences, and find riding buddies.
 
 【Key Features】
 
@@ -248,17 +248,17 @@ YukiMate is the social app for ski and snowboard enthusiasts to connect, share e
 
 【Safety and Privacy】
 
-YukiMate prioritizes user safety and privacy.
+Slope Link prioritizes user safety and privacy.
 - Recommended for ages 18+
 - Full control over your profile information
 - Report inappropriate users
 - Personal information strictly protected
 
 Make winter sports more fun and safer.
-Start your new adventures with YukiMate!
+Start your new adventures with Slope Link!
 
 ---
-Contact: support@yukimate.app
+Contact: support@slopelink.app
 ```
 
 ---
@@ -286,7 +286,7 @@ ski,snowboard,skiing,snowboarding,resort,event,social,chat,winter,sports,buddy,f
 
 ### 推奨デザイン
 
-- アプリ名 「YukiMate」を大きく表示
+- アプリ名 「Slope Link」を大きく表示
 - 背景: 雪山やゲレンデの写真
 - キャッチコピー:「スキー仲間と出会おう」
 - 主要機能のアイコン（イベント、チャット、SNS）
@@ -398,8 +398,8 @@ ski,snowboard,skiing,snowboarding,resort,event,social,chat,winter,sports,buddy,f
    - 年間 $99
 
 2. **App Store Connect でアプリ作成**
-   - Bundle ID: `com.yukimate.app`
-   - アプリ名: YukiMate
+   - Bundle ID: `com.slopelink.app`
+   - アプリ名: Slope Link
    - 説明文、スクリーンショット、カテゴリー等を入力
 
 3. **EAS Build でビルド作成**
@@ -423,8 +423,8 @@ ski,snowboard,skiing,snowboarding,resort,event,social,chat,winter,sports,buddy,f
    - 一回払い $25
 
 2. **アプリ作成**
-   - Package name: `com.yukimate.app`
-   - アプリ名: YukiMate
+   - Package name: `com.slopelink.app`
+   - アプリ名: Slope Link
    - 説明文、スクリーンショット、カテゴリー等を入力
 
 3. **EAS Build でビルド作成**

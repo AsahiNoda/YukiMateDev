@@ -1,6 +1,6 @@
 # Firebase セットアップガイド
 
-このドキュメントでは、YukiMateアプリでAndroidプッシュ通知を有効化するためのFirebase設定手順を説明します。
+このドキュメントでは、Slope LinkアプリでAndroidプッシュ通知を有効化するためのFirebase設定手順を説明します。
 
 ## 前提条件
 
@@ -14,7 +14,7 @@
 
 1. [Firebase Console](https://console.firebase.google.com/) にアクセス
 2. 「プロジェクトを追加」をクリック
-3. プロジェクト名: `YukiMate` (または任意の名前)
+3. プロジェクト名: `Slope Link` (または任意の名前)
 4. Google Analytics の有効化（推奨）
 5. プロジェクトを作成
 
@@ -23,8 +23,8 @@
 1. Firebase Console で作成したプロジェクトを開く
 2. 「Android アプリを Firebase に追加」をクリック
 3. 以下の情報を入力:
-   - **Android パッケージ名**: `com.yukimate.app`
-   - **アプリのニックネーム**: `YukiMate` (オプション)
+   - **Android パッケージ名**: `com.slopelink.app`
+   - **アプリのニックネーム**: `Slope Link` (オプション)
    - **デバッグ用の署名証明書 SHA-1**: (後で追加可能)
 4. 「アプリを登録」をクリック
 
@@ -193,14 +193,14 @@ const sendNotification = async (fcmToken: string, title: string, body: string) =
    - `android/app/google-services.json`
 
 3. **Firebase Console でアプリが正しく登録されているか確認**
-   - パッケージ名が `com.yukimate.app` になっているか
+   - パッケージ名が `com.slopelink.app` になっているか
 
 4. **Android 通知チャンネルが設定されているか確認**
    - `useNotifications.ts` の Android 設定を確認
 
 5. **デバイスの通知設定を確認**
    - アプリの通知が有効になっているか
-   - 端末の「設定」→「アプリ」→「YukiMate」→「通知」
+   - 端末の「設定」→「アプリ」→「Slope Link」→「通知」
 
 ### ビルドエラー
 
