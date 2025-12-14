@@ -26,6 +26,7 @@ export default {
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       package: 'com.slopelink.app',
+      googleServicesFile: './google-services.json',
       permissions: [
         'CAMERA',
         'READ_EXTERNAL_STORAGE',
