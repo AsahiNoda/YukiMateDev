@@ -37,7 +37,7 @@ export default function PrivacyPolicyScreen() {
         </Text>
 
         <Text style={[styles.introText, { color: colors.textSecondary }]}>
-          本アプリケーション「SlopeLink」（以下「本アプリ」といいます）は、ユーザーの個人情報の保護を重要視し、個人情報の保護に関する法律、その他関係法令を遵守して、以下のプライバシーポリシー（以下「本ポリシー」といいます）に従い、適切に取り扱います。
+          本アプリケーション「YukiMate」（以下「本アプリ」といいます）は、ユーザーの個人情報の保護を重要視し、個人情報の保護に関する法律、その他関係法令を遵守して、以下のプライバシーポリシー（以下「本ポリシー」といいます）に従い、適切に取り扱います。
         </Text>
 
         {/* Section 1 */}
@@ -199,8 +199,8 @@ export default function PrivacyPolicyScreen() {
             本ポリシーに関するお問い合わせは、アプリ内のお問い合わせフォームまたは以下の窓口までお願いいたします。
           </Text>
           <Text style={[styles.sectionText, { color: colors.textSecondary, marginLeft: 16 }]}>
-            アプリ名: SlopeLink{'\n'}
-            お問い合わせ: nodasy0855@gmail.com
+            アプリ名: YukiMate{'\n'}
+            お問い合わせ: support@yukimate.app
           </Text>
         </View>
 

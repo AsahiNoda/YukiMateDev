@@ -40,7 +40,7 @@ export default function TermsOfServiceScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>第1条（適用）</Text>
           <Text style={[styles.sectionText, { color: colors.textSecondary }]}>
-            本規約は、本アプリケーション「SlopeLink」（以下「本アプリ」といいます）の利用に関する条件を、本アプリを利用するすべてのユーザー（以下「ユーザー」といいます）と当社との間で定めるものです。
+            本規約は、本アプリケーション「YukiMate」（以下「本アプリ」といいます）の利用に関する条件を、本アプリを利用するすべてのユーザー（以下「ユーザー」といいます）と当社との間で定めるものです。
           </Text>
           <Text style={[styles.sectionText, { color: colors.textSecondary }]}>
             ユーザーは、本アプリを利用することにより、本規約に同意したものとみなされます。
