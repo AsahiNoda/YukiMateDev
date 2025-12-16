@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/lib/supabase';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import Constants from 'expo-constants';
@@ -25,26 +26,27 @@ export default function DeleteAccountScreen() {
   const { user, signOut } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
+  const { t } = useTranslation();
 
   const [confirmText, setConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
 
   const handleDeleteAccount = async () => {
     if (confirmText !== 'DELETE') {
-      Alert.alert('エラー', '確認のため「DELETE」と入力してください');
+      Alert.alert(t('common.error'), t('deleteAccount.enterDelete'));
       return;
     }
 
     Alert.alert(
-      'アカウント削除',
-      'この操作は取り消せません。本当にアカウントを削除しますか？',
+      t('deleteAccount.title'),
+      t('deleteAccount.confirmMessage'),
       [
         {
-          text: 'キャンセル',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: '削除する',
+          text: t('deleteAccount.deleteButton'),
           style: 'destructive',
           onPress: performDelete,
         },
@@ -62,7 +64,7 @@ export default function DeleteAccountScreen() {
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
-        throw new Error('セッションが見つかりません');
+        throw new Error(t('deleteAccount.sessionNotFound'));
       }
 
       // Edge Functionを呼び出してアカウント削除
@@ -80,7 +82,7 @@ export default function DeleteAccountScreen() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'アカウント削除に失敗しました');
+        throw new Error(errorData.error || t('deleteAccount.deleteFailed'));
       }
 
       // ログアウト
@@ -89,10 +91,10 @@ export default function DeleteAccountScreen() {
       // 認証画面へ
       router.replace('/(auth)/sign-in');
 
-      Alert.alert('完了', 'アカウントを削除しました');
+      Alert.alert(t('deleteAccount.completed'), t('deleteAccount.accountDeleted'));
     } catch (error) {
       console.error('Delete account error:', error);
-      Alert.alert('エラー', error instanceof Error ? error.message : 'アカウント削除に失敗しました');
+      Alert.alert(t('common.error'), error instanceof Error ? error.message : t('deleteAccount.deleteFailed'));
     } finally {
       setDeleting(false);
     }
@@ -116,7 +118,7 @@ export default function DeleteAccountScreen() {
         >
           <IconSymbol name="chevron.left" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>アカウント削除</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{ t('deleteAccount.title')}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -125,32 +127,32 @@ export default function DeleteAccountScreen() {
         <View style={styles.warning}>
           <IconSymbol name="exclamationmark.triangle.fill" size={48} color={colors.error} />
           <Text style={[styles.warningTitle, { color: colors.error }]}>
-            警告: この操作は取り消せません
+            {t('deleteAccount.warningTitle')}
           </Text>
           <Text style={[styles.warningText, { color: colors.textSecondary }]}>
-            アカウントを削除すると、すべてのデータが完全に削除されます。この操作は元に戻せません。
+            {t('deleteAccount.warningMessage')}
           </Text>
         </View>
 
         {/* What will be deleted */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            削除されるデータ
+            {t('deleteAccount.dataToBeDeleted')}
           </Text>
           <View style={styles.list}>
-            <ListItem icon="person.fill" text="プロフィール情報" />
-            <ListItem icon="calendar" text="作成したイベント" />
-            <ListItem icon="bubble.left.fill" text="チャットメッセージ" />
-            <ListItem icon="photo.fill" text="投稿した画像" />
-            <ListItem icon="text.bubble.fill" text="コメントといいね" />
-            <ListItem icon="star.fill" text="★登録とブロック情報" />
+            <ListItem icon="person.fill" text={t('deleteAccount.profileInfo')} />
+            <ListItem icon="calendar" text={t('deleteAccount.createdEvents')} />
+            <ListItem icon="bubble.left.fill" text={t('deleteAccount.chatMessages')} />
+            <ListItem icon="photo.fill" text={t('deleteAccount.postedImages')} />
+            <ListItem icon="text.bubble.fill" text={t('deleteAccount.commentsAndLikes')} />
+            <ListItem icon="star.fill" text={t('deleteAccount.starredAndBlocked')} />
           </View>
         </View>
 
         {/* Confirmation Input */}
         <View style={styles.section}>
           <Text style={[styles.label, { color: colors.text }]}>
-            確認のため「DELETE」と入力してください
+            {t('deleteAccount.confirmLabel')}
           </Text>
           <TextInput
             value={confirmText}
@@ -169,7 +171,7 @@ export default function DeleteAccountScreen() {
             editable={!deleting}
           />
           <Text style={[styles.hint, { color: colors.textSecondary }]}>
-            すべて大文字で「DELETE」と入力してください
+            {t('deleteAccount.confirmHint')}
           </Text>
         </View>
 
@@ -186,7 +188,7 @@ export default function DeleteAccountScreen() {
           {deleting ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.deleteButtonText}>アカウントを削除する</Text>
+            <Text style={styles.deleteButtonText}>{t('deleteAccount.permanentlyDelete')}</Text>
           )}
         </TouchableOpacity>
       </ScrollView>

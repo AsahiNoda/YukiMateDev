@@ -9,6 +9,7 @@ import { WeatherForecast } from '@components/snowfeed/WeatherForecast';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { useSnowfeed } from '@hooks/useSnowfeed';
+import { useTranslation } from '@hooks/useTranslation';
 import { supabase } from '@lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
@@ -29,7 +30,7 @@ const HOME_RESORT_KEY = '@snowfeed_home_resort';
 const CURRENT_RESORT_KEY = '@snowfeed_current_resort';
 
 // 投稿日時をフォーマット
-const formatPostDate = (dateString: string): string => {
+const formatPostDate = (dateString: string, t: (key: string) => string): string => {
   const date = new Date(dateString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -37,19 +38,20 @@ const formatPostDate = (dateString: string): string => {
   const diffHours = Math.floor(diffMs / 3600000);
   const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'たった今';
-  if (diffMins < 60) return `${diffMins}分前`;
-  if (diffHours < 24) return `${diffHours}時間前`;
-  if (diffDays < 7) return `${diffDays}日前`;
+  if (diffMins < 1) return t('snowfeed.justNow');
+  if (diffMins < 60) return t('snowfeed.minutesAgo').replace('${minutes}', diffMins.toString());
+  if (diffHours < 24) return t('snowfeed.hoursAgo').replace('${hours}', diffHours.toString());
+  if (diffDays < 7) return t('snowfeed.daysAgo').replace('${days}', diffDays.toString());
 
   // 1週間以上前は日付を表示
   const month = date.getMonth() + 1;
   const day = date.getDate();
-  return `${month}月${day}日`;
+  return `${month}/${day}`;
 };
 
 export default function SnowfeedScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [homeResortId, setHomeResortId] = useState<string | null>(null);
   const [homeResortName, setHomeResortName] = useState<string>('');
   const [selectedResortId, setSelectedResortId] = useState<string | null>(null);
@@ -70,14 +72,58 @@ export default function SnowfeedScreen() {
   useEffect(() => {
     const loadResortData = async () => {
       try {
-        // Check for home resort
-        const homeResort = await AsyncStorage.getItem(HOME_RESORT_KEY);
+        // First, try to get home resort from database profile (primary source)
+        const { data: { user } } = await supabase.auth.getUser();
+        let dbHomeResortId: string | null = null;
+        let dbHomeResortName: string | null = null;
 
-        if (homeResort) {
-          // User has set a home resort
-          const { id, name } = JSON.parse(homeResort);
-          setHomeResortId(id);
-          setHomeResortName(name);
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('home_resort_id')
+            .eq('user_id', user.id)
+            .single();
+
+          if (profile?.home_resort_id) {
+            const { data: resort } = await supabase
+              .from('resorts')
+              .select('id, name')
+              .eq('id', profile.home_resort_id)
+              .single();
+
+            if (resort) {
+              dbHomeResortId = resort.id;
+              dbHomeResortName = resort.name;
+            }
+          }
+
+          // Fallback to first searchable resort if no home resort (same logic as useHomeData)
+          if (!dbHomeResortId) {
+            const { data: defaultResort } = await supabase
+              .from('resorts')
+              .select('id, name')
+              .eq('searchable', true)
+              .order('name')
+              .limit(1)
+              .single();
+
+            if (defaultResort) {
+              dbHomeResortId = defaultResort.id;
+              dbHomeResortName = defaultResort.name;
+            }
+          }
+        }
+
+        // If we found a home resort in database, use it and sync to AsyncStorage
+        if (dbHomeResortId && dbHomeResortName) {
+          setHomeResortId(dbHomeResortId);
+          setHomeResortName(dbHomeResortName);
+
+          // Sync to AsyncStorage for consistency
+          await AsyncStorage.setItem(
+            HOME_RESORT_KEY,
+            JSON.stringify({ id: dbHomeResortId, name: dbHomeResortName })
+          );
 
           // Check if there's a currently viewed resort
           const currentResort = await AsyncStorage.getItem(CURRENT_RESORT_KEY);
@@ -87,13 +133,35 @@ export default function SnowfeedScreen() {
             setSelectedResortName(currentName);
           } else {
             // Default to home resort
-            setSelectedResortId(id);
-            setSelectedResortName(name);
+            setSelectedResortId(dbHomeResortId);
+            setSelectedResortName(dbHomeResortName);
           }
         } else {
-          // First-time user - no home resort set
-          setIsFirstTime(true);
-          setShowSearch(true);
+          // Fallback: Check AsyncStorage for legacy data
+          const homeResort = await AsyncStorage.getItem(HOME_RESORT_KEY);
+
+          if (homeResort) {
+            // User has set a home resort in AsyncStorage
+            const { id, name } = JSON.parse(homeResort);
+            setHomeResortId(id);
+            setHomeResortName(name);
+
+            // Check if there's a currently viewed resort
+            const currentResort = await AsyncStorage.getItem(CURRENT_RESORT_KEY);
+            if (currentResort) {
+              const { id: currentId, name: currentName } = JSON.parse(currentResort);
+              setSelectedResortId(currentId);
+              setSelectedResortName(currentName);
+            } else {
+              // Default to home resort
+              setSelectedResortId(id);
+              setSelectedResortName(name);
+            }
+          } else {
+            // First-time user - no home resort set anywhere
+            setIsFirstTime(true);
+            setShowSearch(true);
+          }
         }
       } catch (error) {
         console.error('Error loading resort data:', error);
@@ -214,16 +282,16 @@ export default function SnowfeedScreen() {
         <View style={[styles.emptyStateContainer, styles.centered]}>
           <IconSymbol name="mountain.2" size={80} color={colors.icon} />
           <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-            雪山を選択してください
+            {t('snowfeed.selectResort')}
           </Text>
           <Text style={[styles.emptyStateSubtitle, { color: colors.textSecondary }]}>
-            お気に入りの雪山の最新情報をチェックしよう
+            {t('snowfeed.selectResortSubtitle')}
           </Text>
           <TouchableOpacity
             style={[styles.searchButton, { backgroundColor: colors.accent }]}
             onPress={() => setShowSearch(true)}>
             <IconSymbol name="magnifyingglass" size={20} color="#FFFFFF" />
-            <Text style={styles.searchButtonText}>雪山を検索</Text>
+            <Text style={styles.searchButtonText}>{t('snowfeed.searchResort')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -247,7 +315,9 @@ export default function SnowfeedScreen() {
   if (snowfeedState.status === 'loading') {
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.loadingText, { color: colors.text }]}>フィードをロード中...</Text>
+        <Text style={[styles.loadingText, { color: colors.text }]}>
+          {t('snowfeed.loading')}
+        </Text>
       </View>
     );
   }
@@ -255,7 +325,9 @@ export default function SnowfeedScreen() {
   if (snowfeedState.status === 'error') {
     return (
       <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.error }]}>フィードの読み込みに失敗しました</Text>
+        <Text style={[styles.errorText, { color: colors.error }]}>
+          {t('snowfeed.loadError')}
+        </Text>
         <Text style={[styles.errorSubtext, { color: colors.textSecondary }]}>
           {snowfeedState.error}
         </Text>
@@ -326,7 +398,7 @@ export default function SnowfeedScreen() {
           activeOpacity={0.7}>
           <IconSymbol name="magnifyingglass" size={20} color={colors.textSecondary} />
           <Text style={[styles.searchBoxText, { color: isViewingHome ? colors.text : colors.textSecondary }]}>
-            {selectedResortName || '雪山を検索...'}
+            {selectedResortName || t('snowfeed.searchPlaceholder')}
           </Text>
         </TouchableOpacity>
 
@@ -388,7 +460,9 @@ export default function SnowfeedScreen() {
 
         {/* Posts Feed */}
         <View style={styles.postsSection}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>コミュニティ投稿</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>
+            {t('snowfeed.communityPosts')}
+          </Text>
           {posts.map((post) => (
             <View key={post.id} style={[styles.postCard, { backgroundColor: colors.card }]}>
               {/* Post Header with Avatar */}
@@ -404,7 +478,7 @@ export default function SnowfeedScreen() {
                     {post.userName}
                   </Text>
                   <Text style={[styles.postMeta, { color: colors.textSecondary }]}>
-                    {formatPostDate(post.createdAt)}
+                    {formatPostDate(post.createdAt, t)}
                   </Text>
                 </View>
               </View>
@@ -445,7 +519,7 @@ export default function SnowfeedScreen() {
             <View style={styles.emptyState}>
               <IconSymbol name="snow" size={48} color={colors.icon} />
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                このスキー場には投稿がまだありません
+                {t('snowfeed.noPosts')}
               </Text>
             </View>
           )}

@@ -2,6 +2,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { Event, EventMessageWithSender, Profile } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -43,6 +44,7 @@ export default function EventChatScreen() {
   const params = useLocalSearchParams<{ eventId: string }>();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { t } = useTranslation();
 
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<EventDetail | null>(null);
@@ -159,7 +161,7 @@ export default function EventChatScreen() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error('ログインが必要です');
+      if (!user) throw new Error(t('eventChat.loginRequired'));
 
       console.log('[EventChatScreen] 👤 Current user:', user.id);
       setCurrentUserId(user.id);
@@ -337,9 +339,9 @@ export default function EventChatScreen() {
         if (!myParticipation) {
           console.log('[EventChatScreen] ⚠️ User has left or is not a participant, blocking access to chat');
           Alert.alert(
-            'アクセスできません',
-            'このイベントは既に終了しているか、参加していません。',
-            [{ text: 'OK', onPress: () => router.replace('/(tabs)/chat') }]
+            t('eventChat.accessDenied'),
+            t('eventChat.accessDeniedMessage'),
+            [{ text: t('common.ok'), onPress: () => router.replace('/(tabs)/chat') }]
           );
           return;
         }
@@ -384,7 +386,7 @@ export default function EventChatScreen() {
       }
     } catch (error: any) {
       console.error('Initialize chat error:', error);
-      Alert.alert('エラー', 'チャットの読み込みに失敗しました');
+      Alert.alert(t('common.error'), t('eventChat.loadError'));
     } finally {
       setLoading(false);
     }
@@ -588,8 +590,8 @@ export default function EventChatScreen() {
       setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
 
       Alert.alert(
-        'エラー',
-        `メッセージの送信に失敗しました\n${error.message || '不明なエラー'}`
+        t('common.error'),
+        `${t('eventChat.sendError')}\n${error.message || t('eventChat.unknownError')}`
       );
     } finally {
       setSending(false);
@@ -602,8 +604,8 @@ export default function EventChatScreen() {
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
 
-    if (diffMins < 1) return 'たった今';
-    if (diffMins < 60) return `${diffMins}分前`;
+    if (diffMins < 1) return t('eventChat.justNow');
+    if (diffMins < 60) return t('eventChat.minutesAgo').replace('${minutes}', diffMins.toString());
 
     if (date.toDateString() === now.toDateString()) {
       return format(date, 'HH:mm');
@@ -612,7 +614,7 @@ export default function EventChatScreen() {
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     if (date.toDateString() === yesterday.toDateString()) {
-      return `昨日 ${format(date, 'HH:mm')}`;
+      return `${t('eventChat.yesterday')} ${format(date, 'HH:mm')}`;
     }
 
     return format(date, 'M/d HH:mm');
@@ -644,7 +646,7 @@ export default function EventChatScreen() {
               </Text>
               {isHost && (
                 <Text style={[styles.hostBadge, { color: '#22c55e' }]}>
-                  （ホスト）
+                  {t('eventChat.hostBadge')}
                 </Text>
               )}
             </View>
@@ -763,7 +765,7 @@ export default function EventChatScreen() {
             params: { eventId: params.eventId },
           } as any)}
         >
-          <Text style={styles.detailsLinkText}>イベント詳細を見る</Text>
+          <Text style={styles.detailsLinkText}>{t('eventChat.viewDetails')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -774,10 +776,10 @@ export default function EventChatScreen() {
       <View style={styles.emptyState}>
         <IconSymbol name="message" size={64} color={colors.icon} />
         <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-          まだメッセージがありません
+          {t('eventChat.noMessages')}
         </Text>
         <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-          最初のメッセージを送信しましょう！
+          {t('eventChat.sendFirstMessage')}
         </Text>
       </View>
     );
@@ -788,7 +790,7 @@ export default function EventChatScreen() {
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.accent} />
         <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
-          チャットを読み込んでいます...
+          {t('eventChat.loadingChat')}
         </Text>
       </View>
     );
@@ -818,7 +820,7 @@ export default function EventChatScreen() {
         <TextInput
           value={inputText}
           onChangeText={setInputText}
-          placeholder="Write a message..."
+          placeholder={t('eventChat.messagePlaceholder')}
           placeholderTextColor={colors.textSecondary}
           style={[
             styles.input,

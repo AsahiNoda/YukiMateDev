@@ -4,6 +4,7 @@ import { IconSymbol } from '@components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { spacing, fontSize, borderRadius, fontWeight } from '@/constants/spacing';
 import { useColorScheme } from '@hooks/use-color-scheme';
+import { useTranslation } from '@/hooks/useTranslation';
 
 interface DailyForecast {
   date: string;
@@ -21,6 +22,7 @@ interface WeatherForecastProps {
 export function WeatherForecast({ forecast }: WeatherForecastProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { t } = useTranslation();
 
   const getWeatherEmoji = (condition: string, snowfall: number) => {
     if (snowfall > 20) return '🌨️'; // Heavy snow
@@ -40,7 +42,7 @@ export function WeatherForecast({ forecast }: WeatherForecastProps) {
     <View style={[styles.container, { backgroundColor: colors.card }]}>
       <View style={styles.header}>
         <IconSymbol name="calendar" size={20} color={colors.accent} />
-        <Text style={[styles.title, { color: colors.text }]}>7日間天気予報</Text>
+        <Text style={[styles.title, { color: colors.text }]}>{t('weather.forecast7day')}</Text>
       </View>
 
       <ScrollView
@@ -59,7 +61,7 @@ export function WeatherForecast({ forecast }: WeatherForecastProps) {
             ]}>
             {/* Date */}
             <Text style={[styles.date, { color: colors.textSecondary }]}>
-              {index === 0 ? '今日' : formatDate(day.date)}
+              {index === 0 ? t('weather.today') : formatDate(day.date)}
             </Text>
             <Text style={[styles.dayOfWeek, { color: colors.textSecondary }]}>
               {day.dayOfWeek}

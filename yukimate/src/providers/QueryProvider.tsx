@@ -1,5 +1,5 @@
 import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query';
 import NetInfo from '@react-native-community/netinfo';
 
 /**
@@ -60,7 +60,7 @@ export const setupNetworkListener = () => {
     console.log(`🌐 Network status: ${isOnline ? 'Online' : 'Offline'}`);
 
     // React Queryにオンライン状態を通知
-    queryClient.setOnlineMode(isOnline);
+    onlineManager.setOnline(isOnline);
 
     // オンラインに復帰したら、すべてのクエリを再フェッチ
     if (isOnline) {

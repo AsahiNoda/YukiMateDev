@@ -1,6 +1,7 @@
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { Profile } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -46,6 +47,7 @@ export default function PostEventActionScreen() {
 
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { t } = useTranslation();
 
   const participants: Participant[] = params.participants
     ? JSON.parse(params.participants as string)
@@ -251,16 +253,16 @@ export default function PostEventActionScreen() {
         <View style={styles.content}>
           {/* タイトル */}
           <Text style={[styles.title, { color: colors.text }]}>
-            イベントはいかがでしたか？
+            {t('postEventAction.title')}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-            他の参加者はいませんでした
+            {t('postEventAction.noOtherParticipants')}
           </Text>
 
           {/* メッセージ */}
           <View style={[styles.noParticipantsBox, { backgroundColor: colors.backgroundSecondary }]}>
             <Text style={[styles.noParticipantsText, { color: colors.textSecondary }]}>
-              今回は他の参加者がいなかったため、評価する相手がいません。
+              {t('postEventAction.noParticipantsMessage')}
             </Text>
           </View>
 
@@ -280,13 +282,13 @@ export default function PostEventActionScreen() {
               }
             }}
           >
-            <Text style={styles.finishButtonText}>終了する</Text>
+            <Text style={styles.finishButtonText}>{t('postEventAction.finishButton')}</Text>
           </TouchableOpacity>
 
           {/* ホストのみ: 削除警告 */}
           {isHost && (
             <Text style={[styles.hostDeletionWarning, { color: colors.error }]}>
-              ⚠️ 投稿は一定時間後に自動で削除されます
+              {t('postEventAction.hostDeletionWarning')}
             </Text>
           )}
         </View>
@@ -299,19 +301,19 @@ export default function PostEventActionScreen() {
       <View style={styles.header}>
         {/* タイトル */}
         <Text style={[styles.title, { color: colors.text }]}>
-          イベントはいかがでしたか？
+          {t('postEventAction.title')}
         </Text>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-          参加者を評価してください
+          {t('postEventAction.rateParticipants')}
         </Text>
 
         {/* 説明テキスト */}
         <View style={[styles.infoBox, { backgroundColor: colors.backgroundSecondary }]}>
           <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-            ★登録: 今後おすすめに表示されやすくなります
+            {t('postEventAction.starInfo')}
           </Text>
           <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-            ブロック: この人のイベントは表示されなくなります
+            {t('postEventAction.blockInfo')}
           </Text>
         </View>
       </View>
@@ -370,7 +372,7 @@ export default function PostEventActionScreen() {
                       { color: userSelection === 'star' ? '#eab308' : colors.text },
                     ]}
                   >
-                    ★登録
+                    {t('postEventAction.starAction')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -391,7 +393,7 @@ export default function PostEventActionScreen() {
                       { color: userSelection === 'block' ? '#ef4444' : colors.text },
                     ]}
                   >
-                    ブロック
+                    {t('postEventAction.blockAction')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -408,14 +410,14 @@ export default function PostEventActionScreen() {
           disabled={processing}
         >
           <Text style={styles.finishButtonText}>
-            {processing ? '処理中...' : '完了してチャット一覧へ'}
+            {processing ? t('postEventAction.processing') : t('postEventAction.completeButton')}
           </Text>
         </TouchableOpacity>
 
         {/* ホストのみ: 削除警告 */}
         {isHost && (
           <Text style={[styles.hostDeletionWarning, { color: colors.error }]}>
-            ⚠️ 投稿は一定時間後に自動で削除されます
+            {t('postEventAction.hostDeletionWarning')}
           </Text>
         )}
       </View>

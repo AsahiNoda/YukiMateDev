@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/lib/supabase';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { router } from 'expo-router';
@@ -36,6 +37,7 @@ export default function BlockedUsersScreen() {
   const { user } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
+  const { t } = useTranslation();
 
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +71,7 @@ export default function BlockedUsersScreen() {
       setBlockedUsers((data as BlockedUser[]) || []);
     } catch (error) {
       console.error('Error fetching blocked users:', error);
-      Alert.alert('エラー', 'ブロック中のユーザーの取得に失敗しました');
+      Alert.alert(t('blockedUsers.fetchErrorTitle'), t('blockedUsers.fetchErrorMessage'));
     } finally {
       setLoading(false);
     }
@@ -81,15 +83,15 @@ export default function BlockedUsersScreen() {
 
   const handleUnblock = async (blockId: string, blockedUserId: string) => {
     Alert.alert(
-      'ブロック解除',
-      'このユーザーのブロックを解除しますか?',
+      t('blockedUsers.unblockConfirmTitle'),
+      t('blockedUsers.unblockConfirmMessage'),
       [
         {
-          text: 'キャンセル',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: 'ブロック解除',
+          text: t('blockedUsers.unblockConfirmTitle'),
           style: 'default',
           onPress: async () => {
             try {
@@ -103,10 +105,10 @@ export default function BlockedUsersScreen() {
               if (error) throw error;
 
               setBlockedUsers(prev => prev.filter(item => item.id !== blockId));
-              Alert.alert('成功', 'ブロックを解除しました');
+              Alert.alert(t('blockedUsers.unblockSuccessTitle'), t('blockedUsers.unblockSuccessMessage'));
             } catch (error) {
               console.error('Error unblocking user:', error);
-              Alert.alert('エラー', 'ブロック解除に失敗しました');
+              Alert.alert(t('blockedUsers.unblockErrorTitle'), t('blockedUsers.unblockErrorMessage'));
             } finally {
               setUnblockingUsers(prev => {
                 const newSet = new Set(prev);
@@ -138,7 +140,7 @@ export default function BlockedUsersScreen() {
             </View>
           )}
           <Text style={[styles.userName, { color: colors.text }]}>
-            {profile?.display_name || 'Unknown User'}
+            {profile?.display_name || t('common.unknown')}
           </Text>
         </View>
 
@@ -154,7 +156,7 @@ export default function BlockedUsersScreen() {
           {isUnblocking ? (
             <ActivityIndicator size="small" color={colors.error} />
           ) : (
-            <Text style={[styles.unblockButtonText, { color: colors.error }]}>解除</Text>
+            <Text style={[styles.unblockButtonText, { color: colors.error }]}>{t('blockedUsers.unblockButton')}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -165,7 +167,7 @@ export default function BlockedUsersScreen() {
     <View style={styles.emptyContainer}>
       <IconSymbol name="nosign" size={64} color={colors.textSecondary} />
       <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-        ブロック中のユーザーはいません
+        {t('blockedUsers.emptyState')}
       </Text>
     </View>
   );
@@ -180,7 +182,7 @@ export default function BlockedUsersScreen() {
         >
           <IconSymbol name="chevron.left" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>ブロック中のユーザー</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('blockedUsers.title')}</Text>
         <View style={styles.placeholder} />
       </View>
 

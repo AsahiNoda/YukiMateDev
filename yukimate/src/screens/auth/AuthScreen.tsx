@@ -1,9 +1,13 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocale } from '@/contexts/LocaleContext';
+import { useTranslation } from '@/hooks/useTranslation';
 import { borderRadius, colors, fontSize, fontWeight, spacing } from '@/theme/colors';
+import { globalStyles } from '@/theme/styles';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import {
   Alert,
+  Button,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -15,6 +19,8 @@ import {
 } from 'react-native';
 
 export default function AuthScreen() {
+  const { t, locale } = useTranslation();
+  const { setLocale } = useLocale();
   const { signUp, signIn } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -31,22 +37,22 @@ export default function AuthScreen() {
   const handleSubmit = async () => {
     // バリデーション
     if (!email.trim() || !password.trim()) {
-      Alert.alert('エラー', 'メールアドレスとパスワードを入力してください');
+      Alert.alert(t('common.error'), t('auth.enterEmailAndPassword'));
       return;
     }
 
     if (!validateEmail(email)) {
-      Alert.alert('エラー', '有効なメールアドレスを入力してください');
+      Alert.alert(t('common.error'), t('auth.invalidEmail'));
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('エラー', 'パスワードは6文字以上である必要があります');
+      Alert.alert(t('common.error'), t('auth.passwordLengthError'));
       return;
     }
 
     if (isSignUp && password !== confirmPassword) {
-      Alert.alert('エラー', 'パスワードが一致しません');
+      Alert.alert(t('common.error'), t('auth.passwordMismatch'));
       return;
     }
 
@@ -55,8 +61,8 @@ export default function AuthScreen() {
       if (isSignUp) {
         await signUp(email, password);
         Alert.alert(
-          '確認メール送信',
-          'メールアドレスに確認リンクを送信しました。メールを確認してください。',
+          t('auth.confirmEmailSent'),
+          t('auth.checkEmailMessage'),
           [{ text: 'OK', onPress: () => setIsSignUp(false) }]
         );
       } else {
@@ -65,8 +71,8 @@ export default function AuthScreen() {
     } catch (error: any) {
       console.error('Auth error:', error);
       Alert.alert(
-        'エラー',
-        error.message || 'ログインに失敗しました'
+        t('common.error'),
+        error.message || t('auth.loginFailed')
       );
     } finally {
       setLoading(false);
@@ -83,19 +89,26 @@ export default function AuthScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
+          {/* 言語切り替え */}
+          <View style={styles.languageContainer}>
+            <TouchableOpacity onPress={() => setLocale(locale === 'en' ? 'ja' : 'en')}>
+              <Text style={styles.languageText}>{locale === 'en' ? '日本語' : 'English'}</Text>
+            </TouchableOpacity>
+          </View>
+
           {/* ロゴ */}
           <View style={styles.logoContainer}>
             <Text style={styles.logo}>❄️</Text>
             <Text style={styles.appName}>YukiMate</Text>
             <Text style={styles.tagline}>
-              Connecting Riders Across Borders
+              {t('auth.tagline')}
             </Text>
           </View>
 
           {/* フォーム */}
           <View style={styles.formContainer}>
             <Text style={styles.formTitle}>
-              {isSignUp ? 'アカウント作成' : 'ログイン'}
+              {isSignUp ? t('auth.signUp') : t('auth.signIn')}
             </Text>
 
             {/* メールアドレス */}
@@ -108,7 +121,7 @@ export default function AuthScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="メールアドレス"
+                placeholder={t('auth.email')}
                 placeholderTextColor={colors.text.secondary}
                 value={email}
                 onChangeText={setEmail}
@@ -128,7 +141,7 @@ export default function AuthScreen() {
               />
               <TextInput
                 style={styles.input}
-                placeholder="パスワード"
+                placeholder={t('auth.password')}
                 placeholderTextColor={colors.text.secondary}
                 value={password}
                 onChangeText={setPassword}
@@ -159,7 +172,7 @@ export default function AuthScreen() {
                 />
                 <TextInput
                   style={styles.input}
-                  placeholder="パスワード確認"
+                  placeholder={t('auth.confirmPassword')}
                   placeholderTextColor={colors.text.secondary}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
@@ -171,10 +184,10 @@ export default function AuthScreen() {
 
             {/* 送信ボタン */}
             <Button
-              title={isSignUp ? 'アカウント作成' : 'ログイン'}
+              title={isSignUp ? t('auth.signUp') : t('auth.signIn')}
               onPress={handleSubmit}
-              loading={loading}
-              style={styles.submitButton}
+              disabled={loading}
+              color={colors.accent.primary}
             />
 
             {/* 切り替え */}
@@ -184,11 +197,8 @@ export default function AuthScreen() {
             >
               <Text style={styles.switchText}>
                 {isSignUp
-                  ? 'すでにアカウントをお持ちですか？ '
-                  : 'アカウントをお持ちでないですか？ '}
-                <Text style={styles.switchTextBold}>
-                  {isSignUp ? 'ログイン' : 'アカウント作成'}
-                </Text>
+                  ? t('auth.alreadyHaveAccount')
+                  : t('auth.dontHaveAccount')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -196,7 +206,7 @@ export default function AuthScreen() {
           {/* フッター */}
           <View style={styles.footer}>
             <Text style={styles.footerText}>
-              続けることで、利用規約とプライバシーポリシーに同意したものとみなされます
+              {t('auth.termsAndPrivacy')}
             </Text>
           </View>
         </View>
@@ -291,5 +301,16 @@ const styles = StyleSheet.create({
     color: colors.text.secondary,
     textAlign: 'center',
     lineHeight: 18,
+  },
+  languageContainer: {
+    position: 'absolute',
+    top: spacing.lg,
+    right: spacing.lg,
+    zIndex: 10,
+  },
+  languageText: {
+    fontSize: fontSize.md,
+    color: colors.text.secondary,
+    fontWeight: fontWeight.bold,
   },
 });

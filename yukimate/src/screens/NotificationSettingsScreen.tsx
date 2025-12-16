@@ -1,4 +1,5 @@
 import { Colors } from '@/constants/theme';
+import { useTranslation } from '@/hooks/useTranslation';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
@@ -41,6 +42,7 @@ export default function NotificationSettingsScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
+  const { t } = useTranslation();
 
   const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
   const [loading, setLoading] = useState(true);
@@ -56,7 +58,7 @@ export default function NotificationSettingsScreen() {
         setSettings(JSON.parse(savedSettings));
       }
     } catch (error) {
-      console.error('通知設定の読み込みエラー:', error);
+      console.error(t('notificationSettings.loadError'), error);
     } finally {
       setLoading(false);
     }
@@ -67,8 +69,8 @@ export default function NotificationSettingsScreen() {
       await AsyncStorage.setItem(NOTIFICATION_SETTINGS_KEY, JSON.stringify(newSettings));
       setSettings(newSettings);
     } catch (error) {
-      console.error('通知設定の保存エラー:', error);
-      Alert.alert('エラー', '通知設定の保存に失敗しました');
+      console.error(t('notificationSettings.saveError'), error);
+      Alert.alert(t('common.error'), t('notificationSettings.saveFailed'));
     }
   };
 
@@ -78,15 +80,15 @@ export default function NotificationSettingsScreen() {
     // プッシュ通知がOFFになった場合、すべての通知をOFFにする
     if (key === 'pushEnabled' && !newSettings.pushEnabled) {
       Alert.alert(
-        '通知をオフにしますか？',
-        'すべての通知がオフになります。',
+        t('notificationSettings.turnOffConfirm'),
+        t('notificationSettings.turnOffMessage'),
         [
           {
-            text: 'キャンセル',
+            text: t('common.cancel'),
             style: 'cancel',
           },
           {
-            text: 'オフにする',
+            text: t('notificationSettings.turnOff'),
             style: 'destructive',
             onPress: () => {
               const allOffSettings = {
@@ -106,34 +108,17 @@ export default function NotificationSettingsScreen() {
       return;
     }
 
-    // プッシュ通知がOFFの状態で個別の通知をONにしようとした場合
+    // プッシュ通知がOFFの時は他の通知を変更できない
     if (!settings.pushEnabled && key !== 'pushEnabled') {
       Alert.alert(
-        'プッシュ通知がオフです',
-        'この通知を有効にするには、まずプッシュ通知を有効にしてください。'
+        t('notificationSettings.pushNotificationsOff'),
+        t('notificationSettings.enablePushFirst')
       );
       return;
     }
 
     saveSettings(newSettings);
   };
-
-  if (loading) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <IconSymbol name="chevron.left" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>通知設定</Text>
-          <View style={styles.placeholder} />
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
@@ -145,175 +130,174 @@ export default function NotificationSettingsScreen() {
         >
           <IconSymbol name="chevron.left" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>通知設定</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('notificationSettings.title')}</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
+        {/* Description */}
         <Text style={[styles.description, { color: colors.textSecondary }]}>
-          受け取りたい通知の種類を選択してください。
+          {t('notificationSettings.selectTypes')}
         </Text>
 
-        {/* Main Toggle */}
-        <View style={styles.section}>
-          <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
+        {/* Push Notifications Toggle */}
+        <View style={[styles.section, { borderBottomColor: colors.border }]}>
+          <View style={styles.settingRow}>
             <View style={styles.settingLeft}>
-              <IconSymbol name="bell.fill" size={20} color={colors.text} />
-              <View style={styles.settingTextContainer}>
-                <Text style={[styles.settingTitle, { color: colors.text }]}>プッシュ通知</Text>
-                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                  すべての通知のオン/オフ
-                </Text>
-              </View>
+              <Text style={[styles.settingTitle, { color: colors.text }]}>
+                {t('notificationSettings.pushNotifications')}
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                {t('notificationSettings.allNotificationsToggle')}
+              </Text>
             </View>
             <Switch
               value={settings.pushEnabled}
               onValueChange={() => handleToggle('pushEnabled')}
               trackColor={{ false: colors.border, true: colors.accent }}
-              thumbColor="#FFFFFF"
+              thumbColor={settings.pushEnabled ? colors.background : colors.backgroundSecondary}
             />
           </View>
         </View>
 
         {/* Event Notifications */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>イベント通知</Text>
+        <View style={styles.categorySection}>
+          <Text style={[styles.categoryTitle, { color: colors.textSecondary }]}>
+            {t('notificationSettings.eventNotifications')}
+          </Text>
 
-          <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
+          <View style={[styles.settingRow, { borderBottomColor: colors.border, opacity: settings.pushEnabled ? 1 : 0.5 }]}>
             <View style={styles.settingLeft}>
-              <View style={styles.settingTextContainer}>
-                <Text style={[styles.settingTitle, { color: settings.pushEnabled ? colors.text : colors.textSecondary }]}>
-                  イベント申請の結果
-                </Text>
-                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                  申請が承認/却下された時
-                </Text>
-              </View>
+              <Text style={[styles.settingTitle, { color: colors.text }]}>
+                {t('notificationSettings.applicationResult')}
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                {t('notificationSettings.applicationResultDesc')}
+              </Text>
             </View>
             <Switch
               value={settings.eventApplications}
               onValueChange={() => handleToggle('eventApplications')}
-              disabled={!settings.pushEnabled}
               trackColor={{ false: colors.border, true: colors.accent }}
-              thumbColor="#FFFFFF"
+              thumbColor={settings.eventApplications ? colors.background : colors.backgroundSecondary}
+              disabled={!settings.pushEnabled}
             />
           </View>
 
-          <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
+          <View style={[styles.settingRow, { borderBottomColor: colors.border, opacity: settings.pushEnabled ? 1 : 0.5 }]}>
             <View style={styles.settingLeft}>
-              <View style={styles.settingTextContainer}>
-                <Text style={[styles.settingTitle, { color: settings.pushEnabled ? colors.text : colors.textSecondary }]}>
-                  イベント開始リマインダー
-                </Text>
-                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                  イベント開始前の通知
-                </Text>
-              </View>
+              <Text style={[styles.settingTitle, { color: colors.text }]}>
+                {t('notificationSettings.eventReminder')}
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                {t('notificationSettings.eventReminderDesc')}
+              </Text>
             </View>
             <Switch
               value={settings.eventReminders}
               onValueChange={() => handleToggle('eventReminders')}
-              disabled={!settings.pushEnabled}
               trackColor={{ false: colors.border, true: colors.accent }}
-              thumbColor="#FFFFFF"
+              thumbColor={settings.eventReminders ? colors.background : colors.backgroundSecondary}
+              disabled={!settings.pushEnabled}
             />
           </View>
 
-          <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
+          <View style={[styles.settingRow, { borderBottomColor: colors.border, opacity: settings.pushEnabled ? 1 : 0.5 }]}>
             <View style={styles.settingLeft}>
-              <View style={styles.settingTextContainer}>
-                <Text style={[styles.settingTitle, { color: settings.pushEnabled ? colors.text : colors.textSecondary }]}>
-                  イベントキャンセル
-                </Text>
-                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                  参加予定のイベントが中止された時
-                </Text>
-              </View>
+              <Text style={[styles.settingTitle, { color: colors.text }]}>
+                {t('notificationSettings.eventCancelled')}
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                {t('notificationSettings.eventCancelledDesc')}
+              </Text>
             </View>
             <Switch
               value={settings.eventCancellations}
               onValueChange={() => handleToggle('eventCancellations')}
-              disabled={!settings.pushEnabled}
               trackColor={{ false: colors.border, true: colors.accent }}
-              thumbColor="#FFFFFF"
+              thumbColor={settings.eventCancellations ? colors.background : colors.backgroundSecondary}
+              disabled={!settings.pushEnabled}
             />
           </View>
 
-          <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
+          <View style={[styles.settingRow, { borderBottomColor: colors.border, opacity: settings.pushEnabled ? 1 : 0.5 }]}>
             <View style={styles.settingLeft}>
-              <View style={styles.settingTextContainer}>
-                <Text style={[styles.settingTitle, { color: settings.pushEnabled ? colors.text : colors.textSecondary }]}>
-                  新しい参加者
-                </Text>
-                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                  自分が主催するイベントに参加者が増えた時
-                </Text>
-              </View>
+              <Text style={[styles.settingTitle, { color: colors.text }]}>
+                {t('notificationSettings.newParticipants')}
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                {t('notificationSettings.newParticipantsDesc')}
+              </Text>
             </View>
             <Switch
               value={settings.newParticipants}
               onValueChange={() => handleToggle('newParticipants')}
-              disabled={!settings.pushEnabled}
               trackColor={{ false: colors.border, true: colors.accent }}
-              thumbColor="#FFFFFF"
+              thumbColor={settings.newParticipants ? colors.background : colors.backgroundSecondary}
+              disabled={!settings.pushEnabled}
             />
           </View>
         </View>
 
-        {/* Chat Notifications */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>メッセージ通知</Text>
+        {/* Message Notifications */}
+        <View style={styles.categorySection}>
+          <Text style={[styles.categoryTitle, { color: colors.textSecondary }]}>
+            {t('notificationSettings.messageNotifications')}
+          </Text>
 
-          <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
+          <View style={[styles.settingRow, { borderBottomColor: colors.border, opacity: settings.pushEnabled ? 1 : 0.5 }]}>
             <View style={styles.settingLeft}>
-              <View style={styles.settingTextContainer}>
-                <Text style={[styles.settingTitle, { color: settings.pushEnabled ? colors.text : colors.textSecondary }]}>
-                  チャットメッセージ
-                </Text>
-                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                  イベントチャットに新しいメッセージが届いた時
-                </Text>
-              </View>
+              <Text style={[styles.settingTitle, { color: colors.text }]}>
+                {t('notificationSettings.chatMessages')}
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                {t('notificationSettings.chatMessagesDesc')}
+              </Text>
             </View>
             <Switch
               value={settings.chatMessages}
               onValueChange={() => handleToggle('chatMessages')}
-              disabled={!settings.pushEnabled}
               trackColor={{ false: colors.border, true: colors.accent }}
-              thumbColor="#FFFFFF"
+              thumbColor={settings.chatMessages ? colors.background : colors.backgroundSecondary}
+              disabled={!settings.pushEnabled}
             />
           </View>
         </View>
 
-        {/* Post Event Notifications */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>その他</Text>
+        {/* Other Notifications */}
+        <View style={styles.categorySection}>
+          <Text style={[styles.categoryTitle, { color: colors.textSecondary }]}>
+            {t('notificationSettings.other')}
+          </Text>
 
-          <View style={[styles.settingItem, { borderBottomColor: colors.border }]}>
+          <View style={[styles.settingRow, { borderBottomColor: colors.border, opacity: settings.pushEnabled ? 1 : 0.5 }]}>
             <View style={styles.settingLeft}>
-              <View style={styles.settingTextContainer}>
-                <Text style={[styles.settingTitle, { color: settings.pushEnabled ? colors.text : colors.textSecondary }]}>
-                  イベント評価のリマインダー
-                </Text>
-                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
-                  イベント終了後の評価依頼
-                </Text>
-              </View>
+              <Text style={[styles.settingTitle, { color: colors.text }]}>
+                {t('notificationSettings.eventRatingReminder')}
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                {t('notificationSettings.eventRatingReminderDesc')}
+              </Text>
             </View>
             <Switch
               value={settings.postEventReminders}
               onValueChange={() => handleToggle('postEventReminders')}
-              disabled={!settings.pushEnabled}
               trackColor={{ false: colors.border, true: colors.accent }}
-              thumbColor="#FFFFFF"
+              thumbColor={settings.postEventReminders ? colors.background : colors.backgroundSecondary}
+              disabled={!settings.pushEnabled}
             />
           </View>
         </View>
 
-        <Text style={[styles.note, { color: colors.textSecondary }]}>
-          ※ 端末の通知設定で通知が許可されている必要があります。{'\n'}
-          端末の設定から通知を許可してください。
-        </Text>
+        {/* Note */}
+        <View style={styles.noteSection}>
+          <Text style={[styles.noteText, { color: colors.textSecondary }]}>
+            {t('notificationSettings.deviceSettingsNote')}
+          </Text>
+          <Text style={[styles.noteText, { color: colors.textSecondary, marginTop: 8 }]}>
+            {t('notificationSettings.enableInDeviceSettings')}
+          </Text>
+        </View>
       </ScrollView>
     </View>
   );
@@ -348,25 +332,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
     paddingBottom: 40,
   },
   description: {
     fontSize: 14,
     lineHeight: 20,
-    marginBottom: 24,
+    padding: 16,
   },
   section: {
-    marginBottom: 24,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  sectionTitle: {
+  categorySection: {
+    marginTop: 24,
+    paddingHorizontal: 16,
+  },
+  categoryTitle: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: 16,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  settingItem: {
+  settingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -374,13 +363,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   settingLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     flex: 1,
-    gap: 12,
-  },
-  settingTextContainer: {
-    flex: 1,
+    marginRight: 16,
   },
   settingTitle: {
     fontSize: 16,
@@ -391,10 +375,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
-  note: {
+  noteSection: {
+    padding: 16,
+    marginTop: 24,
+  },
+  noteText: {
     fontSize: 12,
-    lineHeight: 18,
-    marginTop: 16,
-    textAlign: 'center',
+    lineHeight: 16,
   },
 });

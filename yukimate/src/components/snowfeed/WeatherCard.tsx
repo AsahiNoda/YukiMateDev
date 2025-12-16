@@ -1,6 +1,7 @@
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@hooks/use-color-scheme';
+import { useTranslation } from '@/hooks/useTranslation';
 import type { SnowfeedWeather } from '@types';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -28,6 +29,7 @@ interface WeatherCardProps {
 export function WeatherCard({ resortName, weather, isHomeResort = false }: WeatherCardProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { t } = useTranslation();
 
   // デバッグ: weatherデータを確認
   console.log('[WeatherCard] Weather data:', weather);
@@ -78,19 +80,19 @@ export function WeatherCard({ resortName, weather, isHomeResort = false }: Weath
   const getWeatherDescription = () => {
     const code = weather.weatherCode ?? 0;
 
-    if (code === 0) return '快晴';
-    if (code === 1) return '晴れ';
-    if (code === 2) return '晴れ時々曇り';
-    if (code === 3) return '曇り';
-    if (code === 45 || code === 48) return '霧';
-    if (code >= 51 && code <= 57) return '小雨';
-    if (code >= 61 && code <= 67) return '雨';
-    if (code >= 71 && code <= 77) return '雪';
-    if (code >= 80 && code <= 82) return 'にわか雨';
-    if (code === 85 || code === 86) return 'にわか雪';
-    if (code >= 95) return '雷雨';
+    if (code === 0) return t('weather.clear');
+    if (code === 1) return t('weather.sunny');
+    if (code === 2) return t('weather.partlyCloudy');
+    if (code === 3) return t('weather.cloudy');
+    if (code === 45 || code === 48) return t('weather.fog');
+    if (code >= 51 && code <= 57) return t('weather.lightRain');
+    if (code >= 61 && code <= 67) return t('weather.rain');
+    if (code >= 71 && code <= 77) return t('weather.snow');
+    if (code >= 80 && code <= 82) return t('weather.showers');
+    if (code === 85 || code === 86) return t('weather.lightSnow');
+    if (code >= 95) return t('weather.thunderstorm');
 
-    return '不明';
+    return t('weather.unknown');
   };
 
   const WeatherIcon = getWeatherIcon();
@@ -100,9 +102,9 @@ export function WeatherCard({ resortName, weather, isHomeResort = false }: Weath
   const getVisibilityText = () => {
     if (!weather.visibility) return '--';
     switch (weather.visibility) {
-      case 'good': return '良好';
-      case 'moderate': return '中等';
-      case 'poor': return '不良';
+      case 'good': return t('weather.visibilityGood');
+      case 'moderate': return t('weather.visibilityModerate');
+      case 'poor': return t('weather.visibilityPoor');
       default: return '--';
     }
   };
@@ -113,7 +115,7 @@ export function WeatherCard({ resortName, weather, isHomeResort = false }: Weath
       <View style={styles.resortNameContainer}>
         <Text style={[styles.resortName, { color: colors.textSecondary }]}>{resortName}</Text>
         {isHomeResort && (
-          <Text style={[styles.homeLabel, { color: colors.accent }]}>（ホームゲレンデ）</Text>
+          <Text style={[styles.homeLabel, { color: colors.accent }]}>{t('weather.homeResort')}</Text>
         )}
       </View>
 
@@ -146,7 +148,7 @@ export function WeatherCard({ resortName, weather, isHomeResort = false }: Weath
           <Text style={[styles.statValue, { color: colors.text }]}>
             {weather.windMs ?? '--'} m/s
           </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>風速</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('weather.windSpeed')}</Text>
         </View>
 
         {/* Visibility */}
@@ -157,7 +159,7 @@ export function WeatherCard({ resortName, weather, isHomeResort = false }: Weath
           <Text style={[styles.statValue, { color: colors.text }]}>
             {getVisibilityText()}
           </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>視界</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('weather.visibility')}</Text>
         </View>
 
         {/* New Snow */}
@@ -168,7 +170,7 @@ export function WeatherCard({ resortName, weather, isHomeResort = false }: Weath
           <Text style={[styles.statValue, { color: colors.text }]}>
             {weather.newSnowCm ?? '--'} cm
           </Text>
-          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>新雪</Text>
+          <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{t('weather.newSnow')}</Text>
         </View>
       </View>
 

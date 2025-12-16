@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getLocales } from 'expo-localization';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
 const LOCALE_STORAGE_KEY = '@app_locale';
@@ -32,6 +33,13 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
                 setLoading(false);
                 return;
             }
+
+            // 2. 設定がない場合はデバイスの言語設定を使用
+            const deviceLanguage = getLocales()[0].languageCode;
+            const defaultLocale: Locale = deviceLanguage === 'en' ? 'en' : 'ja';
+
+            // プロフィール取得前に一旦デバイス言語をセットしておく（表示の高速化）
+            setLocaleState(defaultLocale);
 
             // 2. ログインユーザーのプロフィールから読み込み
             const { data: { session } } = await supabase.auth.getSession();

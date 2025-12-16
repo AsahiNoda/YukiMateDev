@@ -3,6 +3,7 @@ import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { applyToEvent, saveEvent, useDiscoverEvents } from '@hooks/useDiscoverEvents';
+import { useTranslation } from '@hooks/useTranslation';
 import type { DiscoverEvent } from '@types';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -47,15 +48,16 @@ type ConfirmationModalProps = {
 function ConfirmationModal({ visible, type, event, onConfirm, onCancel }: ConfirmationModalProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { t } = useTranslation();
 
   if (!event) return null;
 
   const isApply = type === 'apply';
-  const title = isApply ? '参加申請の確認' : '保存の確認';
+  const title = isApply ? t('discover.applyConfirm') : t('discover.saveConfirm');
   const message = isApply
-    ? `「${event.title}」への参加申請を送信しますか?`
-    : `「${event.title}」を保存しますか?`;
-  const confirmText = isApply ? '申請する' : '保存する';
+    ? t('discover.applyMessage').replace('${title}', event.title)
+    : t('discover.saveMessage').replace('${title}', event.title);
+  const confirmText = isApply ? t('discover.apply') : t('discover.save');
   const confirmColor = isApply ? colors.success : colors.accent;
 
   return (
@@ -95,7 +97,7 @@ function ConfirmationModal({ visible, type, event, onConfirm, onCancel }: Confir
                 <Text style={[styles.modalEventTitle, { color: colors.text }]} numberOfLines={2}>
                   {event.title}
                 </Text>
-                <Text style={[styles.modalEventHost, { color: colors.textSecondary }]}>ホスト: {event.hostName}</Text>
+                <Text style={[styles.modalEventHost, { color: colors.textSecondary }]}>{t('eventDetail.host')}: {event.hostName}</Text>
               </View>
             </View>
           </View>
@@ -105,7 +107,7 @@ function ConfirmationModal({ visible, type, event, onConfirm, onCancel }: Confir
               style={[styles.modalButtonCancel, { backgroundColor: colors.backgroundTertiary }]}
               onPress={onCancel}
               activeOpacity={0.8}>
-              <Text style={[styles.modalButtonCancelText, { color: colors.textSecondary }]}>キャンセル</Text>
+              <Text style={[styles.modalButtonCancelText, { color: colors.textSecondary }]}>{t('common.cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.modalButtonConfirm, { backgroundColor: confirmColor }]}
@@ -124,6 +126,7 @@ export default function DiscoverScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [pendingSwipe, setPendingSwipe] = useState<{
     direction: 'left' | 'right' | 'up';
@@ -161,7 +164,7 @@ export default function DiscoverScreen() {
         // エラー時はモーダルを閉じてエラー表示
         setConfirmModal({ visible: false, type: 'apply', event: null });
         setPendingSwipe(null);
-        console.error('申請エラー:', result.error);
+        console.error(t('discover.applicationError'), result.error);
       }
     } else {
       // 保存
@@ -175,7 +178,7 @@ export default function DiscoverScreen() {
         // エラー時はモーダルを閉じてエラー表示
         setConfirmModal({ visible: false, type: 'save', event: null });
         setPendingSwipe(null);
-        console.error('保存エラー:', result.error);
+        console.error(t('discover.saveError'), result.error);
       }
     }
   }, [confirmModal]);
@@ -216,7 +219,7 @@ export default function DiscoverScreen() {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.tint} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>イベントを読み込み中...</Text>
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>{t('discover.loading')}</Text>
       </View>
     );
   }
@@ -224,7 +227,7 @@ export default function DiscoverScreen() {
   if (eventsState.status === 'error') {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.error }]}>エラーが発生しました</Text>
+        <Text style={[styles.errorText, { color: colors.error }]}>{t('discover.errorOccurred')}</Text>
         <Text style={[styles.errorSubText, { color: colors.textSecondary }]}>{eventsState.error}</Text>
       </View>
     );
@@ -235,8 +238,8 @@ export default function DiscoverScreen() {
   if (!hasMoreEvents) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.emptyText, { color: colors.text }]}>すべてのイベントを確認しました</Text>
-        <Text style={[styles.emptySubText, { color: colors.textSecondary }]}>新しいイベントをお待ちください</Text>
+        <Text style={[styles.emptyText, { color: colors.text }]}>{t('discover.allEventsChecked')}</Text>
+        <Text style={[styles.emptySubText, { color: colors.textSecondary }]}>{t('discover.waitingForNew')}</Text>
       </View>
     );
   }
@@ -293,6 +296,7 @@ type SwipeableCardProps = {
 function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDetail, cardHeight, insets }: SwipeableCardProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { t } = useTranslation();
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const scale = useSharedValue(1);
@@ -405,15 +409,15 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
     const date = new Date(dateString);
     const month = date.getMonth() + 1;
     const day = date.getDate();
-    return `${month}月${day}日`;
+    return `${month}/${day}`;
   };
 
   const formatPrice = (price: number | null) => {
-    if (price === null || price === 0) return '無料';
+    if (price === null || price === 0) return t('common.free');
     return `¥${price.toLocaleString()}`;
   };
 
-  const levelText = event.levelRequired || '指定なし';
+  const levelText = event.levelRequired || t('common.notSpecified');
 
   return (
     <GestureDetector gesture={panGesture}>
@@ -472,7 +476,7 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
         {/* Overlay for swipe feedback */}
         <Animated.View style={[styles.swipeOverlay, overlayStyle]}>
           <Text style={styles.swipeOverlayText}>
-            {translateX.value > 0 ? '申請' : '保存'}
+            {translateX.value > 0 ? t('discover.applyOverlay') : t('discover.saveOverlay')}
           </Text>
         </Animated.View>
 
@@ -480,7 +484,7 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
         {event.starredParticipants && event.starredParticipants.length > 0 && (
           <View style={styles.starredParticipantBadge}>
             <IconSymbol name="star.fill" size={14} color="#FFFFFF" />
-            <Text style={styles.starredParticipantText}>ユーザーが参加中</Text>
+            <Text style={styles.starredParticipantText}>{t('discover.usersParticipating')}</Text>
           </View>
         )}
 
@@ -529,7 +533,7 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
                 {event.title}
               </Text>
               <Text style={[styles.cardDescription, { color: colors.textSecondary }]} numberOfLines={3}>
-                {event.description || '一緒に滑りましょう！素晴らしい雪山での体験をお楽しみください。'}
+                {event.description || t('discover.defaultDescription')}
               </Text>
             </View>
 
@@ -538,17 +542,17 @@ function SwipeableCard({ event, index, onSwipe, isTopCard, shouldReset, onShowDe
               <View style={styles.cardMetadataItem}>
                 <IconSymbol name="person.2.fill" size={16} color={colors.textSecondary} />
                 <Text style={[styles.cardMetadataText, { color: colors.textSecondary }]}>
-                  {event.spotsTaken}/{event.capacityTotal} 人
+                  {event.spotsTaken}/{event.capacityTotal} {t('discover.peopleUnit')}
                 </Text>
               </View>
               <View style={styles.cardMetadataItem}>
                 <IconSymbol name="mountain.2.fill" size={16} color={colors.textSecondary} />
-                <Text style={[styles.cardMetadataText, { color: colors.textSecondary }]}>レベル: {levelText}</Text>
+                <Text style={[styles.cardMetadataText, { color: colors.textSecondary }]}>{t('discover.levelLabel')} {levelText}</Text>
               </View>
               <View style={styles.cardPriceContainer}>
                 <YenIcon width={18} height={18} color={colors.accent} />
                 <Text style={[styles.cardPriceAmount, { color: colors.accent }]}>
-                  {event.pricePerPersonJpy === null || event.pricePerPersonJpy === 0 ? '無料' : event.pricePerPersonJpy.toLocaleString()}
+                  {event.pricePerPersonJpy === null || event.pricePerPersonJpy === 0 ? t('common.free') : event.pricePerPersonJpy.toLocaleString()}
                 </Text>
               </View>
             </View>

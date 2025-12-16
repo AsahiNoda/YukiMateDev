@@ -1,10 +1,12 @@
 import { ImageViewer } from '@/components/ImageViewer';
 import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { getFlagSource } from '@/constants/countries';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useBookmark } from '@/hooks/useBookmark';
 import { applyToEvent } from '@/hooks/useDiscoverEvents';
+import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/lib/supabase';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -314,6 +316,11 @@ function createStyles(colors: typeof Colors.light) {
     participantFlag: {
       fontSize: 16,
     },
+    participantFlagImage: {
+      width: 24,
+      height: 16,
+      marginLeft: 4,
+    },
     participantStylesRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -401,6 +408,7 @@ export default function EventDetailScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const styles = React.useMemo(() => createStyles(colors), [colors]);
+  const { t, locale } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [applying, setApplying] = useState(false);
   const [event, setEvent] = useState<EventDetail | null>(null);
@@ -423,7 +431,7 @@ export default function EventDetailScreen() {
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        throw new Error('ログインが必要です');
+        throw new Error(t('create.loginRequired'));
       }
 
       // イベント詳細を取得
@@ -456,7 +464,7 @@ export default function EventDetailScreen() {
         .single();
 
       if (eventError) throw eventError;
-      if (!eventData) throw new Error('イベントが見つかりません');
+      if (!eventData) throw new Error(t('eventDetail.eventNotFound'));
 
       // 参加者数を取得
       const { count } = await supabase
@@ -501,7 +509,7 @@ export default function EventDetailScreen() {
           if (profile) {
             formattedParticipants.push({
               userId: profile.user_id,
-              displayName: profile.display_name || 'Unknown',
+              displayName: profile.display_name || t('common.unknown'),
               avatarUrl: profile.avatar_url,
               countryCode: profile.country_code,
               styles: profile.styles || [],
@@ -564,8 +572,8 @@ export default function EventDetailScreen() {
         tags: eventData.tags || [],
         photos: photoUrls,
         category: eventData.type,
-        resortName: eventData.resorts?.name || 'Unknown Resort',
-        hostName: eventData.profiles?.display_name || 'Unknown',
+        resortName: eventData.resorts?.name || t('common.unknown'),
+        hostName: eventData.profiles?.display_name || t('common.unknown'),
         hostAvatar: eventData.profiles?.avatar_url || null,
         hostUserId: eventData.host_user_id,
         hostLevel: eventData.profiles?.level || null,
@@ -580,7 +588,7 @@ export default function EventDetailScreen() {
       setEvent(detail);
     } catch (err) {
       console.error('Error loading event detail:', err);
-      setError(err instanceof Error ? err.message : 'エラーが発生しました');
+      setError(err instanceof Error ? err.message : t('eventDetail.errorOccurred'));
     } finally {
       setLoading(false);
     }
@@ -594,10 +602,10 @@ export default function EventDetailScreen() {
     setApplying(false);
 
     if (result.success) {
-      Alert.alert('申請完了', 'イベントへの参加申請を送信しました');
+      Alert.alert(t('eventDetail.applicationComplete'), t('eventDetail.applicationSent'));
       loadEventDetail();
     } else {
-      Alert.alert('エラー', result.error || '申請に失敗しました');
+      Alert.alert(t('common.error'), result.error || t('eventDetail.applicationFailed'));
     }
   };
 
@@ -605,22 +613,22 @@ export default function EventDetailScreen() {
     if (!event) return;
 
     Alert.alert(
-      'イベントから退会',
-      'このイベントから退会してもよろしいですか？\n\n※退会したイベントは今後表示されません。',
+      t('eventDetail.withdrawFromEvent'),
+      t('eventDetail.withdrawConfirm'),
       [
         {
-          text: 'キャンセル',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: '退会する',
+          text: t('eventDetail.withdraw'),
           style: 'destructive',
           onPress: async () => {
             try {
               setApplying(true);
               const { data: { session } } = await supabase.auth.getSession();
               if (!session?.user) {
-                throw new Error('ログインが必要です');
+                throw new Error(t('create.loginRequired'));
               }
 
               // イベント参加者テーブルから削除（left_atを設定）
@@ -650,12 +658,12 @@ export default function EventDetailScreen() {
                 spotsTaken: Math.max(0, prev.spotsTaken - 1)
               } : null);
 
-              Alert.alert('退会完了', 'イベントから退会しました');
+              Alert.alert(t('eventDetail.withdrawComplete'), t('eventDetail.withdrawSuccess'));
               // 詳細を再読み込みして最新の状態を取得
               loadEventDetail();
             } catch (err) {
               console.error('Error withdrawing from event:', err);
-              Alert.alert('エラー', 'イベントからの退会に失敗しました');
+              Alert.alert(t('common.error'), t('eventDetail.withdrawFailed'));
             } finally {
               setApplying(false);
             }
@@ -668,7 +676,7 @@ export default function EventDetailScreen() {
   const toggleBookmark = async () => {
     const success = await handleToggleBookmark();
     if (!success) {
-      Alert.alert('エラー', 'ブックマークの更新に失敗しました');
+      Alert.alert(t('common.error'), t('eventDetail.bookmarkFailed'));
     }
   };
 
@@ -684,31 +692,24 @@ export default function EventDetailScreen() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    const year = date.getFullYear();
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    const weekday = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()];
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}年${month}月${day}日 ${weekday} ${hours}:${minutes}`;
-  };
-
-  const getFlagEmoji = (countryCode: string): string => {
-    const codePoints = countryCode
-      .toUpperCase()
-      .split('')
-      .map((char) => 127397 + char.charCodeAt(0));
-    return String.fromCodePoint(...codePoints);
+    return new Intl.DateTimeFormat(locale === 'ja' ? 'ja-JP' : 'en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      weekday: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
   };
 
   const getLevelLabel = (level: string): string => {
     switch (level) {
       case 'beginner':
-        return '初級';
+        return t('profileSetup.beginner');
       case 'intermediate':
-        return '中級';
+        return t('profileSetup.intermediate');
       case 'advanced':
-        return '上級';
+        return t('profileSetup.advanced');
       default:
         return level;
     }
@@ -718,7 +719,7 @@ export default function EventDetailScreen() {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.tint} />
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>読み込み中...</Text>
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>{t('common.loading')}</Text>
       </View>
     );
   }
@@ -726,12 +727,12 @@ export default function EventDetailScreen() {
   if (error || !event) {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.error }]}>{error || 'イベントが見つかりません'}</Text>
+        <Text style={[styles.errorText, { color: colors.error }]}>{error || t('eventDetail.eventNotFound')}</Text>
         <TouchableOpacity
           style={[styles.backButton, { backgroundColor: colors.backgroundSecondary }]}
           onPress={() => router.back()}
         >
-          <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>戻る</Text>
+          <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>{t('common.back')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -813,7 +814,7 @@ export default function EventDetailScreen() {
           {/* 詳細説明 */}
           {event.description && (
             <View style={styles.descriptionSection}>
-              <Text style={[styles.descriptionTitle, { color: colors.text }]}>詳細:</Text>
+              <Text style={[styles.descriptionTitle, { color: colors.text }]}>{t('eventDetail.details')}</Text>
               <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>{event.description}</Text>
             </View>
           )}
@@ -846,7 +847,7 @@ export default function EventDetailScreen() {
                 <IconSymbol name="person.2.fill" size={20} color={colors.icon} />
               </View>
               <View style={styles.gridTextContainer}>
-                <Text style={[styles.gridValue, { color: colors.text }]}>{event.spotsTaken}/{event.capacityTotal}人</Text>
+                <Text style={[styles.gridValue, { color: colors.text }]}>{event.spotsTaken}/{event.capacityTotal}{t('discover.peopleUnit')}</Text>
               </View>
             </View>
 
@@ -857,7 +858,7 @@ export default function EventDetailScreen() {
               </View>
               <View style={styles.gridTextContainer}>
                 <Text style={[styles.gridValue, { color: colors.text }]} numberOfLines={1}>
-                  {event.meetingPlace || '未設定'}
+                  {event.meetingPlace || t('common.notSpecified')}
                 </Text>
               </View>
             </View>
@@ -871,7 +872,7 @@ export default function EventDetailScreen() {
                 <Text style={[styles.gridValue, { color: colors.text }]}>
                   {event.pricePerPersonJpy !== null && event.pricePerPersonJpy > 0
                     ? `¥${event.pricePerPersonJpy.toLocaleString()}`
-                    : '無料'}
+                    : t('common.free')}
                 </Text>
               </View>
             </View>
@@ -894,7 +895,7 @@ export default function EventDetailScreen() {
           {/* タグセクション */}
           {event.tags && event.tags.length > 0 && (
             <View style={styles.tagsSection}>
-              <Text style={[styles.tagsSectionTitle, { color: colors.text }]}>タグ</Text>
+              <Text style={[styles.tagsSectionTitle, { color: colors.text }]}>{t('eventDetail.tags')}</Text>
               <View style={styles.tagsContainer}>
                 {event.tags.map((tag, index) => (
                   <Text style={[styles.tagText, { color: colors.tint }]} key={index}>#{tag}</Text>
@@ -907,7 +908,7 @@ export default function EventDetailScreen() {
           {participants.length > 0 && (
             <View style={styles.participantsSection}>
               <Text style={[styles.participantsSectionTitle, { color: colors.text }]}>
-                参加者 ({participants.length}人)
+                {t('eventDetail.participants')} ({participants.length}{t('discover.peopleUnit')})
               </Text>
               {participants.map((participant) => (
                 <TouchableOpacity
@@ -931,9 +932,11 @@ export default function EventDetailScreen() {
                         {participant.displayName}
                       </Text>
                       {participant.countryCode && (
-                        <Text style={styles.participantFlag}>
-                          {getFlagEmoji(participant.countryCode)}
-                        </Text>
+                        <Image
+                          source={getFlagSource(participant.countryCode)}
+                          style={styles.participantFlagImage}
+                          resizeMode="contain"
+                        />
                       )}
                       {event.starredParticipantIds?.includes(participant.userId) && (
                         <IconSymbol name="star.fill" size={14} color={colors.accent} style={styles.participantStar} />
@@ -975,7 +978,7 @@ export default function EventDetailScreen() {
             showBadge={true}
           />
           <View style={styles.footerHostInfo}>
-            <Text style={[styles.footerHostLabel, { color: colors.icon }]}>ホスト</Text>
+            <Text style={[styles.footerHostLabel, { color: colors.icon }]}>{t('eventDetail.host')}</Text>
             <View style={styles.footerHostNameContainer}>
               <Text style={[styles.footerHostName, { color: colors.text }]}>{event.hostName}</Text>
               {event.isHostStarred && (
@@ -993,7 +996,7 @@ export default function EventDetailScreen() {
               router.push(`/create?eventId=${event.id}`);
             }}
           >
-            <Text style={[styles.actionButtonText, { color: colors.text }]}>投稿を編集</Text>
+            <Text style={[styles.actionButtonText, { color: colors.text }]}>{t('eventDetail.editPost')}</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity
@@ -1002,8 +1005,8 @@ export default function EventDetailScreen() {
               event.hasApplied
                 ? { backgroundColor: colors.error }
                 : event.applicationStatus === 'pending'
-                ? { backgroundColor: colors.backgroundTertiary }
-                : { backgroundColor: colors.tint },
+                  ? { backgroundColor: colors.backgroundTertiary }
+                  : { backgroundColor: colors.tint },
               (applying || event.applicationStatus === 'pending') && [styles.actionButtonDisabled, { backgroundColor: colors.backgroundTertiary }],
             ]}
             onPress={event.hasApplied ? handleWithdraw : handleApply}
@@ -1013,7 +1016,7 @@ export default function EventDetailScreen() {
               <ActivityIndicator color={colors.text} />
             ) : (
               <Text style={[styles.actionButtonText, { color: colors.text }]}>
-                {event.hasApplied ? '退会する' : event.applicationStatus === 'pending' ? '申請中' : '参加申請'}
+                {event.hasApplied ? t('eventDetail.withdraw') : event.applicationStatus === 'pending' ? t('eventDetail.applying') : t('eventDetail.applyToJoin')}
               </Text>
             )}
           </TouchableOpacity>

@@ -2,6 +2,7 @@ import { COUNTRIES, getFlagSource } from '@/constants/countries';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from '@/hooks/useTranslation';
 import { pickAndUploadImage } from '@/lib/imageUpload';
 import { supabase } from '@/lib/supabase';
 import type { SkillLevel } from '@/types';
@@ -11,6 +12,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Image,
   Modal,
   ScrollView,
@@ -292,6 +294,7 @@ export default function ProfileSetupScreen() {
   const { user, refreshProfile } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { t, locale } = useTranslation();
   const styles = React.useMemo(() => createStyles(colors), [colors]);
   const [loading, setLoading] = useState(false);
 
@@ -350,17 +353,17 @@ export default function ProfileSetupScreen() {
   const handleSubmit = async () => {
     // バリデーション
     if (!user?.id) {
-      Alert.alert('エラー', 'ユーザー情報が取得できませんでした');
+      Alert.alert(t('common.error'), t('profileSetup.errorUserNotFound'));
       return;
     }
 
     if (!displayName.trim()) {
-      Alert.alert('エラー', '表示名を入力してください');
+      Alert.alert(t('common.error'), t('profileSetup.errorDisplayNameRequired'));
       return;
     }
 
     if (!countryCode) {
-      Alert.alert('エラー', '国籍を選択してください');
+      Alert.alert(t('common.error'), t('profileSetup.errorNationalityRequired'));
       return;
     }
 
@@ -384,7 +387,7 @@ export default function ProfileSetupScreen() {
 
       if (error) {
         if (error.code === '23505') {
-          Alert.alert('エラー', 'プロフィールが既に存在します');
+          Alert.alert(t('common.error'), t('profileSetup.errorProfileExists'));
         } else {
           throw error;
         }
@@ -404,7 +407,7 @@ export default function ProfileSetupScreen() {
       router.replace('/(tabs)/home');
     } catch (error: any) {
       console.error('Error creating profile:', error);
-      Alert.alert('エラー', 'プロフィールの作成に失敗しました');
+      Alert.alert(t('common.error'), t('profileSetup.errorCreateFailed'));
     } finally {
       setLoading(false);
     }
@@ -414,13 +417,13 @@ export default function ProfileSetupScreen() {
     <ScrollView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>プロフィール作成</Text>
-          <Text style={styles.subtitle}>基本情報を登録しましょう</Text>
+          <Text style={styles.title}>{t('profileSetup.title')}</Text>
+          <Text style={styles.subtitle}>{t('profileSetup.subtitle')}</Text>
         </View>
 
         {/* ヘッダー画像 */}
         <View style={styles.section}>
-          <Text style={styles.label}>ヘッダー</Text>
+          <Text style={styles.label}>{t('profileSetup.header')}</Text>
           <TouchableOpacity
             style={styles.headerImageContainer}
             onPress={handleHeaderUpload}
@@ -435,7 +438,7 @@ export default function ProfileSetupScreen() {
                 ) : (
                   <>
                     <Ionicons name="image-outline" size={32} color={colors.icon} />
-                    <Text style={styles.placeholderText}>タップしてヘッダー画像を選択</Text>
+                    <Text style={styles.placeholderText}>{t('profileSetup.headerPlaceholder')}</Text>
                   </>
                 )}
               </View>
@@ -445,7 +448,7 @@ export default function ProfileSetupScreen() {
 
         {/* アバター画像 */}
         <View style={styles.section}>
-          <Text style={styles.label}>アイコン</Text>
+          <Text style={styles.label}>{t('profileSetup.avatar')}</Text>
           <TouchableOpacity
             style={styles.avatarContainer}
             onPress={handleAvatarUpload}
@@ -463,15 +466,15 @@ export default function ProfileSetupScreen() {
               </View>
             )}
           </TouchableOpacity>
-          <Text style={styles.avatarHint}>タップしてアイコン画像を選択</Text>
+          <Text style={styles.avatarHint}>{t('profileSetup.avatarHint')}</Text>
         </View>
 
         {/* 表示名 */}
         <View style={styles.section}>
-          <Text style={styles.label}>ユーザー名 *</Text>
+          <Text style={styles.label}>{t('profileSetup.displayName')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="雪山　太郎"
+            placeholder={t('profileSetup.displayNamePlaceholder')}
             placeholderTextColor={colors.textSecondary}
             value={displayName}
             onChangeText={setDisplayName}
@@ -480,14 +483,18 @@ export default function ProfileSetupScreen() {
 
         {/* 国籍 */}
         <View style={styles.section}>
-          <Text style={styles.label}>国籍 *</Text>
+          <Text style={styles.label}>{t('profileSetup.nationality')}</Text>
           <TouchableOpacity
             style={styles.countrySelector}
             onPress={() => setShowCountryPicker(true)}
           >
             <Image source={getFlagSource(countryCode)} style={styles.selectedFlag} />
             <Text style={styles.selectedCountryText}>
-              {COUNTRIES.find(c => c.code === countryCode)?.nameJa || '選択してください'}
+              {(() => {
+                const country = COUNTRIES.find(c => c.code === countryCode);
+                if (!country) return t('profileSetup.selectCountry');
+                return locale === 'en' ? country.nameEn : country.nameJa;
+              })()}
             </Text>
             <Ionicons name="chevron-down" size={20} color={colors.icon} />
           </TouchableOpacity>
@@ -510,15 +517,19 @@ export default function ProfileSetupScreen() {
               >
                 <View style={styles.pickerModal}>
                   <View style={styles.pickerHeader}>
-                    <Text style={styles.pickerTitle}>国籍を選択</Text>
+                    <Text style={styles.pickerTitle}>{t('profileSetup.selectNationality')}</Text>
                     <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
                       <Ionicons name="close" size={24} color={colors.text} />
                     </TouchableOpacity>
                   </View>
-                  <ScrollView style={styles.pickerList}>
-                    {COUNTRIES.map((country) => (
+                  <FlatList
+                    data={COUNTRIES}
+                    style={styles.pickerList}
+                    keyExtractor={(item) => item.code}
+                    initialNumToRender={20}
+                    getItemLayout={(data, index) => ({ length: 55, offset: 55 * index, index })} // Optimization assuming fixed height
+                    renderItem={({ item: country }) => (
                       <TouchableOpacity
-                        key={country.code}
                         style={[
                           styles.pickerItem,
                           countryCode === country.code && styles.pickerItemActive,
@@ -535,14 +546,14 @@ export default function ProfileSetupScreen() {
                             countryCode === country.code && styles.pickerItemTextActive,
                           ]}
                         >
-                          {country.nameJa}
+                          {locale === 'en' ? country.nameEn : country.nameJa}
                         </Text>
                         {countryCode === country.code && (
                           <Ionicons name="checkmark" size={20} color={colors.tint} />
                         )}
                       </TouchableOpacity>
-                    ))}
-                  </ScrollView>
+                    )}
+                  />
                 </View>
               </TouchableOpacity>
             </TouchableOpacity>
@@ -551,7 +562,7 @@ export default function ProfileSetupScreen() {
 
         {/* 言語 */}
         <View style={styles.section}>
-          <Text style={styles.label}>言語 *</Text>
+          <Text style={styles.label}>{t('profileSetup.language')}</Text>
           <View style={styles.buttonGroup}>
             <TouchableOpacity
               style={[
@@ -566,7 +577,7 @@ export default function ProfileSetupScreen() {
                   language === 'ja' && styles.languageTextActive,
                 ]}
               >
-                日本語
+                {t('profileSetup.japanese')}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -582,7 +593,7 @@ export default function ProfileSetupScreen() {
                   language === 'en' && styles.languageTextActive,
                 ]}
               >
-                English
+                {t('profileSetup.english')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -590,7 +601,7 @@ export default function ProfileSetupScreen() {
 
         {/* スキルレベル */}
         <View style={styles.section}>
-          <Text style={styles.label}>スキルレベル *</Text>
+          <Text style={styles.label}>{t('profileSetup.skillLevel')}</Text>
           <View style={styles.buttonGroup}>
             {SKILL_LEVELS.map((level) => (
               <TouchableOpacity
@@ -607,7 +618,7 @@ export default function ProfileSetupScreen() {
                     skillLevel === level && styles.skillTextActive,
                   ]}
                 >
-                  {level === 'beginner' ? '初級' : level === 'intermediate' ? '中級' : '上級'}
+                  {level === 'beginner' ? t('profileSetup.beginner') : level === 'intermediate' ? t('profileSetup.intermediate') : t('profileSetup.advanced')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -616,7 +627,7 @@ export default function ProfileSetupScreen() {
 
         {/* ライディングスタイル */}
         <View style={styles.section}>
-          <Text style={styles.label}>ライディングスタイル (複数選択可)</Text>
+          <Text style={styles.label}>{t('profileSetup.ridingStyle')}</Text>
           <View style={styles.styleGrid}>
             {RIDING_STYLES.map((style) => (
               <TouchableOpacity
@@ -642,10 +653,10 @@ export default function ProfileSetupScreen() {
 
         {/* Bio */}
         <View style={styles.section}>
-          <Text style={styles.label}>自己紹介</Text>
+          <Text style={styles.label}>{t('profileSetup.bio')}</Text>
           <TextInput
             style={[styles.input, styles.bioInput]}
-            placeholder="スノーボードについて、自分について..."
+            placeholder={t('profileSetup.bioPlaceholder')}
             placeholderTextColor={colors.textSecondary}
             value={bio}
             onChangeText={setBio}
@@ -663,7 +674,7 @@ export default function ProfileSetupScreen() {
           {loading ? (
             <ActivityIndicator color={colors.text} />
           ) : (
-            <Text style={styles.submitButtonText}>プロフィールを作成</Text>
+            <Text style={styles.submitButtonText}>{t('profileSetup.createProfile')}</Text>
           )}
         </TouchableOpacity>
 

@@ -2,6 +2,7 @@ import { EventListCard } from '@/components/EventListCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTranslation } from '@/hooks/useTranslation';
 import { useExplore, type ExploreFilters, type SortOptions } from '@/hooks/useExplore';
 import { useResorts } from '@/hooks/useResorts';
 import { router } from 'expo-router';
@@ -28,22 +29,23 @@ import GroupIcon from '../../assets/images/icons/group.svg';
 import LessonIcon from '../../assets/images/icons/lesson.svg';
 
 const CATEGORIES = [
-  { key: 'event', label: 'イベント', IconComponent: EventFlagIcon },
-  { key: 'lesson', label: 'レッスン', IconComponent: LessonIcon },
-  { key: 'filming', label: '撮影', IconComponent: CameraIcon },
-  { key: 'group', label: '仲間', IconComponent: GroupIcon },
+  { key: 'event', labelKey: 'explore.categoryEvent', IconComponent: EventFlagIcon },
+  { key: 'lesson', labelKey: 'explore.categoryLesson', IconComponent: LessonIcon },
+  { key: 'filming', labelKey: 'explore.categoryFilming', IconComponent: CameraIcon },
+  { key: 'group', labelKey: 'explore.categoryGroup', IconComponent: GroupIcon },
 ];
 
 const SORT_OPTIONS = [
-  { key: 'date', label: '日付が近い順' },
-  { key: 'popular', label: '人気順' },
-  { key: 'newest', label: '新着順' },
+  { key: 'date', labelKey: 'explore.sortDateAsc' },
+  { key: 'popular', labelKey: 'explore.sortPopular' },
+  { key: 'newest', labelKey: 'explore.sortNewest' },
 ];
 
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { t } = useTranslation();
 
   // 検索とフィルター状態
   const [searchQuery, setSearchQuery] = useState('');
@@ -172,7 +174,7 @@ export default function ExploreScreen() {
         <IconSymbol name="magnifyingglass" size={18} color={colors.icon} />
         <TextInput
           style={[styles.searchInput, { color: colors.text }]}
-          placeholder="検索"
+          placeholder={t('explore.searchPlaceholder')}
           placeholderTextColor={colors.icon}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -215,7 +217,7 @@ export default function ExploreScreen() {
                 selectedCategory === category.key && [styles.categoryTextActive, { color: colors.text }],
               ]}
             >
-              {category.label}
+              {t(category.labelKey as any)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -224,7 +226,7 @@ export default function ExploreScreen() {
       {/* スキー場フィルター & 結果数 */}
       <View style={styles.controlsRow}>
         <Text style={[styles.resultsText, { color: colors.textSecondary }]}>
-          {status === 'success' ? `${events?.length || 0} 件の検索結果を表示中` : 'ロード中...'}
+          {status === 'success' ? t('explore.resultsCount').replace('${count}', (events?.length || 0).toString()) : t('explore.loading')}
         </Text>
         <TouchableOpacity
           style={[styles.resortFilter, { backgroundColor: colors.backgroundSecondary }]}
@@ -232,8 +234,8 @@ export default function ExploreScreen() {
         >
           <Text style={[styles.resortFilterText, { color: colors.text }]}>
             {selectedResort && resortsState.status === 'success'
-              ? resortsState.resorts.find(r => r.id === selectedResort)?.name || 'スキー場で検索'
-              : 'スキー場で検索'}
+              ? resortsState.resorts.find(r => r.id === selectedResort)?.name || t('explore.resortFilter')
+              : t('explore.resortFilter')}
           </Text>
           <IconSymbol name="chevron.down" size={14} color={colors.icon} />
         </TouchableOpacity>
@@ -243,16 +245,16 @@ export default function ExploreScreen() {
       {status === 'loading' && (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.tint} />
-          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>読み込み中...</Text>
+          <Text style={[styles.loadingText, { color: colors.textSecondary }]}>{t('explore.loadingEvents')}</Text>
         </View>
       )}
 
       {status === 'error' && (
         <View style={styles.centered}>
           <IconSymbol name="exclamationmark.triangle" size={48} color={colors.error} />
-          <Text style={[styles.errorText, { color: colors.error }]}>エラーが発生しました</Text>
+          <Text style={[styles.errorText, { color: colors.error }]}>{t('explore.errorOccurred')}</Text>
           <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.tint }]} onPress={refetch}>
-            <Text style={[styles.retryButtonText, { color: colors.text }]}>再試行</Text>
+            <Text style={[styles.retryButtonText, { color: colors.text }]}>{t('explore.retry')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -270,9 +272,9 @@ export default function ExploreScreen() {
           ListEmptyComponent={() => (
             <View style={styles.empty}>
               <IconSymbol name="magnifyingglass" size={64} color={colors.icon} />
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>イベントが見つかりませんでした</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('explore.noEventsFound')}</Text>
               <Text style={[styles.emptySubtext, { color: colors.icon }]}>
-                検索条件を変更してみてください
+                {t('explore.changeSearchCriteria')}
               </Text>
             </View>
           )}
@@ -302,7 +304,7 @@ export default function ExploreScreen() {
       >
         <Pressable style={styles.modalOverlay} onPress={() => setShowResortModal(false)}>
           <View style={[styles.modalContent, { backgroundColor: colors.backgroundSecondary }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>スキー場で検索</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('explore.resortFilter')}</Text>
 
             <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
               {/* すべて表示オプション */}
@@ -323,7 +325,7 @@ export default function ExploreScreen() {
                     !selectedResort && [styles.modalOptionTextActive, { color: colors.text }],
                   ]}
                 >
-                  すべて
+                  {t('explore.resortFilterAll')}
                 </Text>
                 {!selectedResort && (
                   <IconSymbol name="checkmark" size={20} color={colors.tint} />
@@ -401,7 +403,7 @@ export default function ExploreScreen() {
       >
         <Pressable style={styles.modalOverlay} onPress={() => setShowSortModal(false)}>
           <View style={[styles.modalContent, { backgroundColor: colors.backgroundSecondary }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>ソート順を選択</Text>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t('explore.sortTitle')}</Text>
             {SORT_OPTIONS.map((option) => (
               <TouchableOpacity
                 key={option.key}
@@ -418,7 +420,7 @@ export default function ExploreScreen() {
                     sortOption.sortBy === option.key && [styles.modalOptionTextActive, { color: colors.text }],
                   ]}
                 >
-                  {option.label}
+                  {t(option.labelKey as any)}
                 </Text>
                 {sortOption.sortBy === option.key && (
                   <IconSymbol name="checkmark" size={20} color={colors.tint} />

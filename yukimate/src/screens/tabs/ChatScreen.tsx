@@ -3,6 +3,7 @@ import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing
 import { Colors } from '@/constants/theme';
 import { useEventApplications, type EventApplicationWithDetails } from '@/hooks/useEventApplications';
 import { useEventChats } from '@/hooks/useEventChats';
+import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/lib/supabase';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
@@ -36,6 +37,7 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>('chats');
 
   const { chats, loading: chatsLoading, error: chatsError, refetch } = useEventChats();
@@ -68,11 +70,11 @@ export default function ChatScreen() {
   // エラーがある場合は表示
   React.useEffect(() => {
     if (activeTab === 'chats' && chatsError) {
-      Alert.alert('エラー', 'チャットの読み込みに失敗しました');
+      Alert.alert(t('common.error'), t('chat.loadError'));
     } else if (activeTab === 'requests' && applicationsError) {
-      Alert.alert('エラー', '申請の読み込みに失敗しました');
+      Alert.alert(t('common.error'), t('chat.applicationsLoadError'));
     }
-  }, [chatsError, applicationsError, activeTab]);
+  }, [chatsError, applicationsError, activeTab, t]);
 
   // プルツーリフレッシュハンドラー
   const handleRefresh = async () => {
@@ -115,12 +117,12 @@ export default function ChatScreen() {
     });
 
     const result: ChatSection[] = [];
-    if (todayChats.length > 0) result.push({ title: 'Today', data: todayChats });
-    if (upcomingChats.length > 0) result.push({ title: 'Upcoming', data: upcomingChats });
-    if (earlierChats.length > 0) result.push({ title: 'Earlier', data: earlierChats });
+    if (todayChats.length > 0) result.push({ title: t('chat.sectionToday'), data: todayChats });
+    if (upcomingChats.length > 0) result.push({ title: t('chat.sectionUpcoming'), data: upcomingChats });
+    if (earlierChats.length > 0) result.push({ title: t('chat.sectionEarlier'), data: earlierChats });
 
     return result;
-  }, [chats]);
+  }, [chats, t]);
 
   if (loading) {
     return (
@@ -139,18 +141,18 @@ export default function ChatScreen() {
     applicantName: string
   ) {
     Alert.alert(
-      '参加を承認',
-      `${applicantName}さんの参加を承認しますか？`,
+      t('chat.approveTitle'),
+      t('chat.approveMessage').replace('${name}', applicantName),
       [
-        { text: 'キャンセル', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: '承認',
+          text: t('chat.approveButton'),
           onPress: async () => {
             const result = await approveApplication(applicationId, eventId, applicantUserId);
             if (result.success) {
-              Alert.alert('成功', '参加を承認しました');
+              Alert.alert(t('common.success'), t('chat.approveSuccess'));
             } else {
-              Alert.alert('エラー', result.error || '承認に失敗しました');
+              Alert.alert(t('common.error'), result.error || t('chat.approveError'));
             }
           },
         },
@@ -160,19 +162,19 @@ export default function ChatScreen() {
 
   async function handleReject(applicationId: string, applicantName: string) {
     Alert.alert(
-      '参加を却下',
-      `${applicantName}さんの参加を却下しますか？`,
+      t('chat.rejectTitle'),
+      t('chat.rejectMessage').replace('${name}', applicantName),
       [
-        { text: 'キャンセル', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: '却下',
+          text: t('chat.rejectButton'),
           style: 'destructive',
           onPress: async () => {
             const result = await rejectApplication(applicationId);
             if (result.success) {
-              Alert.alert('完了', '参加を却下しました');
+              Alert.alert(t('common.complete'), t('chat.rejectSuccess'));
             } else {
-              Alert.alert('エラー', result.error || '却下に失敗しました');
+              Alert.alert(t('common.error'), result.error || t('chat.rejectError'));
             }
           },
         },
@@ -182,7 +184,7 @@ export default function ChatScreen() {
 
   function renderChatItem({ item }: { item: EventChat }) {
     const lastMessage = item.messages[0]; // messages are already sorted DESC in hook
-    const messagePreview = lastMessage?.contentText || 'メッセージがありません';
+    const messagePreview = lastMessage?.contentText || t('chat.noMessages');
     const firstPhoto = item.eventPhotos?.[0];
 
     // イベント開始から6時間経過しているかチェック
@@ -204,7 +206,7 @@ export default function ChatScreen() {
       if (isToday) {
         return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
       } else if (isYesterday) {
-        return 'Yesterday';
+        return t('chat.yesterday');
       } else {
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       }
@@ -259,11 +261,11 @@ export default function ChatScreen() {
                   month: 'short',
                   day: 'numeric',
                 })}{' '}
-                • {item.eventResortName || 'リゾート未設定'}
+                • {item.eventResortName || t('chat.resortNotSet')}
               </Text>
               {shouldShowDeletionWarning ? (
                 <Text style={styles.deletionWarning} numberOfLines={1}>
-                  ⚠️ 投稿は一定時間後に自動で削除されます
+                  {t('chat.deletionWarning')}
                 </Text>
               ) : (
                 <Text style={[styles.chatPreview, { color: colors.textSecondary }]} numberOfLines={1}>
@@ -337,12 +339,16 @@ export default function ChatScreen() {
           <TouchableOpacity
             style={[styles.actionButton, styles.rejectButton, { borderColor: colors.border }]}
             onPress={() => handleReject(item.id, applicantName)}>
-            <Text style={[styles.rejectButtonText, { color: colors.text }]}>却下</Text>
+            <Text style={[styles.rejectButtonText, { color: colors.text }]}>
+              {t('chat.rejectButton')}
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.approveButton, { backgroundColor: colors.accent }]}
             onPress={() => handleApprove(item.id, item.event_id, item.applicant_user_id, applicantName)}>
-            <Text style={styles.approveButtonText}>承認</Text>
+            <Text style={styles.approveButtonText}>
+              {t('chat.approveButton')}
+            </Text>
           </TouchableOpacity>
         </View>
       </View >
@@ -365,7 +371,7 @@ export default function ChatScreen() {
               { color: colors.textSecondary },
               activeTab === 'chats' && { color: colors.accent, fontWeight: fontWeight.semibold },
             ]}>
-            チャット
+            {t('chat.tabChats')}
           </Text>
           {activeTab === 'chats' && (
             <View style={[styles.tabIndicator, { backgroundColor: colors.accent }]} />
@@ -381,7 +387,7 @@ export default function ChatScreen() {
                 { color: colors.textSecondary },
                 activeTab === 'requests' && { color: colors.accent, fontWeight: fontWeight.semibold },
               ]}>
-              リクエスト
+              {t('chat.tabRequests')}
             </Text>
             {applications.length > 0 && (
               <View style={[styles.tabBadge, { backgroundColor: colors.accent }]}>
@@ -425,10 +431,10 @@ export default function ChatScreen() {
             <View style={styles.emptyState}>
               <IconSymbol name="message" size={48} color={colors.icon} />
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                イベントチャットがありません
+                {t('chat.noEventChats')}
               </Text>
               <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-                イベントに参加してチャットを始めましょう
+                {t('chat.noEventChatsSubtext')}
               </Text>
             </View>
           }
@@ -451,10 +457,10 @@ export default function ChatScreen() {
             <View style={styles.emptyState}>
               <IconSymbol name="person.crop.circle.badge.checkmark" size={48} color={colors.icon} />
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                参加申請がありません
+                {t('chat.noApplications')}
               </Text>
               <Text style={[styles.emptySubtext, { color: colors.textSecondary }]}>
-                新しい申請が届くとここに表示されます
+                {t('chat.noApplicationsSubtext')}
               </Text>
             </View>
           }

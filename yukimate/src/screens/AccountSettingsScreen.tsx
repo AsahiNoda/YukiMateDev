@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from '@/hooks/useTranslation';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { supabase } from '@lib/supabase';
 import { router } from 'expo-router';
@@ -21,6 +22,7 @@ export default function AccountSettingsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const [showEmailSection, setShowEmailSection] = useState(false);
   const [showPasswordSection, setShowPasswordSection] = useState(false);
@@ -35,14 +37,14 @@ export default function AccountSettingsScreen() {
 
   const handleChangeEmail = async () => {
     if (!newEmail.trim()) {
-      Alert.alert('エラー', '新しいメールアドレスを入力してください');
+      Alert.alert(t('common.error'), t('accountSettings.enterNewEmail'));
       return;
     }
 
     // メールアドレスの形式チェック
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail)) {
-      Alert.alert('エラー', '有効なメールアドレスを入力してください');
+      Alert.alert(t('common.error'), t('accountSettings.enterValidEmail'));
       return;
     }
 
@@ -57,7 +59,7 @@ export default function AccountSettingsScreen() {
       });
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('タイムアウト: 接続が遅い可能性があります')), 10000)
+        setTimeout(() => reject(new Error(t('accountSettings.connectionTimeout'))), 10000)
       );
 
       const result = await Promise.race([
@@ -81,8 +83,8 @@ export default function AccountSettingsScreen() {
 
       // 成功時の処理（ローディング解除後に表示）
       Alert.alert(
-        '確認メールを送信しました',
-        '新しいメールアドレスに確認メールを送信しました。メール内のリンクをクリックして変更を完了してください。'
+        t('accountSettings.emailUpdateSuccess'),
+        t('accountSettings.emailUpdateSuccessMessage')
       );
     } catch (error: any) {
       const duration = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -92,43 +94,43 @@ export default function AccountSettingsScreen() {
       setEmailLoading(false);
 
       // エラーメッセージを日本語化
-      let errorMessage = 'メールアドレスの変更に失敗しました';
-      if (error.message?.includes('タイムアウト')) {
-        errorMessage = '接続がタイムアウトしました。ネットワーク接続を確認してください';
+      let errorMessage = t('accountSettings.emailUpdateError');
+      if (error.message?.includes('タイムアウト') || error.message?.includes('Timeout')) {
+        errorMessage = t('accountSettings.timeoutMessage');
       } else if (error.message) {
         errorMessage = error.message;
       }
 
-      Alert.alert('エラー', errorMessage);
+      Alert.alert(t('common.error'), errorMessage);
     }
   };
 
   const handleChangePassword = async () => {
     if (!newPassword || !confirmPassword) {
-      Alert.alert('エラー', 'すべての項目を入力してください');
+      Alert.alert(t('common.error'), t('accountSettings.fillAllFields'));
       return;
     }
 
     if (newPassword.length < 8) {
-      Alert.alert('エラー', 'パスワードは8文字以上にしてください');
+      Alert.alert(t('common.error'), t('auth.passwordTooShort'));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('エラー', '新しいパスワードが一致しません');
+      Alert.alert(t('common.error'), t('accountSettings.passwordsDoNotMatch'));
       return;
     }
 
     Alert.alert(
-      'パスワード変更',
-      '本当にパスワードを変更しますか？変更後は新しいパスワードでログインしてください。',
+      t('accountSettings.passwordChangeConfirm'),
+      t('accountSettings.passwordChangeMessage'),
       [
         {
-          text: 'キャンセル',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: '変更する',
+          text: t('accountSettings.changeButton'),
           onPress: async () => {
             setPasswordLoading(true);
             const startTime = Date.now();
@@ -141,7 +143,7 @@ export default function AccountSettingsScreen() {
               });
 
               const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('タイムアウト: 接続が遅い可能性があります')), 10000)
+                setTimeout(() => reject(new Error(t('accountSettings.connectionTimeout'))), 10000)
               );
 
               const result = await Promise.race([
@@ -169,8 +171,8 @@ export default function AccountSettingsScreen() {
 
               // 成功時の処理（ローディング解除後に表示）
               Alert.alert(
-                'パスワード変更完了',
-                'パスワードが正常に変更されました'
+                t('accountSettings.passwordChangeSuccess'),
+                t('accountSettings.passwordChangeSuccessMessage')
               );
             } catch (error: any) {
               const duration = ((Date.now() - startTime) / 1000).toFixed(2);
@@ -180,20 +182,18 @@ export default function AccountSettingsScreen() {
               setPasswordLoading(false);
 
               // エラーメッセージを日本語化
-              let errorMessage = 'パスワードの変更に失敗しました';
-              if (error.message?.includes('タイムアウト')) {
-                errorMessage = '接続がタイムアウトしました。ネットワーク接続を確認してください';
-              } else if (error.message?.includes('New password should be different')) {
-                errorMessage = '新しいパスワードは現在のパスワードと異なる必要があります';
+              let errorMessage = t('accountSettings.passwordChangeError');
+              if (error.message?.includes('タイムアウト') || error.message?.includes('Timeout')) {
+                errorMessage = t('accountSettings.timeoutMessage');
+              } else if (error.message?.includes('New password should be different') || error.message?.includes('same_password')) {
+                errorMessage = t('accountSettings.passwordMustDiffer');
               } else if (error.message?.includes('Password should be at least')) {
-                errorMessage = 'パスワードは8文字以上にしてください';
-              } else if (error.message?.includes('same_password')) {
-                errorMessage = '新しいパスワードは現在のパスワードと異なる必要があります';
+                errorMessage = t('auth.passwordTooShort');
               } else if (error.message) {
                 errorMessage = error.message;
               }
 
-              Alert.alert('エラー', errorMessage);
+              Alert.alert(t('common.error'), errorMessage);
             }
           },
         },
@@ -211,16 +211,16 @@ export default function AccountSettingsScreen() {
         >
           <IconSymbol name="chevron.left" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>アカウント設定</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('accountSettings.title')}</Text>
         <View style={styles.placeholder} />
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
         {/* Current Email */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>現在のメールアドレス</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('accountSettings.currentEmail')}</Text>
           <View style={[styles.infoCard, { backgroundColor: colors.border }]}>
-            <Text style={[styles.infoText, { color: colors.text }]}>{user?.email || '未設定'}</Text>
+            <Text style={[styles.infoText, { color: colors.text }]}>{user?.email || t('settings.notSet')}</Text>
           </View>
         </View>
 
@@ -232,7 +232,7 @@ export default function AccountSettingsScreen() {
           >
             <View style={styles.expandButtonLeft}>
               <IconSymbol name="envelope" size={20} color={colors.text} />
-              <Text style={[styles.expandButtonText, { color: colors.text }]}>メールアドレスを変更</Text>
+              <Text style={[styles.expandButtonText, { color: colors.text }]}>{t('accountSettings.changeEmail')}</Text>
             </View>
             <IconSymbol
               name={showEmailSection ? 'chevron.up' : 'chevron.down'}
@@ -243,7 +243,7 @@ export default function AccountSettingsScreen() {
 
           {showEmailSection && (
             <View style={[styles.formSection, { backgroundColor: colors.border }]}>
-              <Text style={[styles.label, { color: colors.text }]}>新しいメールアドレス</Text>
+              <Text style={[styles.label, { color: colors.text }]}>{t('accountSettings.newEmailLabel')}</Text>
               <TextInput
                 style={[styles.input, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}
                 placeholder="new.email@example.com"
@@ -256,7 +256,7 @@ export default function AccountSettingsScreen() {
                 editable={!emailLoading}
               />
               <Text style={[styles.helpText, { color: colors.textSecondary }]}>
-                新しいメールアドレスに確認メールが送信されます
+                {t('accountSettings.confirmEmailMessage')}
               </Text>
               <TouchableOpacity
                 style={[styles.submitButton, { backgroundColor: colors.accent }]}
@@ -264,7 +264,7 @@ export default function AccountSettingsScreen() {
                 disabled={emailLoading}
               >
                 <Text style={styles.submitButtonText}>
-                  {emailLoading ? '送信中...' : 'メールアドレスを変更'}
+                  {emailLoading ? t('common.sending') : t('accountSettings.changeEmail')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -279,7 +279,7 @@ export default function AccountSettingsScreen() {
           >
             <View style={styles.expandButtonLeft}>
               <IconSymbol name="lock" size={20} color={colors.text} />
-              <Text style={[styles.expandButtonText, { color: colors.text }]}>パスワードを変更</Text>
+              <Text style={[styles.expandButtonText, { color: colors.text }]}>{t('accountSettings.changePassword')}</Text>
             </View>
             <IconSymbol
               name={showPasswordSection ? 'chevron.up' : 'chevron.down'}
@@ -290,10 +290,10 @@ export default function AccountSettingsScreen() {
 
           {showPasswordSection && (
             <View style={[styles.formSection, { backgroundColor: colors.border }]}>
-              <Text style={[styles.label, { color: colors.text }]}>新しいパスワード</Text>
+              <Text style={[styles.label, { color: colors.text }]}>{t('accountSettings.newPassword')}</Text>
               <TextInput
                 style={[styles.input, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}
-                placeholder="新しいパスワード（8文字以上）"
+                placeholder={t('accountSettings.newPasswordPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 value={newPassword}
                 onChangeText={setNewPassword}
@@ -303,10 +303,10 @@ export default function AccountSettingsScreen() {
                 editable={!passwordLoading}
               />
 
-              <Text style={[styles.label, { color: colors.text, marginTop: 16 }]}>新しいパスワード（確認）</Text>
+              <Text style={[styles.label, { color: colors.text, marginTop: 16 }]}>{t('accountSettings.confirmNewPassword')}</Text>
               <TextInput
                 style={[styles.input, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}
-                placeholder="新しいパスワード（確認）"
+                placeholder={t('accountSettings.confirmNewPasswordPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
@@ -317,7 +317,7 @@ export default function AccountSettingsScreen() {
               />
 
               <Text style={[styles.helpText, { color: colors.textSecondary }]}>
-                パスワードは8文字以上で設定してください
+                {t('accountSettings.passwordMinLength')}
               </Text>
 
               <TouchableOpacity
@@ -326,7 +326,7 @@ export default function AccountSettingsScreen() {
                 disabled={passwordLoading}
               >
                 <Text style={styles.submitButtonText}>
-                  {passwordLoading ? '変更中...' : 'パスワードを変更'}
+                  {passwordLoading ? t('accountSettings.changing') : t('accountSettings.changePassword')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -336,7 +336,7 @@ export default function AccountSettingsScreen() {
         <View style={styles.warningSection}>
           <IconSymbol name="exclamationmark.triangle" size={20} color="#FFA500" />
           <Text style={[styles.warningText, { color: colors.textSecondary }]}>
-            セキュリティのため、定期的にパスワードを変更することをお勧めします
+            {t('accountSettings.securityNote')}
           </Text>
         </View>
       </ScrollView>

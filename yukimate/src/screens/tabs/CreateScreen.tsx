@@ -2,6 +2,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useResorts } from '@/hooks/useResorts';
+import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/lib/supabase';
 import type { SkillLevel } from '@/types';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -23,19 +24,19 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// Note: Category and skill level labels are now translated dynamically in the component
 const CATEGORIES = [
-  { value: 'event', label: 'イベント' },
-  // { value: 'rideshare', label: '相乗り' }, // MVP では未実装
-  { value: 'filming', label: '撮影' },
-  { value: 'lesson', label: 'レッスン' },
-  { value: 'group', label: '仲間募集' },
+  { value: 'event', labelKey: 'create.categoryEvent' },
+  { value: 'filming', labelKey: 'create.categoryFilming' },
+  { value: 'lesson', labelKey: 'create.categoryLesson' },
+  { value: 'group', labelKey: 'create.categoryCompanions' },
 ];
 
-const SKILL_LEVELS: { value: SkillLevel | ''; label: string }[] = [
-  { value: '', label: '指定なし' },
-  { value: 'beginner', label: '初級' },
-  { value: 'intermediate', label: '中級' },
-  { value: 'advanced', label: '上級' },
+const SKILL_LEVELS: { value: SkillLevel | ''; labelKey: string }[] = [
+  { value: '', labelKey: 'create.levelNone' },
+  { value: 'beginner', labelKey: 'create.levelBeginner' },
+  { value: 'intermediate', labelKey: 'create.levelIntermediate' },
+  { value: 'advanced', labelKey: 'create.levelAdvanced' },
 ];
 
 // 5分刻みの時刻オプションを生成 (00:00 ~ 23:55)
@@ -60,6 +61,7 @@ export default function CreateEventScreen() {
   const resortsState = useResorts();
   const params = useLocalSearchParams<{ eventId?: string }>();
   const isEditMode = !!params.eventId;
+  const { t } = useTranslation();
 
   // Form states
   const [title, setTitle] = useState('');
@@ -125,7 +127,7 @@ export default function CreateEventScreen() {
         .single();
 
       if (error) throw error;
-      if (!eventData) throw new Error('イベントが見つかりません');
+      if (!eventData) throw new Error(t('create.eventNotFound'));
 
       // Populate form fields
       setTitle(eventData.title || '');
@@ -168,7 +170,7 @@ export default function CreateEventScreen() {
       setSelectedImages(photoUrls);
     } catch (error) {
       console.error('Error loading event data:', error);
-      Alert.alert('エラー', 'イベントデータの読み込みに失敗しました');
+      Alert.alert(t('common.error'), t('create.loadEventFailed'));
       router.back();
     } finally {
       setLoading(false);
@@ -234,13 +236,13 @@ export default function CreateEventScreen() {
 
   const pickImage = async () => {
     if (selectedImages.length >= 3) {
-      Alert.alert('制限', '画像は最大3枚まで選択できます');
+      Alert.alert(t('create.limitLabel'), t('create.maxImagesLimit'));
       return;
     }
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('権限が必要です', 'ギャラリーへのアクセス権限が必要です');
+      Alert.alert(t('create.permissionRequired'), t('create.galleryPermission'));
       return;
     }
 
@@ -264,12 +266,12 @@ export default function CreateEventScreen() {
     if (!trimmed) return;
 
     if (tags.length >= 10) {
-      Alert.alert('制限', 'タグは最大10個まで追加できます');
+      Alert.alert(t('create.limitLabel'), t('create.maxTagsLimit'));
       return;
     }
 
     if (tags.includes(trimmed)) {
-      Alert.alert('エラー', 'このタグは既に追加されています');
+      Alert.alert(t('common.error'), t('create.tagAlreadyAdded'));
       return;
     }
 
@@ -306,7 +308,7 @@ export default function CreateEventScreen() {
   };
 
   const formatDisplayDate = (date: Date | null) => {
-    if (!date) return '日付を選択';
+    if (!date) return t('date.selectDate');
     return date.toLocaleDateString('ja-JP', {
       year: 'numeric',
       month: 'long',
@@ -326,15 +328,15 @@ export default function CreateEventScreen() {
     if (!params.eventId) return;
 
     Alert.alert(
-      '投稿を削除',
-      '本当にこの投稿を削除しますか？\nこの操作は取り消せません。\n参加者がいる場合も削除されます。',
+      t('create.deletePostConfirm'),
+      t('create.deletePostMessage'),
       [
         {
-          text: 'キャンセル',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: '削除',
+          text: t('create.deletePostButton'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -348,9 +350,9 @@ export default function CreateEventScreen() {
 
               if (error) throw error;
 
-              Alert.alert('完了', '投稿を削除しました', [
+              Alert.alert(t('common.complete'), t('create.deletePostSuccess'), [
                 {
-                  text: 'OK',
+                  text: t('common.ok'),
                   onPress: () => {
                     router.back();
                   },
@@ -358,7 +360,7 @@ export default function CreateEventScreen() {
               ]);
             } catch (error) {
               console.error('Error deleting event:', error);
-              Alert.alert('エラー', '投稿の削除に失敗しました');
+              Alert.alert(t('common.error'), t('create.deletePostFailed'));
             } finally {
               setLoading(false);
             }
@@ -403,33 +405,33 @@ export default function CreateEventScreen() {
   const handleCreate = async () => {
     // Validation
     if (!(title || '').trim()) {
-      Alert.alert('エラー', 'タイトルを入力してください');
+      Alert.alert(t('common.error'), t('create.enterTitle'));
       return;
     }
 
     if (!category) {
-      Alert.alert('エラー', 'カテゴリを選択してください');
+      Alert.alert(t('common.error'), t('create.enterCategory'));
       return;
     }
 
     if (!resortId) {
-      Alert.alert('エラー', 'スキー場を選択してください');
+      Alert.alert(t('common.error'), t('create.enterResort'));
       return;
     }
 
     if (!date) {
-      Alert.alert('エラー', '日付を入力してください');
+      Alert.alert(t('common.error'), t('create.enterDate'));
       return;
     }
 
     if (!startTime) {
-      Alert.alert('エラー', '開始時刻を入力してください');
+      Alert.alert(t('common.error'), t('create.enterStartTime'));
       return;
     }
 
     const capacityNum = parseInt(capacity, 10);
     if (isNaN(capacityNum) || capacityNum <= 0) {
-      Alert.alert('エラー', '定員は1以上の数値を入力してください');
+      Alert.alert(t('common.error'), t('create.enterCapacity'));
       return;
     }
 
@@ -439,7 +441,7 @@ export default function CreateEventScreen() {
       // Get current user
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) {
-        throw new Error('ログインが必要です');
+        throw new Error(t('create.loginRequired'));
       }
 
       // Parse datetime
@@ -451,7 +453,7 @@ export default function CreateEventScreen() {
       const trimmedPrice = (price || '').trim();
       const priceNum = trimmedPrice ? parseInt(trimmedPrice, 10) : null;
       if (trimmedPrice && (isNaN(priceNum!) || priceNum! < 0)) {
-        Alert.alert('エラー', '価格は0以上の数値を入力してください');
+        Alert.alert(t('common.error'), t('create.enterValidPrice'));
         setLoading(false);
         return;
       }
@@ -495,7 +497,7 @@ export default function CreateEventScreen() {
           .single();
 
         if (insertError) throw insertError;
-        if (!newEvent) throw new Error('投稿に失敗しました');
+        if (!newEvent) throw new Error(t('create.createPostFailed'));
         eventId = newEvent.id;
       }
 
@@ -525,15 +527,15 @@ export default function CreateEventScreen() {
           console.error('Image upload/update error:', uploadError);
           // Continue even if image upload fails
           Alert.alert(
-            '警告',
-            `画像のアップロードまたは登録に失敗しましたが、投稿は${isEditMode ? '更新' : '作成'}されました。詳細はログを確認してください。`
+            t('common.warning'),
+            isEditMode ? t('create.imageUploadWarningEdit') : t('create.imageUploadWarning')
           );
         }
       }
 
-      Alert.alert('完了', isEditMode ? '投稿を更新しました！' : '投稿を作成しました！', [
+      Alert.alert(t('common.complete'), isEditMode ? t('create.postUpdated') : t('create.postCreated'), [
         {
-          text: 'OK',
+          text: t('common.ok'),
           onPress: () => {
             if (!isEditMode) {
               resetForm();
@@ -544,31 +546,31 @@ export default function CreateEventScreen() {
       ]);
     } catch (error) {
       console.error('Error creating event:', error);
-      Alert.alert('エラー', '投稿に失敗しました');
+      Alert.alert(t('common.error'), t('create.postFailed'));
     } finally {
       setLoading(false);
     }
   };
 
   const selectedCategoryLabel =
-    CATEGORIES.find((c) => c.value === category)?.label || 'カテゴリを選択';
+    CATEGORIES.find((c) => c.value === category)?.labelKey ? t(CATEGORIES.find((c) => c.value === category)!.labelKey) : t('create.selectCategory');
 
   const selectedResortName =
     resortsState.status === 'success'
-      ? resortsState.resorts.find((r) => r.id === resortId)?.name || 'スキー場を選択'
-      : 'スキー場を選択';
+      ? resortsState.resorts.find((r) => r.id === resortId)?.name || t('create.selectResort')
+      : t('create.selectResort');
 
   const selectedLevelLabel =
-    SKILL_LEVELS.find((l) => l.value === level)?.label || '指定なし';
+    SKILL_LEVELS.find((l) => l.value === level)?.labelKey ? t(SKILL_LEVELS.find((l) => l.value === level)!.labelKey) : t('create.levelNone');
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: Math.max(insets.top, 16) }}>
       <View style={styles.content}>
-        <Text style={styles.title}>{isEditMode ? '投稿を編集' : '投稿を作成'}</Text>
+        <Text style={styles.title}>{isEditMode ? t('create.editTitle') : t('create.title')}</Text>
 
         {/* Title */}
         <View style={styles.section}>
-          <Text style={styles.label}>タイトル *</Text>
+          <Text style={styles.label}>{t('create.titleLabel')}</Text>
           <TextInput
             style={styles.input}
             placeholderTextColor={colors.textSecondary}
@@ -578,11 +580,11 @@ export default function CreateEventScreen() {
         </View>
 
         {/* Description */}
-        < View style={styles.section} >
-          <Text style={styles.label}>説明</Text>
+        <View style={styles.section}>
+          <Text style={styles.label}>{t('create.descriptionLabel')}</Text>
           <TextInput
             style={[styles.input, styles.textArea]}
-            placeholder="投稿の詳細を入力してください"
+            placeholder={t('create.descriptionPlaceholder')}
             placeholderTextColor={colors.textSecondary}
             value={description}
             onChangeText={setDescription}
@@ -593,7 +595,7 @@ export default function CreateEventScreen() {
 
         {/* Category */}
         <View style={styles.section}>
-          <Text style={styles.label}>カテゴリ *</Text>
+          <Text style={styles.label}>{t('create.categoryLabel')}</Text>
           <TouchableOpacity
             style={styles.picker}
             onPress={() => setShowCategoryPicker(!showCategoryPicker)}
@@ -618,7 +620,7 @@ export default function CreateEventScreen() {
                       category === cat.value && styles.pickerOptionTextActive,
                     ]}
                   >
-                    {cat.label}
+                    {t(cat.labelKey)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -628,24 +630,23 @@ export default function CreateEventScreen() {
 
         {/* Resort */}
         <View style={styles.section}>
-          <Text style={styles.label}>スキー場 *</Text>
+          <Text style={styles.label}>{t('create.resortLabel')}</Text>
           {resortsState.status === 'loading' ? (
             <View style={styles.picker}>
               <ActivityIndicator size="small" color={colors.icon} />
             </View>
           ) : resortsState.status === 'error' ? (
-            <Text style={styles.errorText}>リゾート読み込みエラー</Text>
+            <Text style={styles.errorText}>{t('create.resortLoadError')}</Text>
           ) : (
             <>
               <TouchableOpacity
                 style={styles.picker}
-                onPress={() => setShowResortPicker(true)} // モーダルを開く
+                onPress={() => setShowResortPicker(true)}
               >
                 <Text style={styles.pickerText}>{selectedResortName}</Text>
                 <IconSymbol name="chevron.down" size={20} color={colors.icon} />
               </TouchableOpacity>
 
-              {/* リゾート選択モーダル */}
               <Modal
                 visible={showResortPicker}
                 animationType="slide"
@@ -653,9 +654,8 @@ export default function CreateEventScreen() {
                 onRequestClose={() => setShowResortPicker(false)}
               >
                 <SafeAreaView style={styles.modalContainer}>
-                  {/* モーダルヘッダー */}
                   <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>スキー場を選択</Text>
+                    <Text style={styles.modalTitle}>{t('create.selectResortTitle')}</Text>
                     <TouchableOpacity
                       onPress={() => setShowResortPicker(false)}
                       style={styles.closeButton}
@@ -664,11 +664,9 @@ export default function CreateEventScreen() {
                     </TouchableOpacity>
                   </View>
 
-                  {/* スキー場リスト（エリア別トグル） */}
                   <ScrollView style={styles.modalContent}>
                     {Object.entries(resortsByArea).map(([area, resorts]) => (
                       <View key={area} style={styles.areaSection}>
-                        {/* Area Header (Toggle) */}
                         <TouchableOpacity
                           style={styles.areaHeader}
                           onPress={() => setExpandedArea(expandedArea === area ? null : area)}
@@ -683,7 +681,6 @@ export default function CreateEventScreen() {
                           />
                         </TouchableOpacity>
 
-                        {/* Resort List (Collapsible) */}
                         {expandedArea === area && (
                           <View style={styles.resortListContainer}>
                             {resorts.map((resort) => (
@@ -726,7 +723,7 @@ export default function CreateEventScreen() {
 
         {/* Date & Time */}
         <View style={styles.section}>
-          <Text style={styles.label}>日付 *</Text>
+          <Text style={styles.label}>{t('create.dateLabel')}</Text>
           <TouchableOpacity
             style={styles.picker}
             onPress={() => setShowDatePicker(true)}
@@ -750,7 +747,7 @@ export default function CreateEventScreen() {
 
         <View style={styles.row}>
           <View style={styles.rowItem}>
-            <Text style={styles.label}>開始時刻 *</Text>
+            <Text style={styles.label}>{t('create.startTimeLabel')}</Text>
             <TouchableOpacity
               style={styles.picker}
               onPress={() => setShowStartTimePicker(!showStartTimePicker)}
@@ -765,7 +762,6 @@ export default function CreateEventScreen() {
                 nestedScrollEnabled
                 showsVerticalScrollIndicator={true}
                 onLayout={() => {
-                  // レイアウト完了後にスクロール
                   scrollToSelectedTime(startTimeScrollRef, startTime);
                 }}
               >
@@ -795,7 +791,7 @@ export default function CreateEventScreen() {
             )}
           </View>
           <View style={styles.rowItem}>
-            <Text style={styles.label}>終了時刻</Text>
+            <Text style={styles.label}>{t('create.endTimeLabel')}</Text>
             <TouchableOpacity
               style={styles.picker}
               onPress={() => setShowEndTimePicker(!showEndTimePicker)}
@@ -810,7 +806,6 @@ export default function CreateEventScreen() {
                 nestedScrollEnabled
                 showsVerticalScrollIndicator={true}
                 onLayout={() => {
-                  // レイアウト完了後にスクロール
                   scrollToSelectedTime(endTimeScrollRef, endTime);
                 }}
               >
@@ -843,7 +838,7 @@ export default function CreateEventScreen() {
 
         {/* Capacity */}
         <View style={styles.section}>
-          <Text style={styles.label}>定員 *</Text>
+          <Text style={styles.label}>{t('create.capacityLabel')}</Text>
           <TextInput
             style={styles.input}
             placeholderTextColor={colors.textSecondary}
@@ -855,7 +850,7 @@ export default function CreateEventScreen() {
 
         {/* Level */}
         <View style={styles.section}>
-          <Text style={styles.label}>レベル</Text>
+          <Text style={styles.label}>{t('create.levelLabel')}</Text>
           <TouchableOpacity
             style={styles.picker}
             onPress={() => setShowLevelPicker(!showLevelPicker)}
@@ -880,7 +875,7 @@ export default function CreateEventScreen() {
                       level === lv.value && styles.pickerOptionTextActive,
                     ]}
                   >
-                    {lv.label}
+                    {t(lv.labelKey)}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -890,10 +885,10 @@ export default function CreateEventScreen() {
 
         {/* Price */}
         <View style={styles.section}>
-          <Text style={styles.label}>価格（円）</Text>
+          <Text style={styles.label}>{t('create.priceLabel')}</Text>
           <TextInput
             style={styles.input}
-            placeholder="0 (無料の場合は空欄)"
+            placeholder={t('create.pricePlaceholder')}
             placeholderTextColor={colors.textSecondary}
             value={price}
             onChangeText={setPrice}
@@ -903,7 +898,7 @@ export default function CreateEventScreen() {
 
         {/* Meeting Place */}
         <View style={styles.section}>
-          <Text style={styles.label}>集合場所</Text>
+          <Text style={styles.label}>{t('create.meetingPlaceLabel')}</Text>
           <TextInput
             style={styles.input}
             value={meetingPlace}
@@ -913,18 +908,18 @@ export default function CreateEventScreen() {
 
         {/* Tags */}
         <View style={styles.section}>
-          <Text style={styles.label}>タグ（最大10個）</Text>
+          <Text style={styles.label}>{t('create.tagsLabel')}</Text>
           <View style={styles.tagInputRow}>
             <TextInput
               style={[styles.input, styles.tagInput]}
-              placeholder="タグを入力"
+              placeholder={t('create.tagsPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               value={tagInput}
               onChangeText={setTagInput}
               onSubmitEditing={addTag}
             />
             <TouchableOpacity style={styles.tagAddButton} onPress={addTag}>
-              <Text style={styles.tagAddButtonText}>追加</Text>
+              <Text style={styles.tagAddButtonText}>{t('create.addTagButton')}</Text>
             </TouchableOpacity>
           </View>
           {tags.length > 0 && (
@@ -949,7 +944,7 @@ export default function CreateEventScreen() {
 
         {/* Images */}
         <View style={styles.section}>
-          <Text style={styles.label}>画像（最大3枚）</Text>
+          <Text style={styles.label}>{t('create.imagesLabel')}</Text>
           <View style={styles.imagesContainer}>
             {selectedImages.map((uri, index) => (
               <View key={index} style={styles.imageWrapper}>
@@ -968,7 +963,7 @@ export default function CreateEventScreen() {
             {selectedImages.length < 3 && (
               <TouchableOpacity style={styles.imagePlaceholder} onPress={pickImage}>
                 <IconSymbol name="photo" size={32} color={colors.icon} />
-                <Text style={styles.imagePlaceholderText}>画像を追加</Text>
+                <Text style={styles.imagePlaceholderText}>{t('create.addImage')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -984,7 +979,7 @@ export default function CreateEventScreen() {
             <ActivityIndicator color={colors.text} />
           ) : (
             <Text style={styles.createButtonText}>
-              {isEditMode ? '編集を保存' : '投稿する'}
+              {isEditMode ? t('create.saveEdit') : t('create.post')}
             </Text>
           )}
         </TouchableOpacity>
@@ -996,13 +991,13 @@ export default function CreateEventScreen() {
             onPress={handleDelete}
             disabled={loading}
           >
-            <Text style={styles.deleteButtonText}>投稿を削除</Text>
+            <Text style={styles.deleteButtonText}>{t('create.deletePost')}</Text>
           </TouchableOpacity>
         )}
 
         <View style={{ height: 120 }} />
       </View>
-    </ScrollView >
+    </ScrollView>
   );
 }
 

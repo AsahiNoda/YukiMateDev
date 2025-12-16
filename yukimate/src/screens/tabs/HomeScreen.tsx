@@ -20,6 +20,7 @@ import { getBadgeColor } from '@/utils/avatar-utils';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { useHomeData } from '@hooks/useHomeData';
+import { useTranslation } from '@/hooks/useTranslation';
 import { testSupabaseSetup } from '@lib/testSupabaseSetup';
 
 // SVGコンポーネント
@@ -29,18 +30,20 @@ import DocumentIcon from '../../../assets/images/icons/document.svg';
 
 
 const DISCOVERY_CATEGORIES = [
-  { id: 'all', label: 'すべて', icon: 'square.grid.2x2' },
-  { id: 'powder', label: 'パウダー', icon: 'snowflake' },
-  { id: 'carpool', label: '相乗り', icon: 'car.fill' },
-  { id: 'beginner', label: '初心者', icon: 'figure.skiing.downhill' },
-  { id: 'park', label: 'パーク', icon: 'flag.fill' },
-  { id: 'onsen', label: '温泉', icon: 'cup.and.saucer.fill' },
+  { id: 'all', labelKey: 'home.categoryAll', icon: 'square.grid.2x2' },
+  { id: 'powder', labelKey: 'home.categoryPowder', icon: 'snowflake' },
+  { id: 'carpool', labelKey: 'home.categoryCarpool', icon: 'car.fill' },
+  { id: 'beginner', labelKey: 'home.categoryBeginner', icon: 'figure.skiing.downhill' },
+  { id: 'park', labelKey: 'home.categoryPark', icon: 'flag.fill' },
+  { id: 'onsen', labelKey: 'home.categoryHotspring', icon: 'cup.and.saucer.fill' },
 ] as const;
+
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const state = useHomeData();
   const colorScheme = useColorScheme();
   const { width: screenWidth } = Dimensions.get('window');
+  const { t } = useTranslation();
 
   // Supabase connection test: runs once when HomeScreen mounts
   useEffect(() => {
@@ -62,7 +65,7 @@ export default function HomeScreen() {
     return (
       <View style={[styles.centered, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
         <ActivityIndicator />
-        <Text style={[styles.loadingText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>今日のコンディションを読み込み中...</Text>
+        <Text style={[styles.loadingText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{t('home.loadingConditions')}</Text>
       </View>
     );
   }
@@ -70,7 +73,7 @@ export default function HomeScreen() {
   if (state.status === 'error') {
     return (
       <View style={[styles.centered, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
-        <Text style={[styles.errorText, { color: Colors[colorScheme ?? 'light'].error }]}>データの読み込みに失敗しました</Text>
+        <Text style={[styles.errorText, { color: Colors[colorScheme ?? 'light'].error }]}>{t('home.loadFailed')}</Text>
         <Text style={[styles.errorSubText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{state.error}</Text>
       </View>
     );
@@ -160,19 +163,19 @@ export default function HomeScreen() {
 
               <View style={styles.weatherTopRow}>
                 <Text style={[styles.weatherTemp, { color: Colors[colorScheme ?? 'light'].text }]}>{weather.temperatureC}°C</Text>
-                <Text style={[styles.weatherBody, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>新雪: {weather.newSnowCm}cm</Text>
+                <Text style={[styles.weatherBody, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{t('home.freshSnow')} {weather.newSnowCm}cm</Text>
               </View>
 
 
               <View style={styles.weatherBottomRow}>
                 <View style={styles.metaColumn}>
-                  <Text style={[styles.metaText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>風速: {weather.windSpeedMs} m/s</Text>
+                  <Text style={[styles.metaText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{t('home.windSpeed')} {weather.windSpeedMs} m/s</Text>
 
                 </View>
                 <View style={styles.metaColumn}>
                   {weather.visibility && (
                     <Text style={[styles.metaText, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>
-                      視界: {weather.visibility.charAt(0).toUpperCase() + weather.visibility.slice(1)}
+                      {t('home.visibility')} {weather.visibility.charAt(0).toUpperCase() + weather.visibility.slice(1)}
                     </Text>
                   )}
                 </View>
@@ -212,7 +215,7 @@ export default function HomeScreen() {
                 styles.discoveryText,
                 { color: index === 0 ? '#FFF' : Colors[colorScheme ?? 'light'].text }
               ]}>
-                {cat.label}
+                {t(cat.labelKey)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -223,25 +226,25 @@ export default function HomeScreen() {
       <View style={styles.quickActionsRow}>
         <QuickAction
           icon="safari"
-          label="発見"
+          label={t('home.discover')}
           iconColor={Colors[colorScheme ?? 'light'].icon}
           onPress={() => router.push('/(tabs)/discover')}
         />
         <QuickAction
           icon={<BookmarkIcon width={24} height={24} color={Colors[colorScheme ?? 'light'].icon} />}
-          label="保存"
+          label={t('home.saved')}
           iconColor={Colors[colorScheme ?? 'light'].icon}
           onPress={() => router.push('/saved-posts' as any)}
         />
         <QuickAction
           icon={<DocumentIcon width={24} height={24} color={Colors[colorScheme ?? 'light'].icon} />}
-          label="マイ投稿"
+          label={t('home.myPosts')}
           iconColor={Colors[colorScheme ?? 'light'].icon}
           onPress={() => router.push('/my-posts' as any)}
         />
         <QuickAction
           icon="plus.circle"
-          label="作成"
+          label={t('home.create')}
           iconColor={Colors[colorScheme ?? 'light'].icon}
           onPress={() => router.push('/(tabs)/create')}
         />
@@ -250,7 +253,7 @@ export default function HomeScreen() {
       {/* Featured Events */}
       {recommendedEvents.length > 0 && (
         <View style={styles.featuredSection}>
-          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>注目の投稿</Text>
+          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>{t('home.featuredPosts')}</Text>
           <FlatList
             horizontal
             data={recommendedEvents}
@@ -271,7 +274,7 @@ export default function HomeScreen() {
       {/* Local hub / trend section (Snowfeed)
       {trendingPosts.length > 0 && (
         <View style={[styles.section, { backgroundColor: Colors[colorScheme ?? 'light'].card }]}>
-          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>話題の投稿</Text>
+          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>{t('home.trendingPosts')}</Text>
           {trendingPosts.map((post) => (
             <TouchableOpacity
               key={post.id}
@@ -283,7 +286,7 @@ export default function HomeScreen() {
                 {post.resortName} · {post.snowTag}
               </Text>
               <Text style={[styles.cardBody, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{post.comment}</Text>
-              <Text style={[styles.cardMeta, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{post.likeCount} いいね</Text>
+              <Text style={[styles.cardMeta, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{post.likeCount} {t('home.likes')}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -692,6 +695,7 @@ type FeaturedEventCardProps = {
 
 function FeaturedEventCard({ event, colorScheme, onPress }: FeaturedEventCardProps) {
   const colors = Colors[colorScheme];
+  const { t } = useTranslation();
   const hasBadge = event.hostRole === 'developer' || event.hostRole === 'official';
 
   return (
@@ -706,7 +710,7 @@ function FeaturedEventCard({ event, colorScheme, onPress }: FeaturedEventCardPro
           <View style={styles.participantBadgeContainer}>
             <View style={styles.participantBadge}>
               <IconSymbol name="person.fill" size={12} color="#FFF" />
-              <Text style={styles.participantBadgeText}>{event.spotsTaken}人が参加中</Text>
+              <Text style={styles.participantBadgeText}>{event.spotsTaken}{t('home.usersParticipating')}</Text>
             </View>
           </View>
 
@@ -732,7 +736,7 @@ function FeaturedEventCard({ event, colorScheme, onPress }: FeaturedEventCardPro
               <View style={styles.roleBadgeBackground}>
                 <View style={styles.roleBadgeContent}>
                   <Text style={styles.roleBadgeText}>
-                    {event.hostRole === 'official' ? '公式' : '開発者'}
+                    {event.hostRole === 'official' ? t('home.official') : t('home.developer')}
                   </Text>
                   <OfficialBadge color={getBadgeColor(event.hostRole)} size={24} />
                 </View>
@@ -753,7 +757,7 @@ function FeaturedEventCard({ event, colorScheme, onPress }: FeaturedEventCardPro
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
               <IconSymbol name="person.fill" size={14} color="rgba(255,255,255,0.8)" />
               <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, fontWeight: '600', marginLeft: 4 }}>
-                {event.spotsTaken}人が参加中
+                {event.spotsTaken}{t('home.usersParticipating')}
               </Text>
             </View>
           </View>
@@ -762,7 +766,7 @@ function FeaturedEventCard({ event, colorScheme, onPress }: FeaturedEventCardPro
               <View style={styles.roleBadgeBackground}>
                 <View style={styles.roleBadgeContent}>
                   <Text style={styles.roleBadgeText}>
-                    {event.hostRole === 'official' ? '公式' : '開発者'}
+                    {event.hostRole === 'official' ? t('home.official') : t('home.developer')}
                   </Text>
                   <OfficialBadge color={getBadgeColor(event.hostRole)} size={24} />
                 </View>

@@ -72,6 +72,21 @@ export function useProfile(userId?: string, refreshKey?: number): ProfileState {
           }
         }
 
+        // Fallback to first searchable resort if no home resort (same logic as useHomeData)
+        if (!homeResortName) {
+          const { data: defaultResort } = await supabase
+            .from('resorts')
+            .select('name')
+            .eq('searchable', true)
+            .order('name')
+            .limit(1)
+            .single();
+
+          if (defaultResort) {
+            homeResortName = defaultResort.name;
+          }
+        }
+
         // 2. ギア情報を取得
         const { data: gear, error: gearError } = await supabase
           .from('gear')

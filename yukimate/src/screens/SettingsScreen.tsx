@@ -1,6 +1,7 @@
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useTranslation } from '@/hooks/useTranslation';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { router } from 'expo-router';
 import React from 'react';
@@ -19,20 +20,21 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { signOut, profile, userRole, user } = useAuth();
   const { locale, setLocale } = useLocale();
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
 
   const handleLogout = async () => {
     Alert.alert(
-      'ログアウト',
-      '本当にログアウトしますか?',
+      t('settings.logout'),
+      t('settings.logoutConfirm'),
       [
         {
-          text: 'キャンセル',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: 'ログアウト',
+          text: t('settings.logout'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -40,7 +42,7 @@ export default function SettingsScreen() {
               router.replace('/(auth)/sign-in');
             } catch (error) {
               console.error('Logout error:', error);
-              Alert.alert('エラー', 'ログアウトに失敗しました');
+              Alert.alert(t('common.error'), t('settings.logoutError'));
             }
           },
         },
@@ -58,7 +60,7 @@ export default function SettingsScreen() {
         >
           <IconSymbol name="chevron.left" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>設定</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('settings.title')}</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -66,21 +68,21 @@ export default function SettingsScreen() {
         {/* User Info Section */}
         {profile && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>アカウント情報</Text>
+            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.accountInfo')}</Text>
             <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>ユーザー名</Text>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('settings.username')}</Text>
               <Text style={[styles.infoValue, { color: colors.text }]}>{profile.displayName}</Text>
             </View>
             <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>メールアドレス</Text>
-              <Text style={[styles.infoValue, { color: colors.text }]}>{user?.email || '未設定'}</Text>
+              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('settings.email')}</Text>
+              <Text style={[styles.infoValue, { color: colors.text }]}>{user?.email || t('settings.notSet')}</Text>
             </View>
           </View>
         )}
 
         {/* Language Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>言語</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.language')}</Text>
           <View style={[styles.languageSwitchContainer, { borderBottomColor: colors.border }]}>
             <TouchableOpacity
               style={styles.languageOption}
@@ -89,7 +91,7 @@ export default function SettingsScreen() {
                   try {
                     await setLocale('ja');
                   } catch (error) {
-                    Alert.alert('エラー', '言語の変更に失敗しました');
+                    Alert.alert(t('common.error'), t('settings.languageChangeError'));
                   }
                 }
               }}
@@ -114,7 +116,7 @@ export default function SettingsScreen() {
                   try {
                     await setLocale('en');
                   } catch (error) {
-                    Alert.alert('エラー', '言語の変更に失敗しました');
+                    Alert.alert(t('common.error'), t('settings.languageChangeError'));
                   }
                 }
               }}
@@ -136,14 +138,14 @@ export default function SettingsScreen() {
 
         {/* General Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>一般</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.general')}</Text>
 
           <TouchableOpacity
             style={[styles.menuItem, { borderBottomColor: colors.border }]}
             onPress={() => router.push('/blocked-users')}
           >
             <View style={styles.menuItemLeft}>
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>ブロック中のユーザー</Text>
+              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.blockedUsers')}</Text>
             </View>
             <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -153,7 +155,7 @@ export default function SettingsScreen() {
             onPress={() => router.push('/starred-users')}
           >
             <View style={styles.menuItemLeft}>
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>★登録ユーザー</Text>
+              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.starredUsers')}</Text>
             </View>
             <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -161,7 +163,7 @@ export default function SettingsScreen() {
 
         {/* Settings Options */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>設定</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.settingsTitle')}</Text>
 
           <TouchableOpacity
             style={[styles.menuItem, { borderBottomColor: colors.border }]}
@@ -169,7 +171,7 @@ export default function SettingsScreen() {
           >
             <View style={styles.menuItemLeft}>
               <IconSymbol name="person.circle" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>アカウント設定</Text>
+              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.accountSettings')}</Text>
             </View>
             <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -180,7 +182,7 @@ export default function SettingsScreen() {
           >
             <View style={styles.menuItemLeft}>
               <IconSymbol name="bell" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>通知設定</Text>
+              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.notificationSettings')}</Text>
             </View>
             <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -188,7 +190,7 @@ export default function SettingsScreen() {
           <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]}>
             <View style={styles.menuItemLeft}>
               <IconSymbol name="lock" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>プライバシー</Text>
+              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.privacy')}</Text>
             </View>
             <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -196,12 +198,12 @@ export default function SettingsScreen() {
 
         {/* About Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>情報</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.info')}</Text>
 
           <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]}>
             <View style={styles.menuItemLeft}>
               <IconSymbol name="info.circle" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>アプリについて</Text>
+              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.about')}</Text>
             </View>
             <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -212,7 +214,7 @@ export default function SettingsScreen() {
           >
             <View style={styles.menuItemLeft}>
               <IconSymbol name="doc.text" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>利用規約</Text>
+              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.termsOfService')}</Text>
             </View>
             <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -223,7 +225,7 @@ export default function SettingsScreen() {
           >
             <View style={styles.menuItemLeft}>
               <IconSymbol name="shield" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>プライバシーポリシー</Text>
+              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.privacyPolicy')}</Text>
             </View>
             <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -236,7 +238,7 @@ export default function SettingsScreen() {
           activeOpacity={0.8}
         >
           <IconSymbol name="arrow.right.square" size={20} color={colors.error} />
-          <Text style={[styles.logoutButtonText, { color: colors.error }]}>ログアウト</Text>
+          <Text style={[styles.logoutButtonText, { color: colors.error }]}>{t('settings.logout')}</Text>
         </TouchableOpacity>
 
         {/* Delete Account Button */}
@@ -245,7 +247,7 @@ export default function SettingsScreen() {
           onPress={() => router.push('/delete-account')}
           activeOpacity={0.8}
         >
-          <Text style={[styles.deleteButtonText, { color: colors.error }]}>アカウントを削除</Text>
+          <Text style={[styles.deleteButtonText, { color: colors.error }]}>{t('settings.deleteAccount')}</Text>
         </TouchableOpacity>
 
         <Text style={[styles.versionText, { color: colors.textSecondary }]}>Version 0.0.0</Text>

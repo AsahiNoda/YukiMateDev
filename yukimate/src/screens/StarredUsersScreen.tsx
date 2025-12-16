@@ -1,5 +1,6 @@
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/lib/supabase';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { router } from 'expo-router';
@@ -36,6 +37,7 @@ export default function StarredUsersScreen() {
   const { user } = useAuth();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'dark'];
+  const { t } = useTranslation();
 
   const [starredUsers, setStarredUsers] = useState<StarredUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,7 +71,7 @@ export default function StarredUsersScreen() {
       setStarredUsers((data as StarredUser[]) || []);
     } catch (error) {
       console.error('Error fetching starred users:', error);
-      Alert.alert('エラー', '★登録ユーザーの取得に失敗しました');
+      Alert.alert(t('starredUsers.fetchErrorTitle'), t('starredUsers.fetchErrorMessage'));
     } finally {
       setLoading(false);
     }
@@ -81,15 +83,15 @@ export default function StarredUsersScreen() {
 
   const handleUnstar = async (starId: string, targetUserId: string) => {
     Alert.alert(
-      '★登録解除',
-      'このユーザーの★登録を解除しますか?',
+      t('starredUsers.unstarConfirmTitle'),
+      t('starredUsers.unstarConfirmMessage'),
       [
         {
-          text: 'キャンセル',
+          text: t('common.cancel'),
           style: 'cancel',
         },
         {
-          text: '★登録解除',
+          text: t('starredUsers.unstarConfirmTitle'),
           style: 'default',
           onPress: async () => {
             try {
@@ -103,10 +105,10 @@ export default function StarredUsersScreen() {
               if (error) throw error;
 
               setStarredUsers(prev => prev.filter(item => item.id !== starId));
-              Alert.alert('成功', '★登録を解除しました');
+              Alert.alert(t('starredUsers.unstarSuccessTitle'), t('starredUsers.unstarSuccessMessage'));
             } catch (error) {
               console.error('Error unstarring user:', error);
-              Alert.alert('エラー', '★登録解除に失敗しました');
+              Alert.alert(t('starredUsers.unstarErrorTitle'), t('starredUsers.unstarErrorMessage'));
             } finally {
               setUnstarringUsers(prev => {
                 const newSet = new Set(prev);
@@ -138,7 +140,7 @@ export default function StarredUsersScreen() {
             </View>
           )}
           <Text style={[styles.userName, { color: colors.text }]}>
-            {profile?.display_name || 'Unknown User'}
+            {profile?.display_name || t('common.unknown')}
           </Text>
         </View>
 
@@ -154,7 +156,7 @@ export default function StarredUsersScreen() {
           {isUnstarring ? (
             <ActivityIndicator size="small" color={colors.accent} />
           ) : (
-            <Text style={[styles.unstarButtonText, { color: colors.accent }]}>解除</Text>
+            <Text style={[styles.unstarButtonText, { color: colors.accent }]}>{t('starredUsers.unstarButton')}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -165,7 +167,7 @@ export default function StarredUsersScreen() {
     <View style={styles.emptyContainer}>
       <IconSymbol name="star" size={64} color={colors.textSecondary} />
       <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-        ★登録ユーザーはいません
+        {t('starredUsers.emptyState')}
       </Text>
     </View>
   );
@@ -180,7 +182,7 @@ export default function StarredUsersScreen() {
         >
           <IconSymbol name="chevron.left" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>★登録ユーザー</Text>
+        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('starredUsers.title')}</Text>
         <View style={styles.placeholder} />
       </View>
 

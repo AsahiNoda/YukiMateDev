@@ -1,4 +1,5 @@
 import { OfficialBadge } from '@/components/OfficialBadge';
+import { getFlagSource } from '@/constants/countries';
 import { Colors } from '@/constants/theme';
 import { getAvatarGradientColors, getBadgeColor } from '@/utils/avatar-utils';
 import { useAuth } from '@contexts/AuthContext';
@@ -274,6 +275,8 @@ function ProfileScreen({ userId }: { userId?: string }) {
     }
   };
 
+  // Flag Emoji logic removed in favor of Image assets
+  /*
   const getFlagEmoji = (countryCode: string | null) => {
     if (!countryCode) return null;
     const codePoints = countryCode
@@ -282,6 +285,7 @@ function ProfileScreen({ userId }: { userId?: string }) {
       .map((char) => 127397 + char.charCodeAt(0));
     return String.fromCodePoint(...codePoints);
   };
+  */
 
   if (profileState.status === 'loading') {
     return (
@@ -431,7 +435,11 @@ function ProfileScreen({ userId }: { userId?: string }) {
             {/* Country Flag */}
             {profile.countryCode && (
               <View style={styles.flagRow}>
-                <Text style={styles.flagEmoji}>{getFlagEmoji(profile.countryCode)}</Text>
+                <Image
+                  source={getFlagSource(profile.countryCode)}
+                  style={styles.flagImage}
+                  resizeMode="contain"
+                />
               </View>
             )}
 
@@ -667,6 +675,10 @@ const styles = StyleSheet.create({
   },
   flagEmoji: {
     fontSize: 22,
+  },
+  flagImage: {
+    width: 32,
+    height: 22,
   },
   tagsRow: {
     flexDirection: 'row',
