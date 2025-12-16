@@ -2,23 +2,31 @@
 # Files and directories to exclude from EAS builds
 
 # Claude AI files
-.claude/
-.claude
+**/.claude
+**/.claude/
 
 # Development files
-node_modules/
-.expo/
-.expo-shared/
-android/
-ios/
+**/node_modules
+**/node_modules/
+**/.expo
+**/.expo/
+**/.expo-shared
+**/.expo-shared/
+**/android
+**/android/
+**/ios
+**/ios/
 
 # Git
-.git/
-.gitignore
+**/.git
+**/.git/
+**/.gitignore
 
 # IDE
-.vscode/
-.idea/
+**/.vscode
+**/.vscode/
+**/.idea
+**/.idea/
 
 # Logs
 *.log
