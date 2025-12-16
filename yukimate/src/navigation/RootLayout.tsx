@@ -195,30 +195,36 @@ export default function RootLayout() {
             }
             isNavigating = true;
 
-            // プロフィールの存在確認
-            supabase
-              .from('profiles')
-              .select('user_id')
-              .eq('user_id', session.user.id)
-              .single()
-              .then(({ data: profile, error }) => {
+            // プロフィールの存在確認(async/awaitで適切にエラーハンドリング)
+            (async () => {
+              try {
+                const { data: profile, error } = await supabase
+                  .from('profiles')
+                  .select('user_id')
+                  .eq('user_id', session.user.id)
+                  .single();
+
                 if (error && error.code === 'PGRST116') {
                   // プロフィールが存在しない場合
                   console.log('⚠️  Profile not found, redirecting to setup...');
                   router.replace('/profile-setup');
-                  setTimeout(() => { isNavigating = false; }, 1000);
                 } else if (profile) {
                   // プロフィールが存在する場合
                   console.log('✅ Profile exists, redirecting to home...');
                   router.replace('/(tabs)/home');
-                  setTimeout(() => { isNavigating = false; }, 1000);
                 } else {
                   // その他のエラー
                   console.error('❌ Error checking profile:', error);
                   router.replace('/(tabs)/home');
-                  setTimeout(() => { isNavigating = false; }, 1000);
                 }
-              });
+              } catch (err) {
+                console.error('❌ Unexpected error during profile check:', err);
+                router.replace('/(tabs)/home');
+              } finally {
+                // 必ずフラグをリセット(エラーの有無に関わらず)
+                setTimeout(() => { isNavigating = false; }, 1000);
+              }
+            })();
           }
           // SIGNED_OUTイベントのみサインイン画面へリダイレクト
           else if (event === 'SIGNED_OUT') {

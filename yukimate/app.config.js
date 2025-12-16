@@ -60,6 +60,9 @@ export default {
       reactCompiler: true,
     },
     extra: {
+      eas: {
+        projectId: 'a82327ee-4b50-4300-bafb-4e3e51b3ee98',
+      },
       // 環境変数から読み込む（EXPO_PUBLIC_プレフィックスは自動的に利用可能）
       supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
