@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -13,7 +13,23 @@ import { IconSymbol } from '@components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { useHomeData } from '@hooks/useHomeData';
+import { supabase } from '@/lib/supabase';
 
+useEffect(() => {
+  console.log('🔍 Testing Supabase connection...');
+  
+  supabase
+    .from('resorts')
+    .select('id, name')
+    .limit(3)
+    .then(({ data, error }) => {
+      if (error) {
+        console.error('❌ Supabase Error:', error);
+      } else {
+        console.log('✅ Supabase Connected! Resorts:', data);
+      }
+    });
+}, []);
 export default function HomeScreen() {
   const state = useHomeData();
   const colorScheme = useColorScheme();
