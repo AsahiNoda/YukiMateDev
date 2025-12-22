@@ -124,6 +124,16 @@ CREATE TABLE public.gear (
   CONSTRAINT gear_pkey PRIMARY KEY (id),
   CONSTRAINT gear_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.notification_tokens (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  token text NOT NULL,
+  device_type text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT notification_tokens_pkey PRIMARY KEY (id),
+  CONSTRAINT notification_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
 CREATE TABLE public.notifications (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
@@ -236,6 +246,8 @@ CREATE TABLE public.resorts (
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   region text,
+  altitude double precision,
+  name_en text,
   CONSTRAINT resorts_pkey PRIMARY KEY (id)
 );
 CREATE TABLE public.saved_events (
@@ -300,6 +312,7 @@ CREATE TABLE public.weather_daily_cache (
   snow_quality USER-DEFINED,
   source text,
   fetched_at timestamp with time zone NOT NULL DEFAULT now(),
+  weather_code integer,
   CONSTRAINT weather_daily_cache_pkey PRIMARY KEY (id),
   CONSTRAINT weather_daily_cache_resort_id_fkey FOREIGN KEY (resort_id) REFERENCES public.resorts(id)
 );

@@ -6,9 +6,11 @@ import {
   StyleSheet,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from 'react-native';
 import { IconSymbol } from './ui/icon-symbol';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Colors } from '@/constants/theme';
 
 interface ImageViewerProps {
   visible: boolean;
@@ -20,6 +22,13 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export function ImageViewer({ visible, imageUrl, onClose }: ImageViewerProps) {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? 'light'];
+
+  // 画像ビューアーの背景は暗い方が画像が見やすいため、ダークモードベースで統一
+  const overlayColor = colorScheme === 'light'
+    ? 'rgba(0, 0, 0, 0.95)'
+    : `${theme.background}F2`; // 95% opacity in hex
 
   return (
     <Modal
@@ -28,9 +37,9 @@ export function ImageViewer({ visible, imageUrl, onClose }: ImageViewerProps) {
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: overlayColor }]}>
         <TouchableOpacity
-          style={[styles.closeButton, { top: insets.top + 16 }]}
+          style={[styles.closeButton, { top: insets.top + 16, backgroundColor: `${theme.backgroundSecondary}99` }]}
           onPress={onClose}
           activeOpacity={0.7}
         >
@@ -56,7 +65,6 @@ export function ImageViewer({ visible, imageUrl, onClose }: ImageViewerProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -77,7 +85,6 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,

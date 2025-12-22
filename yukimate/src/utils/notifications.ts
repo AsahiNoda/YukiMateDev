@@ -1,6 +1,6 @@
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 // 通知の表示方法を設定
@@ -17,6 +17,10 @@ Notifications.setNotificationHandler({
  */
 export async function registerForPushNotificationsAsync(): Promise<string | undefined> {
   let token: string | undefined;
+
+  // TODO: Androidでプッシュ通知を有効にするにはFirebaseの設定が必要
+  // Firebase設定後に以下のチェックを削除してください
+
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {

@@ -1,29 +1,30 @@
+import { getAreaOrder } from '@/constants/areas';
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
+import { getResortName, getResortPrefecture } from '@/utils/resort-helpers';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
+import { useTranslation } from '@hooks/useTranslation';
 import { supabase } from '@lib/supabase';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  SectionList,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Resort {
   id: string;
   name: string;
-  region: string;
-}
-
-interface ResortSection {
-  title: string;
-  data: Resort[];
+  name_en: string | null;
+  region: string | null;
+  area: string;
 }
 
 interface ResortSearchProps {
@@ -35,39 +36,17 @@ interface ResortSearchProps {
 }
 
 export function ResortSearch({ onSelectResort, onClose, isFirstTime = false, hasHomeResort = false, isChangingHome = false }: ResortSearchProps) {
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { locale } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [resorts, setResorts] = useState<Resort[]>([]);
   const [filteredResorts, setFilteredResorts] = useState<Resort[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedArea, setExpandedArea] = useState<string | null>(null);
 
-  // エリアの順序を定義（北から南）
-  const regionOrder = [
-    'Hokkaido',
-    'Tohoku',
-    'Kanto',
-    'Chubu',
-    'Kansai',
-    'Chugoku',
-    'Shikoku',
-    'Kyushu'
-  ];
-
-  // エリア名を日本語に変換
-  const getRegionName = (region: string): string => {
-    const regionNames: { [key: string]: string } = {
-      'Hokkaido': '北海道',
-      'Tohoku': '東北',
-      'Kanto': '関東',
-      'Chubu': '中部',
-      'Kansai': '関西',
-      'Chugoku': '中国',
-      'Shikoku': '四国',
-      'Kyushu': '九州'
-    };
-    return regionNames[region] || region;
-  };
+  const AREA_ORDER = getAreaOrder(locale);
 
   // リゾートデータを取得
   useEffect(() => {
@@ -75,7 +54,7 @@ export function ResortSearch({ onSelectResort, onClose, isFirstTime = false, has
       try {
         const { data, error } = await supabase
           .from('resorts')
-          .select('id, name, region')
+          .select('id, name, name_en, area, region')
           .order('name', { ascending: true });
 
         if (error) throw error;
@@ -97,48 +76,55 @@ export function ResortSearch({ onSelectResort, onClose, isFirstTime = false, has
     if (searchQuery.trim() === '') {
       setFilteredResorts(resorts);
     } else {
-      const filtered = resorts.filter((resort) =>
-        resort.name.toLowerCase().includes(searchQuery.toLowerCase())
-      );
+      const filtered = resorts.filter((resort) => {
+        const nameJP = resort.name.toLowerCase();
+        const nameEN = resort.name_en?.toLowerCase() || '';
+        const query = searchQuery.toLowerCase();
+        return nameJP.includes(query) || nameEN.includes(query);
+      });
       setFilteredResorts(filtered);
     }
   }, [searchQuery, resorts]);
 
-  // エリアごとにグループ化してセクションデータを作成
-  const sectionData = useMemo(() => {
-    // エリアごとにグループ化
-    const grouped = filteredResorts.reduce((acc, resort) => {
-      const region = resort.region || 'Other';
-      if (!acc[region]) {
-        acc[region] = [];
+  // エリアごとにグループ化
+  const resortsByArea = useMemo(() => {
+    if (filteredResorts.length === 0) return {};
+
+    const grouped: Record<string, Resort[]> = {};
+    filteredResorts.forEach((resort) => {
+      // 英語の場合はregion、日本語の場合はareaを使用
+      const areaKey = getResortPrefecture(resort, locale);
+      const area = areaKey || 'その他';
+      if (!grouped[area]) {
+        grouped[area] = [];
       }
-      acc[region].push(resort);
-      return acc;
-    }, {} as { [key: string]: Resort[] });
+      grouped[area].push(resort);
+    });
 
-    // セクション配列を作成し、北から南の順にソート
-    const sections: ResortSection[] = Object.keys(grouped)
-      .sort((a, b) => {
-        const indexA = regionOrder.indexOf(a);
-        const indexB = regionOrder.indexOf(b);
-        // 見つからない場合は最後に配置
-        if (indexA === -1 && indexB === -1) return a.localeCompare(b);
-        if (indexA === -1) return 1;
-        if (indexB === -1) return -1;
-        return indexA - indexB;
-      })
-      .map(region => ({
-        title: getRegionName(region),
-        data: grouped[region]
-      }));
+    // Sort areas by AREA_ORDER
+    const sortedGrouped: Record<string, Resort[]> = {};
+    AREA_ORDER.forEach((area) => {
+      if (grouped[area]) {
+        sortedGrouped[area] = grouped[area];
+      }
+    });
+    // Add any areas not in AREA_ORDER at the end
+    Object.keys(grouped)
+      .filter((area) => !AREA_ORDER.includes(area))
+      .sort()
+      .forEach((area) => {
+        sortedGrouped[area] = grouped[area];
+      });
 
-    return sections;
-  }, [filteredResorts]);
+    return sortedGrouped;
+  }, [filteredResorts, AREA_ORDER, locale]);
 
   const handleSelectResort = (resort: Resort) => {
+    const resortName = getResortName(resort, locale);
+
     // If first time, directly set as home without confirmation
     if (isFirstTime) {
-      onSelectResort(resort.id, resort.name, true);
+      onSelectResort(resort.id, resortName, true);
       return;
     }
 
@@ -146,7 +132,7 @@ export function ResortSearch({ onSelectResort, onClose, isFirstTime = false, has
     if (isChangingHome) {
       Alert.alert(
         'ホームゲレンデに設定',
-        `${resort.name}をホームゲレンデに設定しますか？`,
+        `${resortName}をホームゲレンデに設定しますか？`,
         [
           {
             text: 'キャンセル',
@@ -155,7 +141,7 @@ export function ResortSearch({ onSelectResort, onClose, isFirstTime = false, has
           {
             text: 'はい',
             onPress: () => {
-              onSelectResort(resort.id, resort.name, true);
+              onSelectResort(resort.id, resortName, true);
             },
           },
         ],
@@ -163,14 +149,14 @@ export function ResortSearch({ onSelectResort, onClose, isFirstTime = false, has
       );
     } else {
       // Normal search - just view the resort
-      onSelectResort(resort.id, resort.name, false);
+      onSelectResort(resort.id, resortName, false);
     }
   };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 16) }]}>
         {!isFirstTime && (
           <TouchableOpacity onPress={onClose} style={styles.backButton}>
             <IconSymbol name="chevron.left" size={24} color={colors.accent} />
@@ -219,34 +205,53 @@ export function ResortSearch({ onSelectResort, onClose, isFirstTime = false, has
           <ActivityIndicator size="large" color={colors.accent} />
         </View>
       ) : (
-        <SectionList
-          sections={sectionData}
-          keyExtractor={(item) => item.id}
-          renderSectionHeader={({ section: { title } }) => (
-            <View style={[styles.sectionHeader, { backgroundColor: colors.backgroundSecondary }]}>
-              <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{title}</Text>
-            </View>
-          )}
-          renderItem={({ item }) => (
-            <TouchableOpacity
-              style={[styles.resortItem, { borderBottomColor: colors.border, backgroundColor: colors.background }]}
-              onPress={() => handleSelectResort(item)}>
-              <View style={styles.resortInfo}>
-                <Text style={[styles.resortName, { color: colors.text }]}>{item.name}</Text>
-              </View>
-              <IconSymbol name="chevron.right" size={18} color={colors.icon} />
-            </TouchableOpacity>
-          )}
-          ListEmptyComponent={
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          {Object.keys(resortsByArea).length === 0 ? (
             <View style={styles.emptyContainer}>
               <IconSymbol name="magnifyingglass" size={48} color={colors.icon} />
               <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
                 リゾートが見つかりませんでした
               </Text>
             </View>
-          }
-          stickySectionHeadersEnabled={true}
-        />
+          ) : (
+            Object.entries(resortsByArea).map(([area, areaResorts]) => (
+              <View key={area} style={styles.areaSection}>
+                {/* Area Header (Toggle) */}
+                <TouchableOpacity
+                  style={styles.areaHeader}
+                  onPress={() => setExpandedArea(expandedArea === area ? null : area)}
+                >
+                  <Text style={[styles.areaHeaderText, { color: colors.text }]}>
+                    {area} ({areaResorts.length})
+                  </Text>
+                  <IconSymbol
+                    name={expandedArea === area ? 'chevron.up' : 'chevron.down'}
+                    size={20}
+                    color={colors.icon}
+                  />
+                </TouchableOpacity>
+
+                {/* Resort List (Collapsible) */}
+                {expandedArea === area && (
+                  <View style={styles.resortListContainer}>
+                    {areaResorts.map((resort) => (
+                      <TouchableOpacity
+                        key={resort.id}
+                        style={[styles.resortItem, { backgroundColor: colors.background }]}
+                        onPress={() => handleSelectResort(resort)}
+                      >
+                        <Text style={[styles.resortName, { color: colors.text }]}>
+                          {getResortName(resort, locale)}
+                        </Text>
+                        <IconSymbol name="chevron.right" size={18} color={colors.icon} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+            ))
+          )}
+        </ScrollView>
       )}
     </View>
   );
@@ -261,7 +266,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: spacing.md,
-    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
     zIndex: 10,
   },
   backButton: {
@@ -319,32 +324,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  sectionHeader: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
+  scrollView: {
+    flex: 1,
   },
-  sectionTitle: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.bold,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+  areaSection: {
+    marginBottom: spacing.xs,
+  },
+  areaHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  areaHeaderText: {
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
+  },
+  resortListContainer: {
+    paddingLeft: spacing.md,
   },
   resortItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.lg,
     paddingHorizontal: spacing.md,
-    borderBottomWidth: 1,
-  },
-  resortInfo: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    borderRadius: borderRadius.sm,
+    marginBottom: spacing.xs,
   },
   resortName: {
-    fontSize: fontSize.md,
+    fontSize: fontSize.lg,
     fontWeight: fontWeight.medium,
   },
   emptyContainer: {

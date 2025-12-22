@@ -25,26 +25,45 @@ export interface DailyForecast {
 
 /**
  * 都道府県ごとのデフォルト座標（主要スキーエリアの中心）
+ * 日本語の県名と英語の県名の両方をサポート
  */
 const PREFECTURE_DEFAULTS: Record<string, { lat: number; lon: number; areaCode: string; subAreaCode: string }> = {
   '北海道': { lat: 42.9, lon: 141.7, areaCode: '016000', subAreaCode: '016000' }, // ニセコ・札幌エリア
+  'Hokkaido': { lat: 42.9, lon: 141.7, areaCode: '016000', subAreaCode: '016000' },
   '青森県': { lat: 40.6, lon: 140.5, areaCode: '020000', subAreaCode: '020010' },
+  'Aomori': { lat: 40.6, lon: 140.5, areaCode: '020000', subAreaCode: '020010' },
   '岩手県': { lat: 39.7, lon: 140.9, areaCode: '030000', subAreaCode: '030010' },
+  'Iwate': { lat: 39.7, lon: 140.9, areaCode: '030000', subAreaCode: '030010' },
   '宮城県': { lat: 38.3, lon: 140.6, areaCode: '040000', subAreaCode: '040010' },
+  'Miyagi': { lat: 38.3, lon: 140.6, areaCode: '040000', subAreaCode: '040010' },
   '秋田県': { lat: 39.7, lon: 140.1, areaCode: '050000', subAreaCode: '050010' },
+  'Akita': { lat: 39.7, lon: 140.1, areaCode: '050000', subAreaCode: '050010' },
   '山形県': { lat: 38.3, lon: 140.1, areaCode: '060000', subAreaCode: '060010' },
+  'Yamagata': { lat: 38.3, lon: 140.1, areaCode: '060000', subAreaCode: '060010' },
   '福島県': { lat: 37.6, lon: 139.9, areaCode: '070000', subAreaCode: '070010' },
+  'Fukushima': { lat: 37.6, lon: 139.9, areaCode: '070000', subAreaCode: '070010' },
   '群馬県': { lat: 36.7, lon: 138.8, areaCode: '100000', subAreaCode: '100020' }, // 水上・尾瀬エリア
+  'Gunma': { lat: 36.7, lon: 138.8, areaCode: '100000', subAreaCode: '100020' },
   '栃木県': { lat: 36.9, lon: 139.7, areaCode: '090000', subAreaCode: '090010' },
+  'Tochigi': { lat: 36.9, lon: 139.7, areaCode: '090000', subAreaCode: '090010' },
   '新潟県': { lat: 37.0, lon: 138.7, areaCode: '150000', subAreaCode: '150020' }, // 湯沢エリア
+  'Niigata': { lat: 37.0, lon: 138.7, areaCode: '150000', subAreaCode: '150020' },
   '長野県': { lat: 36.7, lon: 137.85, areaCode: '200000', subAreaCode: '200010' }, // 白馬エリア
+  'Nagano': { lat: 36.7, lon: 137.85, areaCode: '200000', subAreaCode: '200010' },
   '富山県': { lat: 36.7, lon: 137.2, areaCode: '160000', subAreaCode: '160010' },
+  'Toyama': { lat: 36.7, lon: 137.2, areaCode: '160000', subAreaCode: '160010' },
   '岐阜県': { lat: 36.1, lon: 137.2, areaCode: '210000', subAreaCode: '210010' },
+  'Gifu': { lat: 36.1, lon: 137.2, areaCode: '210000', subAreaCode: '210010' },
   '山梨県': { lat: 35.7, lon: 138.6, areaCode: '190000', subAreaCode: '190010' },
+  'Yamanashi': { lat: 35.7, lon: 138.6, areaCode: '190000', subAreaCode: '190010' },
   '兵庫県': { lat: 35.4, lon: 134.5, areaCode: '280000', subAreaCode: '280010' },
+  'Hyogo': { lat: 35.4, lon: 134.5, areaCode: '280000', subAreaCode: '280010' },
   '広島県': { lat: 35.0, lon: 132.8, areaCode: '340000', subAreaCode: '340010' },
+  'Hiroshima': { lat: 35.0, lon: 132.8, areaCode: '340000', subAreaCode: '340010' },
   '島根県': { lat: 35.3, lon: 132.7, areaCode: '320000', subAreaCode: '320010' },
+  'Shimane': { lat: 35.3, lon: 132.7, areaCode: '320000', subAreaCode: '320010' },
   '鳥取県': { lat: 35.4, lon: 133.3, areaCode: '310000', subAreaCode: '310010' },
+  'Tottori': { lat: 35.4, lon: 133.3, areaCode: '310000', subAreaCode: '310010' },
 };
 
 /**

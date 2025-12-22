@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
+import { getResortName } from '@/utils/resort-helpers';
 import type { DiscoverEvent } from '@types';
 import { useEffect, useState } from 'react';
+import { useTranslation } from './useTranslation';
 
 /**
  * Explore検索フィルター
@@ -41,6 +43,7 @@ export function useExplore(
 ): ExploreState & { refetch: () => void; loadMore: () => void } {
   const [state, setState] = useState<ExploreState>({ status: 'loading' });
   const [currentPage, setCurrentPage] = useState(page);
+  const { locale } = useTranslation();
 
   const load = async (pageNum: number = 0) => {
     try {
@@ -107,7 +110,7 @@ export function useExplore(
           resort_id,
           status,
           created_at,
-          resorts(id, name),
+          resorts(id, name, name_en),
           profiles!posts_events_host_user_id_fkey(
             user_id,
             display_name,
@@ -283,7 +286,7 @@ export function useExplore(
           category: event.type as 'event' | 'lesson' | 'filming' | 'group',
           hostName: event.profiles?.display_name || 'Unknown',
           hostAvatar: hostAvatarUrl,
-          resortName: event.resorts?.name || 'Unknown Resort',
+          resortName: event.resorts ? getResortName(event.resorts, locale) : 'Unknown Resort',
           startAt: event.start_at,
           endAt: event.end_at,
           capacityTotal: event.capacity_total || 0,

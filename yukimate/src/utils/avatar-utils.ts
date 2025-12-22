@@ -2,6 +2,8 @@
  * Avatar utility functions for role-based styling
  */
 
+import { Colors } from '@/constants/theme';
+
 /**
  * Get avatar border color based on user role
  * @param role - User role (developer, official, user)
@@ -10,12 +12,12 @@
 export const getAvatarBorderColor = (role: string): string => {
     switch (role) {
         case 'developer':
-            return '#22c55e'; // green
+            return Colors.light.roleDeveloper;
         case 'official':
-            return '#eab308'; // yellow
+            return Colors.light.roleOfficial;
         case 'user':
         default:
-            return '#06b6d4'; // cyan
+            return Colors.light.roleUser;
     }
 };
 
@@ -27,11 +29,11 @@ export const getAvatarBorderColor = (role: string): string => {
 export const getBadgeColor = (role: string): string => {
     switch (role) {
         case 'developer':
-            return '#22c55e'; // green
+            return Colors.light.roleDeveloper;
         case 'official':
-            return '#eab308'; // yellow
+            return Colors.light.roleOfficial;
         default:
-            return '#06b6d4'; // cyan
+            return Colors.light.roleUser;
     }
 };
 

@@ -11,6 +11,7 @@ import { useColorScheme } from '@hooks/use-color-scheme';
 import { useSnowfeed } from '@hooks/useSnowfeed';
 import { useTranslation } from '@hooks/useTranslation';
 import { supabase } from '@lib/supabase';
+import { getResortName } from '@/utils/resort-helpers';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
 import {
@@ -51,7 +52,7 @@ const formatPostDate = (dateString: string, t: (key: string) => string): string 
 
 export default function SnowfeedScreen() {
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [homeResortId, setHomeResortId] = useState<string | null>(null);
   const [homeResortName, setHomeResortName] = useState<string>('');
   const [selectedResortId, setSelectedResortId] = useState<string | null>(null);
@@ -87,13 +88,13 @@ export default function SnowfeedScreen() {
           if (profile?.home_resort_id) {
             const { data: resort } = await supabase
               .from('resorts')
-              .select('id, name')
+              .select('id, name, name_en')
               .eq('id', profile.home_resort_id)
               .single();
 
             if (resort) {
               dbHomeResortId = resort.id;
-              dbHomeResortName = resort.name;
+              dbHomeResortName = getResortName(resort, locale);
             }
           }
 
@@ -101,7 +102,7 @@ export default function SnowfeedScreen() {
           if (!dbHomeResortId) {
             const { data: defaultResort } = await supabase
               .from('resorts')
-              .select('id, name')
+              .select('id, name, name_en')
               .eq('searchable', true)
               .order('name')
               .limit(1)
@@ -109,7 +110,7 @@ export default function SnowfeedScreen() {
 
             if (defaultResort) {
               dbHomeResortId = defaultResort.id;
-              dbHomeResortName = defaultResort.name;
+              dbHomeResortName = getResortName(defaultResort, locale);
             }
           }
         }

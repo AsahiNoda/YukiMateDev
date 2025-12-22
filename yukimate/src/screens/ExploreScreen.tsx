@@ -1,10 +1,13 @@
 import { EventListCard } from '@/components/EventListCard';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { getAreaOrder } from '@/constants/areas';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useTranslation } from '@/hooks/useTranslation';
 import { useExplore, type ExploreFilters, type SortOptions } from '@/hooks/useExplore';
+import { useProfile } from '@/hooks/useProfile';
 import { useResorts } from '@/hooks/useResorts';
+import { useTranslation } from '@/hooks/useTranslation';
+import { getResortName, getResortPrefecture } from '@/utils/resort-helpers';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -45,7 +48,7 @@ export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   // 検索とフィルター状態
   const [searchQuery, setSearchQuery] = useState('');
@@ -65,32 +68,20 @@ export default function ExploreScreen() {
   // リゾート一覧を取得
   const resortsState = useResorts();
 
+  // ユーザープロフィールを取得してホームゲレンデを取得
+  const profileState = useProfile();
+
+  // ホームリゾートを取得
+  const homeResort = React.useMemo(() => {
+    if (profileState.status === 'success' && profileState.data.homeResortId && resortsState.status === 'success') {
+      return resortsState.resorts.find(r => r.id === profileState.data.homeResortId);
+    }
+    return null;
+  }, [profileState, resortsState]);
+
   // エリアの並び順（北から南）
-  const AREA_ORDER = [
-    '北海道',
-    '青森県',
-    '岩手県',
-    '宮城県',
-    '秋田県',
-    '山形県',
-    '福島県',
-    '群馬県',
-    '栃木県',
-    '新潟県',
-    '長野県',
-    '山梨県',
-    '神奈川県',
-    '岐阜県',
-    '富山県',
-    '石川県',
-    '福井県',
-    '静岡県',
-    '兵庫県',
-    '滋賀県',
-    '広島県',
-    '鳥取県',
-    '島根県',
-  ];
+  // エリアの並び順（北から南）
+  const AREA_ORDER = getAreaOrder(locale);
 
   // Group resorts by area
   const resortsByArea = React.useMemo(() => {
@@ -98,10 +89,12 @@ export default function ExploreScreen() {
 
     const grouped: Record<string, typeof resortsState.resorts> = {};
     resortsState.resorts.forEach((resort) => {
-      if (!grouped[resort.area]) {
-        grouped[resort.area] = [];
+      // 英語の場合はregion、日本語の場合はareaを使用
+      const areaKey = getResortPrefecture(resort, locale);
+      if (!grouped[areaKey]) {
+        grouped[areaKey] = [];
       }
-      grouped[resort.area].push(resort);
+      grouped[areaKey].push(resort);
     });
 
     // Sort areas by AREA_ORDER
@@ -120,7 +113,7 @@ export default function ExploreScreen() {
       });
 
     return sortedGrouped;
-  }, [resortsState]);
+  }, [resortsState, locale]);
 
   // デバウンス処理
   useEffect(() => {
@@ -307,7 +300,46 @@ export default function ExploreScreen() {
             <Text style={[styles.modalTitle, { color: colors.text }]}>{t('explore.resortFilter')}</Text>
 
             <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+              {/* ホームゲレンデセクション */}
+              {homeResort && (
+                <>
+                  <Text style={[styles.sectionLabel, { color: colors.icon }]}>
+                    {t('explore.homeResort')}
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.modalOption,
+                      styles.homeResortOption,
+                      { backgroundColor: colors.backgroundTertiary },
+                      selectedResort === homeResort.id && { backgroundColor: colors.tint + '20' },
+                    ]}
+                    onPress={() => {
+                      setSelectedResort(homeResort.id);
+                      setShowResortModal(false);
+                    }}
+                  >
+                    <View style={styles.homeResortContent}>
+                      <IconSymbol name="house.fill" size={18} color={colors.tint} />
+                      <Text
+                        style={[
+                          styles.homeResortText,
+                          { color: colors.text },
+                        ]}
+                      >
+                        {homeResort.name}
+                      </Text>
+                    </View>
+                    {selectedResort === homeResort.id && (
+                      <IconSymbol name="checkmark" size={20} color={colors.tint} />
+                    )}
+                  </TouchableOpacity>
+                </>
+              )}
+
               {/* すべて表示オプション */}
+              <Text style={[styles.sectionLabel, { color: colors.icon }]}>
+                {t('explore.allResorts')}
+              </Text>
               <TouchableOpacity
                 style={[
                   styles.modalOption,
@@ -378,7 +410,7 @@ export default function ExploreScreen() {
                               selectedResort === resort.id && [styles.resortItemTextActive, { color: colors.text }],
                             ]}
                           >
-                            {resort.name}
+                            {getResortName(resort, locale)}
                           </Text>
                           {selectedResort === resort.id && (
                             <IconSymbol name="checkmark" size={16} color={colors.tint} />
@@ -676,5 +708,29 @@ const styles = StyleSheet.create({
   modalLoading: {
     paddingVertical: 20,
     alignItems: 'center',
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: 8,
+    marginBottom: 8,
+    paddingHorizontal: 16,
+    // color is set dynamically in the component
+  },
+  homeResortOption: {
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  homeResortContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  homeResortText: {
+    fontSize: 16,
+    fontWeight: '600',
+    // color is set dynamically in the component
   },
 });

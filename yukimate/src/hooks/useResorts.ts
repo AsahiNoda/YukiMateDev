@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 interface Resort {
   id: string;
   name: string;
+  name_en: string | null;
   area: string;
 }
 
@@ -25,7 +26,7 @@ export function useResorts(): ResortsState {
       try {
         const { data, error } = await supabase
           .from('resorts')
-          .select('id, name, area')
+          .select('id, name, name_en, area')
           .order('name', { ascending: true });
 
         if (error) throw error;

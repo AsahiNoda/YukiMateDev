@@ -1,5 +1,7 @@
 import { supabase } from '@/lib/supabase';
+import { getResortName } from '@/utils/resort-helpers';
 import { useEffect, useState } from 'react';
+import { useTranslation } from './useTranslation';
 
 export interface SavedPost {
     id: string;
@@ -25,10 +27,11 @@ export function useSavedPosts(): SavedPostsHookReturn {
     const [posts, setPosts] = useState<SavedPost[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { locale } = useTranslation();
 
     useEffect(() => {
         fetchSavedPosts();
-    }, []);
+    }, [locale]);
 
     async function fetchSavedPosts() {
         try {
@@ -57,7 +60,7 @@ export function useSavedPosts(): SavedPostsHookReturn {
             capacity_total,
             photos,
             status,
-            resorts(id, name)
+            resorts(id, name, name_en)
           )
         `)
                 .eq('user_id', user.id)
@@ -123,7 +126,7 @@ export function useSavedPosts(): SavedPostsHookReturn {
                         endAt: event.end_at,
                         capacityTotal: event.capacity_total || 0,
                         participantsCount: count || 0,
-                        resortName: event.resorts?.name || 'Unknown Resort',
+                        resortName: event.resorts ? getResortName(event.resorts, locale) : 'Unknown Resort',
                         photos: photoUrls,
                         status,
                     };

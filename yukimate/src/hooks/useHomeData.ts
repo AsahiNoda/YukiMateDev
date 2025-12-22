@@ -1,8 +1,10 @@
 import { supabase } from '@/lib/supabase';
 import { fetchWeatherData } from '@/services/weatherApi';
+import { getResortName } from '@/utils/resort-helpers';
 import { mockHomeData, type HomeData } from '@data/mockHomeData';
 import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from './useTranslation';
 
 type HomeDataState =
   | { status: 'loading'; data: null }
@@ -12,6 +14,7 @@ type HomeDataState =
 export function useHomeData(): HomeDataState {
   const [state, setState] = useState<HomeDataState>({ status: 'loading', data: null });
   const [refreshKey, setRefreshKey] = useState(0);
+  const { locale } = useTranslation();
 
   // Refresh data when screen comes into focus
   useFocusEffect(
@@ -33,6 +36,7 @@ export function useHomeData(): HomeDataState {
             title,
             photos,
             host_user_id,
+            resorts(name, name_en, area, region),
             profiles!posts_events_host_user_id_fkey(
               user_id,
               users!profiles_user_id_fkey(role)
@@ -56,7 +60,9 @@ export function useHomeData(): HomeDataState {
               : supabase.storage.from('event_images').getPublicUrl(event.photos[0]).data.publicUrl)
             : null,
           hostRole: event.profiles?.users?.role || 'user',
-          resortName: '', // Not needed for featured cards
+          resortName: event.resorts ? getResortName(event.resorts, locale) : '',
+          resortArea: event.resorts?.area,
+          resortRegion: event.resorts?.region,
           startAt: '', // Not needed for featured cards
           endAt: '', // Not needed for featured cards
           levelRequired: 'beginner' as const, // Not needed for featured cards
@@ -90,7 +96,7 @@ export function useHomeData(): HomeDataState {
             // Fetch home resort details
             const { data: homeResort, error: homeResortError } = await supabase
               .from('resorts')
-              .select('id, name, area, latitude, longitude')
+              .select('id, name, name_en, area, region, latitude, longitude')
               .eq('id', profile.home_resort_id)
               .single();
 
@@ -103,7 +109,7 @@ export function useHomeData(): HomeDataState {
         if (!resort) {
           const { data: defaultResort, error: defaultError } = await supabase
             .from('resorts')
-            .select('id, name, area, latitude, longitude')
+            .select('id, name, name_en, area, region, latitude, longitude')
             .eq('searchable', true)
             .order('name')
             .limit(1)
@@ -131,7 +137,7 @@ export function useHomeData(): HomeDataState {
 
           if (weather) {
             weatherData = {
-              resortName: resort.name,
+              resortName: getResortName(resort, locale),
               description: `${weather.snowQuality} snow with ${weather.visibility} visibility`,
               temperatureC: weather.tempC,
               newSnowCm: weather.newSnowCm,
@@ -153,7 +159,7 @@ export function useHomeData(): HomeDataState {
             created_at,
             snow_tag,
             resort_id,
-            resorts!posts_snow_resort_id_fkey(name),
+            resorts!posts_snow_resort_id_fkey(name, name_en),
             photos
           `)
           .order('like_count', { ascending: false })
@@ -161,7 +167,7 @@ export function useHomeData(): HomeDataState {
 
         const trendingPosts = trendingPostsData?.map(post => ({
           id: post.id,
-          resortName: post.resorts?.name || 'Unknown Resort',
+          resortName: post.resorts ? getResortName(post.resorts, locale) : 'Unknown Resort',
           photoUrl: post.photos && post.photos.length > 0
             ? (post.photos[0].startsWith('http')
               ? post.photos[0]

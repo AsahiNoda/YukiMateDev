@@ -1,6 +1,8 @@
 import { supabase } from '@/lib/supabase';
+import { getResortName } from '@/utils/resort-helpers';
 import type { DiscoverEvent, EventFilterOptions } from '@types';
 import { useEffect, useState } from 'react';
+import { useTranslation } from './useTranslation';
 
 type DiscoverEventsState =
   | { status: 'loading' }
@@ -15,6 +17,7 @@ type DiscoverEventsState =
  */
 export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEventsState {
   const [state, setState] = useState<DiscoverEventsState>({ status: 'loading' });
+  const { locale } = useTranslation();
 
   useEffect(() => {
     let isMounted = true;
@@ -84,7 +87,7 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
             host_user_id,
             resort_id,
             status,
-            resorts(id, name),
+            resorts(id, name, name_en),
             profiles!posts_events_host_user_id_fkey(
               user_id,
               display_name,
@@ -245,7 +248,7 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
             category: event.type as 'event' | 'lesson' | 'filming' | 'group',
             hostName: event.profiles?.display_name || 'Unknown',
             hostAvatar: hostAvatarUrl,
-            resortName: event.resorts?.name || 'Unknown Resort',
+            resortName: event.resorts ? getResortName(event.resorts, locale) : 'Unknown Resort',
             startAt: event.start_at,
             endAt: event.end_at,
             capacityTotal: event.capacity_total || 0,
@@ -279,7 +282,7 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
     return () => {
       isMounted = false;
     };
-  }, [options.category, options.resortId, options.level, options.limit]);
+  }, [options.category, options.resortId, options.level, options.limit, locale]);
 
   return state;
 }

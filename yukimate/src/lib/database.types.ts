@@ -28,8 +28,9 @@ export interface User {
 export interface Resort {
   id: string; // uuid
   name: string;
-  area: string;
-  region: string | null;
+  name_en: string | null; // English resort name
+  area: string; // 日本語の県名（例：「長野県」）
+  region: string | null; // 地方名（例：「中部」）※将来的に英語県名に移行予定
   latitude: number | null;
   longitude: number | null;
   official_site_url: string | null;
@@ -184,12 +185,12 @@ export interface ResortWithWeather extends Resort {
 }
 
 export interface EventWithDetails extends Event {
-  resorts: Pick<Resort, 'id' | 'name' | 'area'> | null;
+  resorts: Pick<Resort, 'id' | 'name' | 'name_en' | 'area'> | null;
   profiles: Pick<Profile, 'user_id' | 'display_name' | 'avatar_url' | 'country_code' | 'level'> | null;
 }
 
 export interface FeedPostWithDetails extends FeedPost {
-  resorts: Pick<Resort, 'id' | 'name'> | null;
+  resorts: Pick<Resort, 'id' | 'name' | 'name_en'> | null;
   profiles: Pick<Profile, 'user_id' | 'display_name' | 'avatar_url'> | null;
 }
 
@@ -202,7 +203,7 @@ export interface EventMessageWithSender extends EventMessage {
 
 export interface EventChatWithDetails extends EventChat {
   posts_events: Pick<Event, 'id' | 'title' | 'start_at'> & {
-    resorts: Pick<Resort, 'id' | 'name'> | null;
+    resorts: Pick<Resort, 'id' | 'name' | 'name_en'> | null;
   } | null;
 }
 

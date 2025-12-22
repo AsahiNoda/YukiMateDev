@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { Colors } from '@/constants/theme';
 
 /**
  * ネットワーク状態を表示するステータスバー
@@ -8,14 +9,18 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
  */
 export function NetworkStatusBar() {
   const { isOnline, isSyncing, queueLength } = useOfflineSync();
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? 'light'];
 
   // オンライン時は何も表示しない
   if (isOnline && queueLength === 0) {
     return null;
   }
 
+  const backgroundColor = isOnline ? theme.info : theme.warning;
+
   return (
-    <View style={[styles.container, isOnline ? styles.syncing : styles.offline]}>
+    <View style={[styles.container, { backgroundColor }]}>
       <Text style={styles.text}>
         {isSyncing
           ? `🔄 同期中... (${queueLength}件)`
@@ -33,12 +38,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  offline: {
-    backgroundColor: '#F59E0B',
-  },
-  syncing: {
-    backgroundColor: '#3B82F6',
   },
   text: {
     color: '#FFFFFF',

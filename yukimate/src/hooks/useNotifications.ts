@@ -5,6 +5,7 @@ import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
 /**
  * 通知機能を管理するカスタムフック
@@ -16,10 +17,9 @@ export function useNotifications() {
   const responseListener = useRef<Notifications.Subscription>();
 
   useEffect(() => {
-    // TODO: Firebase未設定のため、Androidでは一時的に無効化
-    // Firebase設定後に削除してください
-    if (Platform.OS === 'android') {
-      console.log('⚠️  Push notifications disabled on Android (Firebase not configured)');
+    // Expo Go では通知機能を無効化 (SDK 53+ では動作しない)
+    if (Constants.appOwnership === 'expo') {
+      console.log('⚠️  Push notifications disabled in Expo Go. Use a development build instead.');
       return;
     }
 

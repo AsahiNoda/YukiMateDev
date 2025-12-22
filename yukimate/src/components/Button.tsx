@@ -1,6 +1,6 @@
 import { Colors } from '@/constants/theme';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle, useColorScheme } from 'react-native';
 
 interface ButtonProps {
     title: string;
@@ -21,10 +21,13 @@ export default function Button({
     textStyle,
     variant = 'primary',
 }: ButtonProps) {
-    const backgroundColor = variant === 'primary' ? Colors.light.tint : variant === 'secondary' ? '#4b5563' : 'transparent';
-    const textColor = variant === 'outline' ? Colors.light.tint : '#ffffff';
+    const colorScheme = useColorScheme();
+    const theme = Colors[colorScheme ?? 'light'];
+
+    const backgroundColor = variant === 'primary' ? theme.tint : variant === 'secondary' ? theme.backgroundTertiary : 'transparent';
+    const textColor = variant === 'outline' ? theme.tint : '#ffffff';
     const borderWidth = variant === 'outline' ? 1 : 0;
-    const borderColor = variant === 'outline' ? Colors.light.tint : 'transparent';
+    const borderColor = variant === 'outline' ? theme.tint : 'transparent';
 
     return (
         <TouchableOpacity

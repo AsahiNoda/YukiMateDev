@@ -16,11 +16,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { OfficialBadge } from '@/components/OfficialBadge';
 import { Colors } from '@/constants/theme';
+import { useTranslation } from '@/hooks/useTranslation';
 import { getBadgeColor } from '@/utils/avatar-utils';
+import { getResortPrefecture } from '@/utils/resort-helpers';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { useHomeData } from '@hooks/useHomeData';
-import { useTranslation } from '@/hooks/useTranslation';
 import { testSupabaseSetup } from '@lib/testSupabaseSetup';
 
 // SVGコンポーネント
@@ -688,6 +689,9 @@ type FeaturedEventCardProps = {
     photoUrl: string | null;
     hostRole?: string;
     spotsTaken: number;
+    resortName: string;
+    resortArea?: string;
+    resortRegion?: string | null;
   };
   colorScheme: 'light' | 'dark';
   onPress: () => void;
@@ -695,8 +699,18 @@ type FeaturedEventCardProps = {
 
 function FeaturedEventCard({ event, colorScheme, onPress }: FeaturedEventCardProps) {
   const colors = Colors[colorScheme];
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const hasBadge = event.hostRole === 'developer' || event.hostRole === 'official';
+
+  // Get dynamic location text
+  const prefecture = getResortPrefecture({
+    area: event.resortArea || '',
+    region: event.resortRegion
+  }, locale);
+
+  const locationText = prefecture
+    ? `📍 ${event.resortName} (${prefecture})`
+    : `📍 ${event.resortName}`;
 
   return (
     <TouchableOpacity style={styles.featuredCard} activeOpacity={0.8} onPress={onPress}>
@@ -725,7 +739,7 @@ function FeaturedEventCard({ event, colorScheme, onPress }: FeaturedEventCardPro
                   {event.title}
                 </Text>
                 <Text style={styles.featuredSubtitle}>
-                  📍 白馬八方尾根
+                  {locationText}
                 </Text>
               </View>
             </View>
@@ -752,7 +766,7 @@ function FeaturedEventCard({ event, colorScheme, onPress }: FeaturedEventCardPro
               {event.title}
             </Text>
             <Text style={styles.featuredSubtitle}>
-              📍 白馬八方尾根
+              {locationText}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
               <IconSymbol name="person.fill" size={14} color="rgba(255,255,255,0.8)" />

@@ -1,10 +1,12 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { getAreaOrder } from '@/constants/areas';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useResorts } from '@/hooks/useResorts';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/lib/supabase';
 import type { SkillLevel } from '@/types';
+import { getResortName, getResortPrefecture } from '@/utils/resort-helpers';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -61,7 +63,7 @@ export default function CreateEventScreen() {
   const resortsState = useResorts();
   const params = useLocalSearchParams<{ eventId?: string }>();
   const isEditMode = !!params.eventId;
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   // Form states
   const [title, setTitle] = useState('');
@@ -178,31 +180,7 @@ export default function CreateEventScreen() {
   };
 
   // エリアの並び順（北から南）
-  const AREA_ORDER = [
-    '北海道',
-    '青森県',
-    '岩手県',
-    '宮城県',
-    '秋田県',
-    '山形県',
-    '福島県',
-    '群馬県',
-    '栃木県',
-    '新潟県',
-    '長野県',
-    '山梨県',
-    '神奈川県',
-    '岐阜県',
-    '富山県',
-    '石川県',
-    '福井県',
-    '静岡県',
-    '兵庫県',
-    '滋賀県',
-    '広島県',
-    '鳥取県',
-    '島根県',
-  ];
+  const AREA_ORDER = getAreaOrder(locale);
 
   // Group resorts by area
   const resortsByArea = React.useMemo(() => {
@@ -210,10 +188,12 @@ export default function CreateEventScreen() {
 
     const grouped: Record<string, typeof resortsState.resorts> = {};
     resortsState.resorts.forEach((resort) => {
-      if (!grouped[resort.area]) {
-        grouped[resort.area] = [];
+      // 英語の場合はregion、日本語の場合はareaを使用
+      const areaKey = getResortPrefecture(resort, locale);
+      if (!grouped[areaKey]) {
+        grouped[areaKey] = [];
       }
-      grouped[resort.area].push(resort);
+      grouped[areaKey].push(resort);
     });
 
     // Sort areas by AREA_ORDER
@@ -232,7 +212,7 @@ export default function CreateEventScreen() {
       });
 
     return sortedGrouped;
-  }, [resortsState]);
+  }, [resortsState, locale]);
 
   const pickImage = async () => {
     if (selectedImages.length >= 3) {
@@ -702,7 +682,7 @@ export default function CreateEventScreen() {
                                     resortId === resort.id && styles.resortItemTextActive,
                                   ]}
                                 >
-                                  {resort.name}
+                                  {getResortName(resort, locale)}
                                 </Text>
                                 {resortId === resort.id && (
                                   <IconSymbol name="checkmark" size={16} color={colors.tint} />

@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
  * オフライン時の操作をキューに保存し、オンライン復帰時に同期するカスタムフック
  */
 
-const OFFLINE_QUEUE_KEY = '@yukimate_offline_queue';
+const OFFLINE_QUEUE_KEY = '@slopelink_offline_queue';
 
 interface OfflineAction {
   id: string;

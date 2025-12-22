@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useColorScheme } from 'react-native';
 import { reportError } from '@/lib/sentry';
+import { Colors } from '@/constants/theme';
 
 interface Props {
   children: ReactNode;
@@ -69,50 +70,67 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       // デフォルトのエラーUI
-      return (
-        <View style={styles.container}>
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.emoji}>⚠️</Text>
-            <Text style={styles.title}>エラーが発生しました</Text>
-            <Text style={styles.message}>
-              申し訳ございません。予期しないエラーが発生しました。
-            </Text>
-
-            {__DEV__ && this.state.error && (
-              <View style={styles.errorDetails}>
-                <Text style={styles.errorTitle}>エラー詳細（開発モードのみ）:</Text>
-                <Text style={styles.errorText}>{this.state.error.toString()}</Text>
-                {this.state.errorInfo && (
-                  <>
-                    <Text style={styles.errorTitle}>コンポーネントスタック:</Text>
-                    <Text style={styles.errorText}>
-                      {this.state.errorInfo.componentStack}
-                    </Text>
-                  </>
-                )}
-              </View>
-            )}
-
-            <TouchableOpacity style={styles.button} onPress={this.handleReset}>
-              <Text style={styles.buttonText}>再試行</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.hint}>
-              問題が解決しない場合は、アプリを再起動してください。
-            </Text>
-          </ScrollView>
-        </View>
-      );
+      return <ErrorBoundaryFallback error={this.state.error} errorInfo={this.state.errorInfo} onReset={this.handleReset} />;
     }
 
     return this.props.children;
   }
 }
 
+/**
+ * テーマ対応のエラーバウンダリフォールバックUI
+ */
+function ErrorBoundaryFallback({
+  error,
+  errorInfo,
+  onReset
+}: {
+  error: Error | null;
+  errorInfo: ErrorInfo | null;
+  onReset: () => void;
+}) {
+  const colorScheme = useColorScheme();
+  const theme = Colors[colorScheme ?? 'light'];
+
+  return (
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.emoji}>⚠️</Text>
+        <Text style={[styles.title, { color: theme.text }]}>エラーが発生しました</Text>
+        <Text style={[styles.message, { color: theme.textSecondary }]}>
+          申し訳ございません。予期しないエラーが発生しました。
+        </Text>
+
+        {__DEV__ && error && (
+          <View style={[styles.errorDetails, { backgroundColor: theme.backgroundSecondary }]}>
+            <Text style={[styles.errorTitle, { color: theme.text }]}>エラー詳細（開発モードのみ）:</Text>
+            <Text style={[styles.errorText, { color: theme.textSecondary }]}>{error.toString()}</Text>
+            {errorInfo && (
+              <>
+                <Text style={[styles.errorTitle, { color: theme.text }]}>コンポーネントスタック:</Text>
+                <Text style={[styles.errorText, { color: theme.textSecondary }]}>
+                  {errorInfo.componentStack}
+                </Text>
+              </>
+            )}
+          </View>
+        )}
+
+        <TouchableOpacity style={[styles.button, { backgroundColor: theme.tint }]} onPress={onReset}>
+          <Text style={styles.buttonText}>再試行</Text>
+        </TouchableOpacity>
+
+        <Text style={[styles.hint, { color: theme.textSecondary }]}>
+          問題が解決しない場合は、アプリを再起動してください。
+        </Text>
+      </ScrollView>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
   },
   scrollContent: {
     flexGrow: 1,
@@ -127,20 +145,17 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1a1a1a',
     marginBottom: 12,
     textAlign: 'center',
   },
   message: {
     fontSize: 16,
-    color: '#666',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 24,
   },
   errorDetails: {
     width: '100%',
-    backgroundColor: '#f5f5f5',
     borderRadius: 8,
     padding: 16,
     marginBottom: 24,
@@ -148,17 +163,14 @@ const styles = StyleSheet.create({
   errorTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1a1a1a',
     marginBottom: 8,
     marginTop: 12,
   },
   errorText: {
     fontSize: 12,
-    color: '#666',
     fontFamily: 'monospace',
   },
   button: {
-    backgroundColor: '#007AFF',
     paddingHorizontal: 32,
     paddingVertical: 16,
     borderRadius: 12,
@@ -171,7 +183,6 @@ const styles = StyleSheet.create({
   },
   hint: {
     fontSize: 14,
-    color: '#999',
     textAlign: 'center',
   },
 });

@@ -1,32 +1,37 @@
-# EAS Build ignore file
-# Files and directories to exclude from EAS builds
+# EAS Build Ignore File
+# Files and directories listed here will not be uploaded to EAS Build
 
-# Claude AI files
-**/.claude
-**/.claude/
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Development files
-**/node_modules
-**/node_modules/
-**/.expo
-**/.expo/
-**/.expo-shared
-**/.expo-shared/
-**/android
-**/android/
-**/ios
-**/ios/
+# Claude AI
+.claude/
 
 # Git
-**/.git
-**/.git/
-**/.gitignore
+.git/
+.gitignore
+.gitattributes
 
-# IDE
-**/.vscode
-**/.vscode/
-**/.idea
-**/.idea/
+# Documentation (not needed for builds)
+docs/
+*.md
+!README.md
+
+# Test files
+**/__tests__/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+jest.config.js
+.jest/
+
+# Development scripts
+scripts/
 
 # Logs
 *.log
@@ -40,13 +45,15 @@ Thumbs.db
 
 # Temporary files
 *.tmp
-*.temp
-.tmp/
-.temp/
+tmp/
+temp/
 
-# Build artifacts
+# Build artifacts (will be regenerated)
+.expo/
 dist/
-build/
-*.apk
-*.aab
-*.ipa
+web-build/
+
+# Environment files (use EAS Secrets instead)
+.env
+.env.local
+.env*.local

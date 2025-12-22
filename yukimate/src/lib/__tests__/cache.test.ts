@@ -20,7 +20,7 @@ describe('Cache Utilities', () => {
       const testData = { id: 1, name: 'Test Event' };
       await setCache('test_key', testData);
 
-      const cachedValue = await AsyncStorage.getItem('@yukimate_cache_test_key');
+      const cachedValue = await AsyncStorage.getItem('@slopelink_cache_test_key');
       expect(cachedValue).toBe(JSON.stringify(testData));
     });
 
@@ -30,7 +30,7 @@ describe('Cache Utilities', () => {
 
       await setCache('test_key', testData, expiryMs);
 
-      const expiryValue = await AsyncStorage.getItem('@yukimate_expiry_test_key');
+      const expiryValue = await AsyncStorage.getItem('@slopelink_expiry_test_key');
       expect(expiryValue).toBeTruthy();
 
       const expiryTime = parseInt(expiryValue!, 10);
@@ -59,14 +59,14 @@ describe('Cache Utilities', () => {
       const expiryMs = -1000; // Already expired
 
       // Manually set expired cache
-      await AsyncStorage.setItem('@yukimate_cache_test_key', JSON.stringify(testData));
-      await AsyncStorage.setItem('@yukimate_expiry_test_key', (Date.now() + expiryMs).toString());
+      await AsyncStorage.setItem('@slopelink_cache_test_key', JSON.stringify(testData));
+      await AsyncStorage.setItem('@slopelink_expiry_test_key', (Date.now() + expiryMs).toString());
 
       const retrievedData = await getCache('test_key');
       expect(retrievedData).toBeNull();
 
       // Verify cache was removed
-      const cachedValue = await AsyncStorage.getItem('@yukimate_cache_test_key');
+      const cachedValue = await AsyncStorage.getItem('@slopelink_cache_test_key');
       expect(cachedValue).toBeNull();
     });
 
@@ -88,8 +88,8 @@ describe('Cache Utilities', () => {
 
       await removeCache('test_key');
 
-      const cachedValue = await AsyncStorage.getItem('@yukimate_cache_test_key');
-      const expiryValue = await AsyncStorage.getItem('@yukimate_expiry_test_key');
+      const cachedValue = await AsyncStorage.getItem('@slopelink_cache_test_key');
+      const expiryValue = await AsyncStorage.getItem('@slopelink_expiry_test_key');
 
       expect(cachedValue).toBeNull();
       expect(expiryValue).toBeNull();
@@ -104,9 +104,9 @@ describe('Cache Utilities', () => {
 
       await clearAllCache();
 
-      const key1 = await AsyncStorage.getItem('@yukimate_cache_key1');
-      const key2 = await AsyncStorage.getItem('@yukimate_cache_key2');
-      const key3 = await AsyncStorage.getItem('@yukimate_cache_key3');
+      const key1 = await AsyncStorage.getItem('@slopelink_cache_key1');
+      const key2 = await AsyncStorage.getItem('@slopelink_cache_key2');
+      const key3 = await AsyncStorage.getItem('@slopelink_cache_key3');
 
       expect(key1).toBeNull();
       expect(key2).toBeNull();
@@ -192,7 +192,7 @@ describe('Cache Utilities', () => {
       await fetchWithCache('test_key', fetchFn, { expiryMs: customExpiryMs });
 
       // Verify expiry was set
-      const expiryValue = await AsyncStorage.getItem('@yukimate_expiry_test_key');
+      const expiryValue = await AsyncStorage.getItem('@slopelink_expiry_test_key');
       expect(expiryValue).toBeTruthy();
 
       const expiryTime = parseInt(expiryValue!, 10);

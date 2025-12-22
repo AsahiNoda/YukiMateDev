@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@lib/supabase';
 import { fetchWeatherData } from '../services/weatherApi';
+import { getResortName } from '@/utils/resort-helpers';
 import type { SocialResortRating as ResortRating, SnowfeedWeather, SnowfeedPost, SnowfeedData } from '@types';
+import { useTranslation } from './useTranslation';
 
 type SnowfeedState =
   | { status: 'loading' }
@@ -10,6 +12,7 @@ type SnowfeedState =
 
 export function useSnowfeed(resortId: string | null, refreshKey?: number): SnowfeedState {
   const [state, setState] = useState<SnowfeedState>({ status: 'loading' });
+  const { locale } = useTranslation();
 
   useEffect(() => {
     if (!resortId) {
@@ -24,7 +27,7 @@ export function useSnowfeed(resortId: string | null, refreshKey?: number): Snowf
         // 0. リゾート情報を取得（名前、座標、都道府県）
         const { data: resortData, error: resortError } = await supabase
           .from('resorts')
-          .select('name, latitude, longitude, area')
+          .select('name, name_en, latitude, longitude, area, region')
           .eq('id', resortId)
           .single();
 
@@ -32,10 +35,11 @@ export function useSnowfeed(resortId: string | null, refreshKey?: number): Snowf
           console.warn('リゾート情報取得エラー:', resortError);
         }
 
-        const resortName = resortData?.name || resortId;
+        const resortName = resortData ? getResortName(resortData, locale) : resortId;
         const resortCoords = resortData?.latitude && resortData?.longitude
           ? { latitude: resortData.latitude, longitude: resortData.longitude }
           : undefined;
+        // areaは常に使用（天気APIは日本語の県名が必要）
         const resortPrefecture = resortData?.area;
 
         console.log(`[useSnowfeed] Resort: ${resortName} (ID: ${resortId})`, {
@@ -125,7 +129,7 @@ export function useSnowfeed(resortId: string | null, refreshKey?: number): Snowf
             tags,
             photos,
             created_at,
-            resorts(name)
+            resorts(name, name_en)
           `
           )
           .eq('resort_id', resortId)
@@ -241,7 +245,7 @@ export function useSnowfeed(resortId: string | null, refreshKey?: number): Snowf
             userAvatar: profile?.avatar_url || null,
             userRole: profile?.role || 'user',
             resortId: row.resort_id,
-            resortName: resort?.name || null,
+            resortName: resort ? getResortName(resort, locale) : null,
             type: row.type,
             text: row.text,
             tags: row.tags || [],
@@ -272,18 +276,18 @@ export function useSnowfeed(resortId: string | null, refreshKey?: number): Snowf
     return () => {
       isMounted = false;
     };
-  }, [resortId, refreshKey]);
+  }, [resortId, refreshKey, locale]);
 
   return state;
 }
 
 export async function getResorts(): Promise<
-  { id: string; name: string }[] | { error: string }
+  { id: string; name: string; name_en: string | null }[] | { error: string }
 > {
   try {
     const { data, error } = await supabase
       .from('resorts')
-      .select('id, name')
+      .select('id, name, name_en')
       .order('name', { ascending: true });
 
     if (error) {

@@ -8,6 +8,7 @@ import { useBookmark } from '@/hooks/useBookmark';
 import { applyToEvent } from '@/hooks/useDiscoverEvents';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/lib/supabase';
+import { getResortName } from '@/utils/resort-helpers';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -451,7 +452,7 @@ export default function EventDetailScreen() {
           photos,
           type,
           host_user_id,
-          resorts(id, name),
+          resorts(id, name, name_en),
           profiles(
             user_id,
             display_name,
@@ -572,7 +573,7 @@ export default function EventDetailScreen() {
         tags: eventData.tags || [],
         photos: photoUrls,
         category: eventData.type,
-        resortName: eventData.resorts?.name || t('common.unknown'),
+        resortName: eventData.resorts ? getResortName(eventData.resorts, locale) : t('common.unknown'),
         hostName: eventData.profiles?.display_name || t('common.unknown'),
         hostAvatar: eventData.profiles?.avatar_url || null,
         hostUserId: eventData.host_user_id,

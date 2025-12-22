@@ -1,4 +1,3 @@
-import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   Alert,
@@ -12,7 +11,6 @@ import {
 } from 'react-native';
 
 import { Colors } from '@/constants/theme';
-import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@lib/supabase';
@@ -21,7 +19,6 @@ import { validateEmail, validatePassword } from '@/utils/validation';
 export default function SignInScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { enableGuestMode } = useAuth();
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,9 +26,12 @@ export default function SignInScreen() {
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
 
   const handleEmailPasswordAuth = async () => {
+    console.log('🔐 [SignIn] Starting authentication...', { mode, email });
+
     // メールアドレスのバリデーション
     const emailValidation = validateEmail(email);
     if (!emailValidation.isValid) {
+      console.log('❌ [SignIn] Email validation failed:', emailValidation.error);
       Alert.alert(t('common.error'), emailValidation.error);
       return;
     }
@@ -41,20 +41,24 @@ export default function SignInScreen() {
     if (!passwordValidation.isValid) {
       // サインアップ時のみ厳格なバリデーション
       if (mode === 'signup') {
+        console.log('❌ [SignIn] Password validation failed:', passwordValidation.error);
         Alert.alert(t('common.error'), passwordValidation.error);
         return;
       }
       // サインイン時は基本的なチェックのみ
       if (!password || password.trim() === '') {
+        console.log('❌ [SignIn] Password is empty');
         Alert.alert(t('common.error'), t('auth.enterPassword'));
         return;
       }
     }
 
+    console.log('⏳ [SignIn] Setting loading state to true');
     setLoading(true);
     try {
       if (mode === 'signup') {
         // サインアップ
+        console.log('📝 [SignIn] Calling signUp...');
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -63,10 +67,12 @@ export default function SignInScreen() {
         if (error) throw error;
 
         if (data?.user?.identities?.length === 0) {
-          Alert.alert(t('common.error'), 'このメールアドレスは既に登録されています');
+          console.log('⚠️  [SignIn] Account already exists');
+          Alert.alert(t('common.error'), t('auth.accountAlreadyExists'));
           return;
         }
 
+        console.log('✅ [SignIn] SignUp successful, confirmation email sent');
         Alert.alert(
           t('auth.confirmEmailSent'),
           t('auth.checkEmailMessage'),
@@ -74,6 +80,7 @@ export default function SignInScreen() {
         );
       } else {
         // サインイン
+        console.log('🔑 [SignIn] Calling signInWithPassword...');
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -81,37 +88,66 @@ export default function SignInScreen() {
 
         if (error) throw error;
 
-        console.log('✅ Signed in successfully:', data.user?.email);
+        console.log('✅ [SignIn] Signed in successfully:', data.user?.email);
+        console.log('⏳ [SignIn] Waiting for RootLayout onAuthStateChange to handle navigation...');
         // RootLayout の onAuthStateChange が自動的にリダイレクトするまで待つ
         // 明示的なナビゲーションは行わない（競合を避けるため）
       }
     } catch (error: any) {
-      console.error('Auth error:', error);
-      Alert.alert(t('common.error'), error.message || '認証に失敗しました');
+      console.error('❌ [SignIn] Auth error:', error);
+      Alert.alert(t('common.error'), error.message || t('auth.authenticationFailed'));
     } finally {
+      console.log('✅ [SignIn] Setting loading state to false');
       setLoading(false);
     }
   };
 
-  const handleMagicLink = async () => {
+  const handleForgotPassword = async () => {
+    console.log('🔐 [ForgotPassword] Starting password reset flow...');
+
     // メールアドレスのバリデーション
     const emailValidation = validateEmail(email);
     if (!emailValidation.isValid) {
-      Alert.alert(t('common.error'), emailValidation.error);
+      console.log('❌ [ForgotPassword] Email validation failed:', emailValidation.error);
+      Alert.alert(t('common.error'), t('auth.enterEmailForReset'));
       return;
     }
 
+    console.log('📧 [ForgotPassword] Email validated:', email);
     setLoading(true);
+
     try {
-      const { error } = await supabase.auth.signInWithOtp({ email });
+      console.log('⏳ [ForgotPassword] Calling resetPasswordForEmail...');
+      console.log('🔗 [ForgotPassword] Redirect URL: slopelink://reset-password');
 
-      if (error) throw error;
+      // アプリ内のパスワードリセット画面にリダイレクト
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'slopelink://reset-password',
+      });
 
-      Alert.alert(t('auth.checkEmail'), 'マジックリンクを送信しました');
+      console.log('📊 [ForgotPassword] Response received');
+      console.log('📊 [ForgotPassword] Data:', data);
+      console.log('📊 [ForgotPassword] Error:', error);
+
+      if (error) {
+        console.error('❌ [ForgotPassword] Supabase error:', error);
+        throw error;
+      }
+
+      console.log('✅ [ForgotPassword] Reset email sent successfully');
+      Alert.alert(
+        t('auth.resetPasswordEmailSent'),
+        t('auth.resetPasswordEmailMessage'),
+        [{ text: t('common.ok') }]
+      );
     } catch (error: any) {
-      console.error('Magic link error:', error);
-      Alert.alert(t('common.error'), error.message || 'マジックリンクの送信に失敗しました');
+      console.error('❌ [ForgotPassword] Password reset error:', error);
+      console.error('❌ [ForgotPassword] Error name:', error.name);
+      console.error('❌ [ForgotPassword] Error message:', error.message);
+      console.error('❌ [ForgotPassword] Error stack:', error.stack);
+      Alert.alert(t('common.error'), error.message || t('auth.resetPasswordFailed'));
     } finally {
+      console.log('✅ [ForgotPassword] Setting loading state to false');
       setLoading(false);
     }
   };
@@ -170,6 +206,19 @@ export default function SignInScreen() {
             </Text>
           </TouchableOpacity>
 
+          {/* パスワードを忘れた場合 (サインインモード時のみ表示) */}
+          {mode === 'signin' && (
+            <TouchableOpacity
+              style={styles.linkButton}
+              onPress={handleForgotPassword}
+              disabled={loading}
+            >
+              <Text style={[styles.forgotPasswordText, { color: colors.tint }]}>
+                {t('auth.forgotPasswordLink')}
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {/* モード切替 */}
           <TouchableOpacity
             style={styles.linkButton}
@@ -181,36 +230,6 @@ export default function SignInScreen() {
                 ? t('auth.dontHaveAccount')
                 : t('auth.alreadyHaveAccount')}
             </Text>
-          </TouchableOpacity>
-
-          {/* 区切り線 */}
-          <View style={styles.divider}>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-            <Text style={[styles.dividerText, { color: colors.textSecondary }]}>{t('common.or')}</Text>
-            <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-          </View>
-
-          {/* マジックリンクボタン */}
-          <TouchableOpacity
-            style={[styles.button, styles.secondaryButton, { borderColor: colors.tint }, loading && styles.buttonDisabled]}
-            onPress={handleMagicLink}
-            disabled={loading}
-          >
-            <Text style={[styles.secondaryButtonText, { color: colors.tint }]}>
-              {t('auth.magicLink')}{mode === 'signin' ? t('auth.signIn') : t('auth.signUp')}
-            </Text>
-          </TouchableOpacity>
-
-          {/* ゲストとして続行 */}
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => {
-              enableGuestMode();
-              router.replace('/(tabs)/home');
-            }}
-            disabled={loading}
-          >
-            <Text style={[styles.linkText, { color: colors.textSecondary }]}>{t('auth.continueAsGuest')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -275,20 +294,10 @@ const styles = StyleSheet.create({
   primaryButton: {
     // backgroundColor is set dynamically
   },
-  secondaryButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    // borderColor is set dynamically
-  },
   buttonDisabled: {
     opacity: 0.5,
   },
   buttonText: {
-    // color is set dynamically
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButtonText: {
     // color is set dynamically
     fontSize: 16,
     fontWeight: '600',
@@ -301,19 +310,9 @@ const styles = StyleSheet.create({
     // color is set dynamically
     fontSize: 14,
   },
-  divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    // backgroundColor is set dynamically
-  },
-  dividerText: {
+  forgotPasswordText: {
     // color is set dynamically
-    paddingHorizontal: 16,
     fontSize: 14,
+    textDecorationLine: 'underline',
   },
 });

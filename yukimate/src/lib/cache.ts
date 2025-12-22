@@ -5,8 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  * オフライン時のデータ永続化とキャッシュ管理を提供
  */
 
-const CACHE_PREFIX = '@yukimate_cache_';
-const CACHE_EXPIRY_PREFIX = '@yukimate_expiry_';
+const CACHE_PREFIX = '@slopelink_cache_';
+const CACHE_EXPIRY_PREFIX = '@slopelink_expiry_';
 
 export interface CacheOptions {
   /** キャッシュの有効期限（ミリ秒） */

@@ -18,6 +18,8 @@ export type HomeEvent = {
   isOfficial?: boolean;
   photoUrl: string | null;
   hostRole?: string;
+  resortArea?: string;
+  resortRegion?: string | null;
 };
 
 // Extended event type for discover/swipe feature

@@ -34,11 +34,13 @@ export const Colors = {
     accent: accentGold,
     error: '#EF4444',
     success: '#10B981',
-    warning: '#ffe32cff',
+    warning: '#F59E0B',
+    info: '#3B82F6',
     card: '#F7FAFC',
     // Role badge colors
-    roleDeveloper: '#FFD700', // ゴールド
-    roleOfficial: '#4169E1', // ロイヤルブルー
+    roleDeveloper: '#22c55e', // グリーン
+    roleOfficial: '#eab308', // イエロー
+    roleUser: '#06b6d4', // シアン
   },
   dark: {
     text: '#F7FAFC', // オフホワイト
@@ -56,11 +58,13 @@ export const Colors = {
     accent: accentGold, // シャンパンゴールド
     error: '#EF4444',
     success: '#10B981',
-    warning: '#ffe32cff',
+    warning: '#F59E0B',
+    info: '#3B82F6',
     card: '#242B38', // カード背景
     // Role badge colors
-    roleDeveloper: '#FFD700', // ゴールド
-    roleOfficial: '#4169E1', // ロイヤルブルー
+    roleDeveloper: '#22c55e', // グリーン
+    roleOfficial: '#eab308', // イエロー
+    roleUser: '#06b6d4', // シアン
   },
 };
 
