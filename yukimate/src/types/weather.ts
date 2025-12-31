@@ -12,6 +12,7 @@ export type WeatherSummary = {
   windSpeedMs: number;
   visibility?: 'good' | 'moderate' | 'poor';
   snowQuality?: 'powder' | 'packed' | 'slushy' | 'icy';
+  weatherCode?: number; // WMO Weather interpretation codes
 };
 
 // Resort rating information

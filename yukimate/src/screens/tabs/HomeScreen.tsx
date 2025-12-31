@@ -82,6 +82,16 @@ export default function HomeScreen() {
 
   const { weather, recommendedEvents, suggestedEvents, trendingPosts } = state.data;
 
+  // WMO Weather Code to SF Symbol mapping
+  const getWeatherIcon = (weatherCode: number): string => {
+    if (weatherCode === 0) return 'sun.max.fill'; // Clear sky
+    if (weatherCode <= 3) return 'cloud.fill'; // Cloudy
+    if (weatherCode >= 51 && weatherCode <= 67) return 'cloud.rain.fill'; // Rain
+    if (weatherCode >= 71 && weatherCode <= 77) return 'cloud.snow.fill'; // Snow
+    if (weatherCode >= 80) return 'cloud.heavyrain.fill'; // Showers
+    return 'cloud.fill'; // Default
+  };
+
   return (
     <ScrollView
       style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}
@@ -90,7 +100,7 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={[styles.title, { color: Colors[colorScheme ?? 'light'].text }]}>YukiMate</Text>
+          <Text style={[styles.title, { color: Colors[colorScheme ?? 'light'].text }]}>Slope Link</Text>
         </View>
         <TouchableOpacity
           style={[styles.profileButton, {
@@ -155,7 +165,13 @@ export default function HomeScreen() {
             {/* コンテンツ */}
             <View style={styles.weatherCardContent}>
               <View style={styles.weatherHeaderRow}>
-                <Text style={[styles.weatherResort, { color: Colors[colorScheme ?? 'light'].text }]}>{weather.resortName}</Text>
+                <Text
+                  style={[styles.weatherResort, { color: Colors[colorScheme ?? 'light'].text }]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {weather.resortName}
+                </Text>
                 <View style={styles.liveBadge}>
                   <View style={styles.liveDot} />
                   <Text style={styles.liveText}>LIVE</Text>
@@ -164,6 +180,15 @@ export default function HomeScreen() {
 
               <View style={styles.weatherTopRow}>
                 <Text style={[styles.weatherTemp, { color: Colors[colorScheme ?? 'light'].text }]}>{weather.temperatureC}°C</Text>
+                {weather.weatherCode !== undefined && (
+                  <View style={styles.weatherIconContainer}>
+                    <IconSymbol
+                      name={getWeatherIcon(weather.weatherCode)}
+                      size={48}
+                      color={Colors[colorScheme ?? 'light'].text}
+                    />
+                  </View>
+                )}
                 <Text style={[styles.weatherBody, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>{t('home.freshSnow')} {weather.newSnowCm}cm</Text>
               </View>
 
@@ -223,14 +248,8 @@ export default function HomeScreen() {
         </ScrollView>
       </View> */}
 
-      {/* Quick actions – Discover / Chat / Local Info / Post */}
+      {/* Quick actions – Saved / My Posts / Create */}
       <View style={styles.quickActionsRow}>
-        <QuickAction
-          icon="safari"
-          label={t('home.discover')}
-          iconColor={Colors[colorScheme ?? 'light'].icon}
-          onPress={() => router.push('/(tabs)/discover')}
-        />
         <QuickAction
           icon={<BookmarkIcon width={24} height={24} color={Colors[colorScheme ?? 'light'].icon} />}
           label={t('home.saved')}
@@ -252,9 +271,9 @@ export default function HomeScreen() {
       </View>
 
       {/* Featured Events */}
-      {recommendedEvents.length > 0 && (
-        <View style={styles.featuredSection}>
-          <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>{t('home.featuredPosts')}</Text>
+      <View style={styles.featuredSection}>
+        <Text style={[styles.sectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>{t('home.featuredPosts')}</Text>
+        {recommendedEvents.length > 0 && (
           <FlatList
             horizontal
             data={recommendedEvents}
@@ -269,8 +288,8 @@ export default function HomeScreen() {
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.featuredListContent}
           />
-        </View>
-      )}
+        )}
+      </View>
 
       {/* Local hub / trend section (Snowfeed)
       {trendingPosts.length > 0 && (
@@ -368,6 +387,8 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
+    flex: 1, // 利用可能なスペースを使用
+    flexShrink: 1, // 必要に応じて縮小
   },
   weatherBody: {
     fontSize: 16,
@@ -389,6 +410,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 12,
+    gap: 16,
+  },
+  weatherIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   weatherSnowRow: {
     flexDirection: 'row',
@@ -564,6 +590,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     marginBottom: 4,
+    gap: 12, // スキー場名とLIVEバッジの間に余白を追加
   },
   liveBadge: {
     flexDirection: 'row',
@@ -573,6 +600,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 12,
     gap: 4,
+    flexShrink: 0, // LIVEバッジは常に完全に表示されるように
   },
   liveDot: {
     width: 6,

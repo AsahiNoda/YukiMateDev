@@ -17,6 +17,7 @@ export const mockHomeData: HomeData = {
     windSpeedMs: 3.5,
     visibility: 'good',
     snowQuality: 'powder',
+    weatherCode: 71, // Snow
   },
   recommendedEvents: [
     {

@@ -225,7 +225,7 @@ export default function ExploreScreen() {
           style={[styles.resortFilter, { backgroundColor: colors.backgroundSecondary }]}
           onPress={() => setShowResortModal(true)}
         >
-          <Text style={[styles.resortFilterText, { color: colors.text }]}>
+          <Text style={[styles.resortFilterText, { color: colors.icon }]}>
             {selectedResort && resortsState.status === 'success'
               ? resortsState.resorts.find(r => r.id === selectedResort)?.name || t('explore.resortFilter')
               : t('explore.resortFilter')}

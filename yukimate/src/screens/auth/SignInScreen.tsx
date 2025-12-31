@@ -3,6 +3,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +14,7 @@ import {
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTranslation } from '@/hooks/useTranslation';
+import { useLocale } from '@/contexts/LocaleContext';
 import { supabase } from '@lib/supabase';
 import { validateEmail, validatePassword } from '@/utils/validation';
 
@@ -20,6 +22,7 @@ export default function SignInScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { t } = useTranslation();
+  const { locale, setLocale } = useLocale();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -81,14 +84,20 @@ export default function SignInScreen() {
       } else {
         // サインイン
         console.log('🔑 [SignIn] Calling signInWithPassword...');
+        console.log('📧 [SignIn] Email:', email);
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ [SignIn] Sign in error:', error);
+          throw error;
+        }
 
-        console.log('✅ [SignIn] Signed in successfully:', data.user?.email);
+        console.log('✅ [SignIn] Signed in successfully');
+        console.log('📧 [SignIn] User email:', data.user?.email);
+        console.log('🆔 [SignIn] User ID:', data.user?.id);
         console.log('⏳ [SignIn] Waiting for RootLayout onAuthStateChange to handle navigation...');
         // RootLayout の onAuthStateChange が自動的にリダイレクトするまで待つ
         // 明示的なナビゲーションは行わない（競合を避けるため）
@@ -145,174 +154,249 @@ export default function SignInScreen() {
       console.error('❌ [ForgotPassword] Error name:', error.name);
       console.error('❌ [ForgotPassword] Error message:', error.message);
       console.error('❌ [ForgotPassword] Error stack:', error.stack);
-      Alert.alert(t('common.error'), error.message || t('auth.resetPasswordFailed'));
+
+      // より詳細なエラーメッセージを提供
+      let errorMessage = error.message || t('auth.resetPasswordFailed');
+      if (error.message?.includes('Error sending recovery email')) {
+        errorMessage = t('auth.emailServiceNotConfigured');
+      }
+
+      Alert.alert(t('common.error'), errorMessage);
     } finally {
       console.log('✅ [ForgotPassword] Setting loading state to false');
       setLoading(false);
     }
   };
 
+  const toggleLanguage = async () => {
+    try {
+      await setLocale(locale === 'ja' ? 'en' : 'ja');
+    } catch (error) {
+      console.error('Failed to change language:', error);
+    }
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.content}>
-        {/* ロゴ */}
-        <View style={styles.logoContainer}>
-          <Text style={styles.logoIcon}>❄️</Text>
-          <Text style={[styles.logoText, { color: colors.text }]}>YukiMate</Text>
-          <Text style={[styles.tagline, { color: colors.textSecondary }]}>{t('auth.tagline')}</Text>
-        </View>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* 言語切り替えボタン */}
+      <TouchableOpacity
+        style={styles.languageButton}
+        onPress={toggleLanguage}
+        disabled={loading}
+      >
+        <Text style={[styles.languageButtonText, { color: colors.text }]}>
+          🌐 {locale === 'ja' ? 'EN' : 'JP'}
+        </Text>
+      </TouchableOpacity>
 
-        {/* フォーム */}
-        <View style={styles.form}>
-          <Text style={[styles.title, { color: colors.text }]}>
-            {mode === 'signin' ? t('auth.signIn') : t('auth.signUp')}
-          </Text>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ロゴ */}
+          <View style={styles.logoContainer}>
+            <Text style={styles.logoIcon}>❄️</Text>
+            <Text style={[styles.logoText, { color: colors.text }]}>YukiMate</Text>
+            <Text style={[styles.tagline, { color: colors.textSecondary }]}>{t('auth.tagline')}</Text>
+          </View>
 
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-            placeholder={t('auth.email')}
-            placeholderTextColor={colors.textSecondary}
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            autoComplete="email"
-            editable={!loading}
-          />
-
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-            placeholder={t('auth.password')}
-            placeholderTextColor={colors.textSecondary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoComplete={mode === 'signin' ? 'password' : 'new-password'}
-            editable={!loading}
-          />
-
-          {/* メインボタン */}
-          <TouchableOpacity
-            style={[styles.button, styles.primaryButton, { backgroundColor: colors.tint }, loading && styles.buttonDisabled]}
-            onPress={handleEmailPasswordAuth}
-            disabled={loading}
-          >
-            <Text style={[styles.buttonText, { color: colors.text }]}>
-              {loading ? t('common.processing') : mode === 'signin' ? t('auth.signIn') : t('auth.signUp')}
+          {/* フォーム */}
+          <View style={styles.form}>
+            <Text style={[styles.title, { color: colors.text }]}>
+              {mode === 'signin' ? t('auth.signIn') : t('auth.signUp')}
             </Text>
-          </TouchableOpacity>
 
-          {/* パスワードを忘れた場合 (サインインモード時のみ表示) */}
-          {mode === 'signin' && (
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                placeholder={t('auth.email')}
+                placeholderTextColor={colors.textSecondary}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+                editable={!loading}
+              />
+
+              <TextInput
+                style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                placeholder={t('auth.password')}
+                placeholderTextColor={colors.textSecondary}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoCapitalize="none"
+                autoComplete={mode === 'signin' ? 'password' : 'new-password'}
+                editable={!loading}
+              />
+            </View>
+
+            {/* パスワードを忘れた場合 (サインインモード時のみ表示) */}
+            {mode === 'signin' && (
+              <TouchableOpacity
+                style={styles.forgotPasswordButton}
+                onPress={handleForgotPassword}
+                disabled={loading}
+              >
+                <Text style={[styles.forgotPasswordText, { color: colors.tint }]}>
+                  {t('auth.forgotPasswordLink')}
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* メインボタン */}
             <TouchableOpacity
-              style={styles.linkButton}
-              onPress={handleForgotPassword}
+              style={[styles.button, styles.primaryButton, { backgroundColor: colors.tint }, loading && styles.buttonDisabled]}
+              onPress={handleEmailPasswordAuth}
               disabled={loading}
             >
-              <Text style={[styles.forgotPasswordText, { color: colors.tint }]}>
-                {t('auth.forgotPasswordLink')}
+              <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+                {loading ? t('common.processing') : mode === 'signin' ? t('auth.signIn') : t('auth.signUp')}
               </Text>
             </TouchableOpacity>
-          )}
 
-          {/* モード切替 */}
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-            disabled={loading}
-          >
-            <Text style={[styles.linkText, { color: colors.textSecondary }]}>
-              {mode === 'signin'
-                ? t('auth.dontHaveAccount')
-                : t('auth.alreadyHaveAccount')}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
+            {/* モード切替 */}
+            <View style={styles.switchModeContainer}>
+              <Text style={[styles.switchModeText, { color: colors.textSecondary }]}>
+                {mode === 'signin'
+                  ? t('auth.dontHaveAccount')?.split('はこちら')[0]
+                  : t('auth.alreadyHaveAccount')?.split('はこちら')[0]}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
+                disabled={loading}
+              >
+                <Text style={[styles.switchModeLink, { color: colors.tint }]}>
+                  {mode === 'signin' ? t('auth.signUp') : t('auth.signIn')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    // backgroundColor is set dynamically
   },
-  content: {
+  languageButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    right: 20,
+    zIndex: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(128, 128, 128, 0.1)',
+  },
+  languageButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  keyboardView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: 24,
+    paddingBottom: 40,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 56,
   },
   logoIcon: {
-    fontSize: 64,
-    marginBottom: 8,
+    fontSize: 72,
+    marginBottom: 12,
   },
   logoText: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: '700',
-    // color is set dynamically
+    letterSpacing: -0.5,
     marginBottom: 8,
   },
   tagline: {
-    fontSize: 14,
-    // color is set dynamically
+    fontSize: 13,
     textAlign: 'center',
+    opacity: 0.7,
   },
   form: {
     width: '100%',
   },
   title: {
-    fontSize: 24,
-    fontWeight: '600',
-    // color is set dynamically
-    marginBottom: 24,
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 32,
     textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  inputContainer: {
+    marginBottom: 8,
   },
   input: {
-    // backgroundColor, borderColor, color are set dynamically
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 14,
+    padding: 18,
     fontSize: 16,
-    marginBottom: 16,
+    marginBottom: 14,
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 24,
+    paddingVertical: 4,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   button: {
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 14,
+    padding: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   primaryButton: {
     // backgroundColor is set dynamically
   },
   buttonDisabled: {
-    opacity: 0.5,
+    opacity: 0.6,
   },
   buttonText: {
-    // color is set dynamically
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
+    letterSpacing: 0.3,
   },
-  linkButton: {
-    padding: 12,
+  switchModeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    gap: 6,
   },
-  linkText: {
-    // color is set dynamically
-    fontSize: 14,
+  switchModeText: {
+    fontSize: 15,
   },
-  forgotPasswordText: {
-    // color is set dynamically
-    fontSize: 14,
-    textDecorationLine: 'underline',
+  switchModeLink: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

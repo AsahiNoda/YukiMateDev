@@ -71,10 +71,10 @@ export default function CreateEventScreen() {
   const [category, setCategory] = useState('event');
   const [resortId, setResortId] = useState('');
   const [date, setDate] = useState<Date | null>(null);
-  const [startTime, setStartTime] = useState('10:00');
-  const [endTime, setEndTime] = useState('15:00');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [capacity, setCapacity] = useState('6');
+  const [capacity, setCapacity] = useState('');
   const [level, setLevel] = useState<SkillLevel | ''>('');
   const [price, setPrice] = useState('');
   const [meetingPlace, setMeetingPlace] = useState('');
@@ -97,18 +97,22 @@ export default function CreateEventScreen() {
   const startTimeScrollRef = React.useRef<ScrollView>(null);
   const endTimeScrollRef = React.useRef<ScrollView>(null);
 
-  // スクロール位置を選択中の時刻に合わせる
+  // スクロール位置を選択中の時刻に合わせる（中央に表示）
   const scrollToSelectedTime = (scrollRef: React.RefObject<ScrollView | null>, selectedTime: string) => {
     const index = TIME_OPTIONS.indexOf(selectedTime);
     if (index !== -1) {
-      // 各アイテムの高さは約49px（padding 12*2 + borderBottom 1 + fontSize 16 + line-height）
-      const itemHeight = 49;
-      const scrollToY = Math.max(0, (index * itemHeight) - 75); // 選択中のアイテムを中央付近に表示
+      // アイテムの実際の高さ（padding 12*2 + fontSize 16 + line-height + border 1）
+      // 45と49の中間値で調整
+      const itemHeight = 47;
+      const containerHeight = 200; // maxHeightと同じ値
+      // 選択中のアイテムを中央に表示
+      // コンテナの中央（100px）に選択アイテムを配置
+      const scrollToY = Math.max(0, (index * itemHeight) - (containerHeight / 2));
 
       // setTimeoutで確実にレンダリング後にスクロール
       setTimeout(() => {
         scrollRef.current?.scrollTo({ y: scrollToY, animated: true });
-      }, 50);
+      }, 100);
     }
   };
 
@@ -269,9 +273,9 @@ export default function CreateEventScreen() {
     setCategory('event');
     setResortId('');
     setDate(null);
-    setStartTime('10:00');
-    setEndTime('15:00');
-    setCapacity('6');
+    setStartTime('');
+    setEndTime('');
+    setCapacity('');
     setLevel('');
     setPrice('');
     setMeetingPlace('');
@@ -732,7 +736,9 @@ export default function CreateEventScreen() {
               style={styles.picker}
               onPress={() => setShowStartTimePicker(!showStartTimePicker)}
             >
-              <Text style={styles.pickerText}>{startTime}</Text>
+              <Text style={[styles.pickerText, !startTime && styles.placeholderText]}>
+                {startTime || t('create.selectTime')}
+              </Text>
               <IconSymbol name="chevron.down" size={20} color={colors.icon} />
             </TouchableOpacity>
             {showStartTimePicker && (
@@ -776,7 +782,9 @@ export default function CreateEventScreen() {
               style={styles.picker}
               onPress={() => setShowEndTimePicker(!showEndTimePicker)}
             >
-              <Text style={styles.pickerText}>{endTime}</Text>
+              <Text style={[styles.pickerText, !endTime && styles.placeholderText]}>
+                {endTime || t('create.selectTime')}
+              </Text>
               <IconSymbol name="chevron.down" size={20} color={colors.icon} />
             </TouchableOpacity>
             {showEndTimePicker && (
@@ -821,6 +829,7 @@ export default function CreateEventScreen() {
           <Text style={styles.label}>{t('create.capacityLabel')}</Text>
           <TextInput
             style={styles.input}
+            placeholder={t('create.capacityPlaceholder')}
             placeholderTextColor={colors.textSecondary}
             value={capacity}
             onChangeText={setCapacity}

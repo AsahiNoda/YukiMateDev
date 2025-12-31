@@ -298,22 +298,24 @@ export default function RootLayout() {
 
           // SIGNED_INイベント時にプロフィールの存在を確認
           if (event === 'SIGNED_IN' && session) {
-            // パスワードリカバリーセッション中の場合は自動ナビゲーションをスキップ
-            console.log('🔍 Checking recovery session flag:', isRecoverySession);
+            console.log('🔐 [RootLayout] SIGNED_IN event received');
+            console.log('🔍 [RootLayout] Recovery session flag:', isRecoverySession);
+            console.log('🔍 [RootLayout] Is navigating:', isNavigating);
 
+            // パスワードリカバリーセッション中の場合は自動ナビゲーションをスキップ
             if (isRecoverySession) {
-              console.log('🔐 Recovery session detected, staying on current screen for password reset');
+              console.log('🔐 [RootLayout] Recovery session detected, staying on reset password screen');
               return;
             }
 
-            console.log('➡️  User signed in, checking profile... (isNavigating:', isNavigating, ')');
+            console.log('➡️  [RootLayout] Normal sign in, checking profile...');
 
             // ナビゲーション中フラグをチェック（重複防止）
             if (isNavigating) {
-              console.log('⚠️  Already navigating, skipping duplicate navigation');
+              console.log('⚠️  [RootLayout] Already navigating, skipping duplicate navigation');
               return;
             }
-            console.log('✅ Setting isNavigating = true');
+            console.log('✅ [RootLayout] Setting isNavigating = true');
             isNavigating = true;
 
             // プロフィールの存在確認(async/awaitで適切にエラーハンドリング)
@@ -354,6 +356,11 @@ export default function RootLayout() {
           // SIGNED_OUTイベントのみサインイン画面へリダイレクト
           else if (event === 'SIGNED_OUT') {
             console.log('➡️  Redirecting to sign-in...');
+            // リカバリーセッションフラグをリセット
+            if (isRecoverySession) {
+              console.log('🔄 Resetting recovery session flag on sign out');
+              isRecoverySession = false;
+            }
             router.replace('/(auth)/sign-in');
           }
           // その他のイベントはログのみ

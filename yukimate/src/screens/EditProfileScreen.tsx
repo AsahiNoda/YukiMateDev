@@ -368,24 +368,20 @@ export default function EditProfileScreen() {
               activeOpacity={1}
               onPress={() => setShowCountryPicker(false)}
             >
-              <TouchableOpacity
-                activeOpacity={1}
-                onPress={(e) => e.stopPropagation()}
-              >
-                <View style={[styles.pickerModal, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
-                  <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
-                    <Text style={[styles.pickerTitle, { color: colors.text }]}>{t('editProfileScreen.selectNationality')}</Text>
-                    <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
-                      <Ionicons name="close" size={24} color={colors.text} />
-                    </TouchableOpacity>
-                  </View>
-                  <FlatList
-                    data={COUNTRIES}
-                    style={styles.pickerList}
-                    keyExtractor={(item) => item.code}
-                    initialNumToRender={20}
-                    getItemLayout={(data, index) => ({ length: 55, offset: 55 * index, index })}
-                    renderItem={({ item: country }) => (
+              <View style={[styles.pickerModal, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, paddingBottom: insets.bottom }]}>
+                <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
+                  <Text style={[styles.pickerTitle, { color: colors.text }]}>{t('editProfileScreen.selectNationality')}</Text>
+                  <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
+                    <Ionicons name="close" size={24} color={colors.text} />
+                  </TouchableOpacity>
+                </View>
+                <FlatList
+                  data={COUNTRIES}
+                  style={{ flex: 1 }}
+                  keyExtractor={(item) => item.code}
+                  initialNumToRender={20}
+                  getItemLayout={(data, index) => ({ length: 55, offset: 55 * index, index })}
+                  renderItem={({ item: country }) => (
                       <TouchableOpacity
                         style={[
                           styles.pickerItem,
@@ -413,8 +409,7 @@ export default function EditProfileScreen() {
                       </TouchableOpacity>
                     )}
                   />
-                </View>
-              </TouchableOpacity>
+              </View>
             </TouchableOpacity>
           </Modal>
         </View>
@@ -653,7 +648,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0f172a',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: '80%',
+    height: 500,
   },
   pickerHeader: {
     flexDirection: 'row',
@@ -669,7 +664,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   pickerList: {
-    maxHeight: 400,
+    // maxHeight removed to fill available space
   },
   pickerItem: {
     flexDirection: 'row',

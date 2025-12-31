@@ -24,7 +24,7 @@ export function GlassmorphicTabBar({ state, descriptors, navigation }: BottomTab
           }
         ]}
       >
-        <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+        <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom + 8, 16) }]}>
           {state.routes.map((route, index) => {
             const { options } = descriptors[route.key];
             const isFocused = state.index === index;

@@ -62,11 +62,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log(`🔔 AuthContext: Auth event: ${event}, Has session: ${!!session}`);
+        console.log(`🔔 AuthContext: User email: ${session?.user?.email}`);
+        console.log(`🔔 AuthContext: Session type: ${session?.user?.app_metadata?.provider}`);
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
+          console.log(`🔔 AuthContext: Fetching profile for user: ${session.user.id}`);
           await fetchProfile(session.user.id);
+          console.log(`🔔 AuthContext: Fetching role for user: ${session.user.id}`);
           await fetchUserRole(session.user.id);
+          console.log(`🔔 AuthContext: Profile and role fetch complete`);
         } else {
           setProfile(null);
           setUserRole(null);
@@ -80,11 +85,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function fetchProfile(userId: string) {
     try {
-      const { data, error } = await supabase
+      console.log('⏳ [AuthContext] Fetching profile...');
+
+      // タイムアウト処理を追加（5秒）
+      const profilePromise = supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000);
+      });
+
+      const { data, error } = await Promise.race([
+        profilePromise,
+        timeoutPromise,
+      ]) as any;
 
       if (error) {
         // プロフィールが存在しない場合
@@ -121,8 +138,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
         setProfile(appUser);
       }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
+    } catch (error: any) {
+      if (error.message === 'Profile fetch timeout') {
+        console.warn('⚠️ [AuthContext] Profile fetch timed out, continuing without profile');
+        setProfile(null);
+      } else {
+        console.error('Error fetching profile:', error);
+      }
     } finally {
       setLoading(false);
     }
@@ -130,11 +152,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function fetchUserRole(userId: string) {
     try {
-      const { data, error } = await supabase
+      console.log('⏳ [AuthContext] Fetching user role...');
+
+      // タイムアウト処理を追加（5秒）
+      const rolePromise = supabase
         .from('users')
         .select('role')
         .eq('id', userId)
         .single();
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('User role fetch timeout')), 5000);
+      });
+
+      const { data, error } = await Promise.race([
+        rolePromise,
+        timeoutPromise,
+      ]) as any;
 
       if (error) {
         // PGRST116 = レコードが見つからない
@@ -149,9 +183,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else if (data) {
         setUserRole(data.role as UserRole);
       }
-    } catch (error) {
-      console.error('Error fetching user role:', error);
-      setUserRole('user'); // エラー時もデフォルトロール
+    } catch (error: any) {
+      if (error.message === 'User role fetch timeout') {
+        console.warn('⚠️ [AuthContext] User role fetch timed out, using default role');
+        setUserRole('user');
+      } else {
+        console.error('Error fetching user role:', error);
+        setUserRole('user'); // エラー時もデフォルトロール
+      }
     }
   }
 

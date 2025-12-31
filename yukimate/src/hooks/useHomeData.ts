@@ -145,6 +145,7 @@ export function useHomeData(): HomeDataState {
               windSpeedMs: weather.windMs,
               visibility: weather.visibility,
               snowQuality: weather.snowQuality,
+              weatherCode: weather.weatherCode,
             };
           }
         }

@@ -22,6 +22,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type RidingStyle = 'Freeride' | 'Powder' | 'Carving' | 'Park' | 'Backcountry';
 
@@ -165,7 +166,7 @@ function createStyles(colors: typeof Colors.light) {
       backgroundColor: colors.background,
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
-      maxHeight: '80%',
+      height: 500,
     },
     pickerHeader: {
       flexDirection: 'row',
@@ -181,7 +182,7 @@ function createStyles(colors: typeof Colors.light) {
       color: colors.text,
     },
     pickerList: {
-      maxHeight: 400,
+      // maxHeight removed to fill available space
     },
     pickerItem: {
       flexDirection: 'row',
@@ -295,6 +296,7 @@ export default function ProfileSetupScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { t, locale } = useTranslation();
+  const insets = useSafeAreaInsets();
   const styles = React.useMemo(() => createStyles(colors), [colors]);
   const [loading, setLoading] = useState(false);
 
@@ -511,24 +513,20 @@ export default function ProfileSetupScreen() {
               activeOpacity={1}
               onPress={() => setShowCountryPicker(false)}
             >
-              <TouchableOpacity
-                activeOpacity={1}
-                onPress={(e) => e.stopPropagation()}
-              >
-                <View style={styles.pickerModal}>
-                  <View style={styles.pickerHeader}>
-                    <Text style={styles.pickerTitle}>{t('profileSetup.selectNationality')}</Text>
-                    <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
-                      <Ionicons name="close" size={24} color={colors.text} />
-                    </TouchableOpacity>
-                  </View>
-                  <FlatList
-                    data={COUNTRIES}
-                    style={styles.pickerList}
-                    keyExtractor={(item) => item.code}
-                    initialNumToRender={20}
-                    getItemLayout={(data, index) => ({ length: 55, offset: 55 * index, index })} // Optimization assuming fixed height
-                    renderItem={({ item: country }) => (
+              <View style={[styles.pickerModal, { paddingBottom: insets.bottom }]}>
+                <View style={styles.pickerHeader}>
+                  <Text style={styles.pickerTitle}>{t('profileSetup.selectNationality')}</Text>
+                  <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
+                    <Ionicons name="close" size={24} color={colors.text} />
+                  </TouchableOpacity>
+                </View>
+                <FlatList
+                  data={COUNTRIES}
+                  style={{ flex: 1 }}
+                  keyExtractor={(item) => item.code}
+                  initialNumToRender={20}
+                  getItemLayout={(data, index) => ({ length: 55, offset: 55 * index, index })}
+                  renderItem={({ item: country }) => (
                       <TouchableOpacity
                         style={[
                           styles.pickerItem,
@@ -554,8 +552,7 @@ export default function ProfileSetupScreen() {
                       </TouchableOpacity>
                     )}
                   />
-                </View>
-              </TouchableOpacity>
+              </View>
             </TouchableOpacity>
           </Modal>
         </View>

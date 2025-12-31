@@ -87,6 +87,7 @@ export const translations = {
       resetPasswordEmailMessage: 'パスワードリセット用のリンクをメールで送信しました。メールを確認してください。',
       enterEmailForReset: 'メールアドレスを入力してください',
       resetPasswordFailed: 'パスワードリセットメールの送信に失敗しました',
+      emailServiceNotConfigured: 'メール送信サービスが設定されていません。管理者に連絡してください。',
       accountAlreadyExists: 'このメールアドレスは既に登録されています',
       authenticationFailed: '認証に失敗しました',
       resetPasswordTitle: 'パスワードをリセット',
@@ -374,6 +375,8 @@ export const translations = {
       galleryPermission: 'ギャラリーへのアクセス権限が必要です',
       loginRequired: 'ログインが必要です',
       limitLabel: '制限',
+      selectTime: '時刻を選択',
+      capacityPlaceholder: '例: 6',
     },
 
     // Chat
@@ -735,6 +738,7 @@ export const translations = {
       resetPasswordEmailMessage: 'We have sent a password reset link to your email. Please check your inbox.',
       enterEmailForReset: 'Please enter your email address',
       resetPasswordFailed: 'Failed to send password reset email',
+      emailServiceNotConfigured: 'Email service is not configured. Please contact the administrator.',
       accountAlreadyExists: 'This email address is already registered',
       authenticationFailed: 'Authentication failed',
       resetPasswordTitle: 'Reset Password',
@@ -1022,6 +1026,8 @@ export const translations = {
       galleryPermission: 'Gallery access permission is required',
       loginRequired: 'Login required',
       limitLabel: 'Limit',
+      selectTime: 'Select time',
+      capacityPlaceholder: 'e.g. 6',
     },
 
     // Chat
