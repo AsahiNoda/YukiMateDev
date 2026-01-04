@@ -4,7 +4,7 @@ export default {
     slug: 'slopelink',
     version: '1.0.0',
     orientation: 'portrait',
-    icon: './assets/images/icon.png',
+    icon: './assets/images/app_icon.png',
     scheme: 'slopelink',
     userInterfaceStyle: 'automatic',
     newArchEnabled: true,
@@ -19,9 +19,9 @@ export default {
     android: {
       adaptiveIcon: {
         backgroundColor: '#E6F4FE',
-        foregroundImage: './assets/images/android-icon-foreground.png',
-        backgroundImage: './assets/images/android-icon-background.png',
-        monochromeImage: './assets/images/android-icon-monochrome.png',
+        foregroundImage: './assets/images/app_icon.png',
+        backgroundImage: './assets/images/app_icon.png',
+        monochromeImage: './assets/images/app_icon.png',
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
@@ -37,7 +37,7 @@ export default {
     },
     web: {
       output: 'static',
-      favicon: './assets/images/favicon.png',
+      favicon: './assets/images/app_icon.png',
     },
     plugins: [
       'expo-router',
