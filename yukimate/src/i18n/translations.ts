@@ -63,6 +63,7 @@ export const translations = {
       accountSettings: 'アカウント設定',
       notificationSettings: '通知設定',
       privacy: 'プライバシー',
+      legal: '法的情報',
       info: '情報',
       about: 'アプリについて',
       termsOfService: '利用規約',
@@ -112,11 +113,15 @@ export const translations = {
       loginFailed: 'ログインに失敗しました',
       termsAndPrivacy: '続けることで、利用規約とプライバシーポリシーに同意したものとみなされます',
       passwordLengthError: 'パスワードは6文字以上である必要があります',
+      goToLogin: 'ログインする',
+      invalidCredentials: 'メールアドレスまたはパスワードが正しくありません',
+      databaseError: 'データベースエラーが発生しました。管理者に連絡してください。',
     },
 
     // Account Settings
     accountSettings: {
       title: 'アカウント設定',
+      accountInfo: 'アカウント情報',
       currentEmail: '現在のメールアドレス',
       changeEmail: 'メールアドレスを変更',
       newEmail: '新しいメールアドレス',
@@ -163,6 +168,11 @@ export const translations = {
       eventCancelledDesc: '参加予定のイベントが中止された時',
       newParticipants: '新しい参加者',
       newParticipantsDesc: '自分が主催するイベントに参加者が増えた時',
+      newApplications: '新しい参加申請',
+      newApplicationsDesc: '自分が主催するイベントに参加申請が届いた時',
+      socialNotifications: 'ソーシャル通知',
+      starredUserEvents: '★登録ユーザーのイベント',
+      starredUserEventsDesc: '★登録したユーザーがイベントをホスト/参加する時',
       messageNotifications: 'メッセージ通知',
       chatMessages: 'チャットメッセージ',
       chatMessagesDesc: 'イベントチャットに新しいメッセージが届いた時',
@@ -184,6 +194,8 @@ export const translations = {
     // Delete Account
     deleteAccount: {
       title: 'アカウント削除',
+      warningTitle: '警告',
+      warningMessage: 'この操作は取り消せません。アカウントとすべてのデータが完全に削除されます。',
       dataToBeDeleted: '削除されるデータ',
       profileInfo: 'プロフィール情報',
       createdEvents: '作成したイベント',
@@ -191,13 +203,21 @@ export const translations = {
       postedImages: '投稿した画像',
       commentsAndLikes: 'コメントといいね',
       starredAndBlocked: '★登録とブロック情報',
+      confirmLabel: '確認のため「DELETE」と入力してください',
+      confirmHint: 'すべて大文字で入力してください',
       confirmInstruction: '確認のため「DELETE」と入力してください',
       deletePlaceholder: 'DELETE',
+      enterDelete: '確認のため「DELETE」と入力してください',
       enterDeleteCaps: 'すべて大文字で「DELETE」と入力してください',
       deleteButton: 'アカウントを削除する',
+      permanentlyDelete: 'アカウントを完全に削除',
       deleteConfirm: 'アカウント削除',
+      confirmMessage: 'この操作は取り消せません。本当にアカウントを削除しますか？',
       deleteConfirmMessage: 'この操作は取り消せません。本当にアカウントを削除しますか？',
       deleteSuccess: 'アカウントを削除しました',
+      deleteFailed: 'アカウントの削除に失敗しました',
+      completed: '完了',
+      accountDeleted: 'アカウントが削除されました',
       sessionNotFound: 'セッションが見つかりません',
       enterDeleteToConfirm: '確認のため「DELETE」と入力してください',
     },
@@ -228,6 +248,9 @@ export const translations = {
       usersParticipating: '人が参加中',
       official: '公式',
       developer: '開発者',
+      noHomeResort: 'ホームゲレンデが設定されていません',
+      setHomeResortFromSnowfeed: 'snowfeedページから設定してください',
+      goToSnowfeed: 'snowfeedへ',
     },
 
     // Profile Setup
@@ -551,6 +574,9 @@ export const translations = {
       minutesAgo: '${minutes}分前',
       hoursAgo: '${hours}時間前',
       daysAgo: '${days}日前',
+      setHomeResort: 'ホームゲレンデを設定してください',
+      setHomeResortSubtitle: '最初にホームゲレンデを設定する必要があります',
+      setHomeResortButton: 'ホームゲレンデを設定',
     },
 
     // Weather
@@ -650,6 +676,48 @@ export const translations = {
       retry: '再試行',
       restartPrompt: '問題が解決しない場合は、アプリを再起動してください。',
     },
+
+    // Notifications
+    notifications: {
+      eventApplicationApproved: {
+        title: 'イベント申請が承認されました',
+        body: '「{eventTitle}」への参加が承認されました。',
+      },
+      eventApplicationRejected: {
+        title: 'イベント申請が却下されました',
+        body: '「{eventTitle}」への参加申請が却下されました。',
+      },
+      eventStarting: {
+        title: 'イベント開始まであと少し',
+        body: '「{eventTitle}」が{minutes}分後に始まります。',
+      },
+      eventCancelled: {
+        title: 'イベントがキャンセルされました',
+        body: '「{eventTitle}」がホストによってキャンセルされました。',
+      },
+      newParticipant: {
+        title: '新しい参加者',
+        body: '{participantName}さんが「{eventTitle}」に参加しました。',
+      },
+      postEventAction: {
+        title: 'イベントの評価をお願いします',
+        body: '「{eventTitle}」はいかがでしたか？参加者を評価してください。',
+      },
+      newApplication: {
+        title: '新しい参加申請',
+        body: '{applicantName}さんから「{eventTitle}」への参加申請が届きました。',
+      },
+      starredUserEvent: {
+        titleHost: '★登録ユーザーのイベント',
+        titleParticipant: '★登録ユーザーのイベント',
+        bodyHost: '{starredUserName}さんが「{eventTitle}」をホストします。',
+        bodyParticipant: '{starredUserName}さんが「{eventTitle}」に参加します。',
+      },
+      newChatMessage: {
+        title: 'イベントチャットに新着メッセージ',
+        body: '{senderName}さんが「{eventTitle}」のチャットにメッセージを送信しました。',
+      },
+    },
   },
 
   en: {
@@ -714,6 +782,7 @@ export const translations = {
       accountSettings: 'Account Settings',
       notificationSettings: 'Notification Settings',
       privacy: 'Privacy',
+      legal: 'Legal',
       info: 'Information',
       about: 'About',
       termsOfService: 'Terms of Service',
@@ -763,11 +832,15 @@ export const translations = {
       loginFailed: 'Login failed',
       termsAndPrivacy: 'By continuing, you agree to our Terms of Service and Privacy Policy',
       passwordLengthError: 'Password must be at least 6 characters',
+      goToLogin: 'Go to Login',
+      invalidCredentials: 'Invalid email or password',
+      databaseError: 'A database error occurred. Please contact the administrator.',
     },
 
     // Account Settings
     accountSettings: {
       title: 'Account Settings',
+      accountInfo: 'Account Information',
       currentEmail: 'Current Email Address',
       changeEmail: 'Change Email Address',
       newEmail: 'New Email Address',
@@ -814,6 +887,11 @@ export const translations = {
       eventCancelledDesc: 'When an event you are attending is cancelled',
       newParticipants: 'New Participants',
       newParticipantsDesc: 'When participants join your hosted event',
+      newApplications: 'New Applications',
+      newApplicationsDesc: 'When someone applies to your hosted event',
+      socialNotifications: 'Social Notifications',
+      starredUserEvents: 'Starred User Events',
+      starredUserEventsDesc: 'When starred users host or join events',
       messageNotifications: 'Message Notifications',
       chatMessages: 'Chat Messages',
       chatMessagesDesc: 'When new message arrives in event chat',
@@ -835,6 +913,8 @@ export const translations = {
     // Delete Account
     deleteAccount: {
       title: 'Delete Account',
+      warningTitle: 'Warning',
+      warningMessage: 'This action cannot be undone. Your account and all data will be permanently deleted.',
       dataToBeDeleted: 'Data to be deleted',
       profileInfo: 'Profile information',
       createdEvents: 'Created events',
@@ -842,13 +922,21 @@ export const translations = {
       postedImages: 'Posted images',
       commentsAndLikes: 'Comments and likes',
       starredAndBlocked: 'Starred users and block info',
+      confirmLabel: 'Enter "DELETE" to confirm',
+      confirmHint: 'Please enter in all caps',
       confirmInstruction: 'Enter "DELETE" to confirm',
       deletePlaceholder: 'DELETE',
+      enterDelete: 'Enter "DELETE" to confirm',
       enterDeleteCaps: 'Please enter "DELETE" in all caps',
       deleteButton: 'Delete Account',
+      permanentlyDelete: 'Permanently Delete Account',
       deleteConfirm: 'Delete Account',
+      confirmMessage: 'This action cannot be undone. Are you sure you want to delete your account?',
       deleteConfirmMessage: "This action cannot be undone. Are you sure you want to delete your account?",
       deleteSuccess: 'Account deleted',
+      deleteFailed: 'Failed to delete account',
+      completed: 'Completed',
+      accountDeleted: 'Your account has been deleted',
       sessionNotFound: 'Session not found',
       enterDeleteToConfirm: 'Enter "DELETE" to confirm',
     },
@@ -879,6 +967,9 @@ export const translations = {
       usersParticipating: ' participants',
       official: 'Official',
       developer: 'Developer',
+      noHomeResort: 'Home Resort Not Set',
+      setHomeResortFromSnowfeed: 'Please set it from the snowfeed page',
+      goToSnowfeed: 'Go to SnowFeed',
     },
 
     // Profile Setup
@@ -1202,6 +1293,9 @@ export const translations = {
       minutesAgo: '${minutes}m ago',
       hoursAgo: '${hours}h ago',
       daysAgo: '${days}d ago',
+      setHomeResort: 'Set Home Resort',
+      setHomeResortSubtitle: 'You need to set your home resort first',
+      setHomeResortButton: 'Set Home Resort',
     },
 
     // Weather
@@ -1300,6 +1394,48 @@ export const translations = {
       componentStack: 'Component stack:',
       retry: 'Retry',
       restartPrompt: 'If the problem persists, please restart the app.',
+    },
+
+    // Notifications
+    notifications: {
+      eventApplicationApproved: {
+        title: 'Event Application Approved',
+        body: 'Your application to "{eventTitle}" has been approved.',
+      },
+      eventApplicationRejected: {
+        title: 'Event Application Rejected',
+        body: 'Your application to "{eventTitle}" has been rejected.',
+      },
+      eventStarting: {
+        title: 'Event Starting Soon',
+        body: '"{eventTitle}" will start in {minutes} minutes.',
+      },
+      eventCancelled: {
+        title: 'Event Cancelled',
+        body: '"{eventTitle}" has been cancelled by the host.',
+      },
+      newParticipant: {
+        title: 'New Participant',
+        body: '{participantName} joined "{eventTitle}".',
+      },
+      postEventAction: {
+        title: 'Please Rate the Event',
+        body: 'How was "{eventTitle}"? Please rate the participants.',
+      },
+      newApplication: {
+        title: 'New Application',
+        body: '{applicantName} applied to join "{eventTitle}".',
+      },
+      starredUserEvent: {
+        titleHost: 'Starred User Event',
+        titleParticipant: 'Starred User Event',
+        bodyHost: '{starredUserName} is hosting "{eventTitle}".',
+        bodyParticipant: '{starredUserName} is joining "{eventTitle}".',
+      },
+      newChatMessage: {
+        title: 'New Chat Message',
+        body: '{senderName} sent a message in "{eventTitle}" chat.',
+      },
     },
   },
 } as const;

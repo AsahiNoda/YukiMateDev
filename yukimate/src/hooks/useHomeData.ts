@@ -83,6 +83,7 @@ export function useHomeData(): HomeDataState {
 
         let resort = null;
         let resortError = null;
+        let hasHomeResort = false;
 
         if (user) {
           // Get user's profile to find home resort
@@ -102,22 +103,11 @@ export function useHomeData(): HomeDataState {
 
             resort = homeResort;
             resortError = homeResortError;
+            hasHomeResort = true;
           }
         }
 
-        // Fallback to first searchable resort if no home resort
-        if (!resort) {
-          const { data: defaultResort, error: defaultError } = await supabase
-            .from('resorts')
-            .select('id, name, name_en, area, region, latitude, longitude')
-            .eq('searchable', true)
-            .order('name')
-            .limit(1)
-            .single();
-
-          resort = defaultResort;
-          resortError = defaultError;
-        }
+        // ホームゲレンデが未設定の場合はnullを返す（フォールバックしない）
 
         let weatherData = null;
 
@@ -185,7 +175,7 @@ export function useHomeData(): HomeDataState {
         setState({
           status: 'success',
           data: {
-            weather: weatherData || mockHomeData.weather,
+            weather: hasHomeResort ? weatherData : null, // ホームゲレンデ未設定の場合はnull
             recommendedEvents: featuredEvents,
             suggestedEvents: [],
             trendingPosts: trendingPosts.length > 0 ? trendingPosts : mockHomeData.trendingPosts,

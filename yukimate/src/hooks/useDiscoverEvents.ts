@@ -25,9 +25,19 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
     const load = async () => {
       try {
         // 1. 現在のユーザー情報を取得
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError) {
+          throw new Error('セッション取得エラー: ' + sessionError.message);
+        }
+
         if (!session?.user) {
-          throw new Error('ユーザーがログインしていません');
+          if (!isMounted) return;
+          setState({
+            status: 'error',
+            error: 'ログインが必要です。アカウント設定からログインしてください。',
+          });
+          return;
         }
 
         const userId = session.user.id;

@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import type { SkillLevel } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -325,6 +325,29 @@ export default function ProfileSetupScreen() {
       setRidingStyle([...ridingStyle, style]);
     }
   };
+  // プロフィールが既に存在するか確認
+  useEffect(() => {
+    const checkProfile = async () => {
+      if (!user?.id) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('user_id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (data) {
+          console.log('✅ Profile already exists, redirecting to home...');
+          router.replace('/(tabs)/home');
+        }
+      } catch (error) {
+        console.error('Error checking profile:', error);
+      }
+    };
+
+    checkProfile();
+  }, [user]);
 
 
 
@@ -527,31 +550,31 @@ export default function ProfileSetupScreen() {
                   initialNumToRender={20}
                   getItemLayout={(data, index) => ({ length: 55, offset: 55 * index, index })}
                   renderItem={({ item: country }) => (
-                      <TouchableOpacity
+                    <TouchableOpacity
+                      style={[
+                        styles.pickerItem,
+                        countryCode === country.code && styles.pickerItemActive,
+                      ]}
+                      onPress={() => {
+                        setCountryCode(country.code);
+                        setShowCountryPicker(false);
+                      }}
+                    >
+                      <Image source={getFlagSource(country.code)} style={styles.pickerFlag} />
+                      <Text
                         style={[
-                          styles.pickerItem,
-                          countryCode === country.code && styles.pickerItemActive,
+                          styles.pickerItemText,
+                          countryCode === country.code && styles.pickerItemTextActive,
                         ]}
-                        onPress={() => {
-                          setCountryCode(country.code);
-                          setShowCountryPicker(false);
-                        }}
                       >
-                        <Image source={getFlagSource(country.code)} style={styles.pickerFlag} />
-                        <Text
-                          style={[
-                            styles.pickerItemText,
-                            countryCode === country.code && styles.pickerItemTextActive,
-                          ]}
-                        >
-                          {locale === 'en' ? country.nameEn : country.nameJa}
-                        </Text>
-                        {countryCode === country.code && (
-                          <Ionicons name="checkmark" size={20} color={colors.tint} />
-                        )}
-                      </TouchableOpacity>
-                    )}
-                  />
+                        {locale === 'en' ? country.nameEn : country.nameJa}
+                      </Text>
+                      {countryCode === country.code && (
+                        <Ionicons name="checkmark" size={20} color={colors.tint} />
+                      )}
+                    </TouchableOpacity>
+                  )}
+                />
               </View>
             </TouchableOpacity>
           </Modal>

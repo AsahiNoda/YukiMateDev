@@ -47,7 +47,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // セッション確認
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      // Invalid Refresh Tokenエラーをキャッチ
+      if (error) {
+        console.error('❌ AuthContext: Error getting session:', error);
+        if (error.message?.includes('Invalid Refresh Token') ||
+            error.message?.includes('Refresh Token Not Found')) {
+          console.log('🔄 AuthContext: Invalid refresh token detected, signing out...');
+          // 無効なトークンをクリアしてサインアウト
+          supabase.auth.signOut().catch(e => console.error('Error during signOut:', e));
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setUserRole(null);
+        }
+        setLoading(false);
+        return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -62,6 +79,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log(`🔔 AuthContext: Auth event: ${event}, Has session: ${!!session}`);
+
+        // Invalid Refresh Tokenエラーをキャッチ
+        if (event === 'TOKEN_REFRESHED' && !session) {
+          console.log('🔄 AuthContext: Token refresh failed, signing out...');
+          await supabase.auth.signOut().catch(e => console.error('Error during signOut:', e));
+          setSession(null);
+          setUser(null);
+          setProfile(null);
+          setUserRole(null);
+          setLoading(false);
+          return;
+        }
+
         console.log(`🔔 AuthContext: User email: ${session?.user?.email}`);
         console.log(`🔔 AuthContext: Session type: ${session?.user?.app_metadata?.provider}`);
         setSession(session);
@@ -195,12 +225,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signUp(email: string, password: string) {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: undefined, // メール確認後の自動ログインを無効化
+      },
     });
 
-    if (error) throw error;
+    if (error) {
+      // Database error handling
+      if (error.message.includes('Database error')) {
+        throw new Error('データベースエラーが発生しました。管理者に連絡してください。');
+      }
+      throw error;
+    }
+
+    // メール確認が必要な場合、セッションは作成されない
+    // data.user は存在するが、data.session は null になる
+    if (data.user && !data.session) {
+      console.log('✅ User created, email confirmation required');
+      // メール確認が必要な場合は何もしない（AuthScreenでアラート表示）
+    } else if (data.session) {
+      // 自動ログインされた場合（メール確認不要の設定の場合）
+      console.log('⚠️ User auto-logged in without email confirmation');
+    }
   }
 
   async function signIn(email: string, password: string) {
@@ -209,7 +258,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      // Invalid Login Credentialsエラーの場合、分かりやすいメッセージに変換
+      if (error.message.includes('Invalid login credentials')) {
+        throw new Error('メールアドレスまたはパスワードが正しくありません');
+      }
+      throw error;
+    }
   }
 
   async function signOut() {

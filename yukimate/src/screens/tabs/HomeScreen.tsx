@@ -117,8 +117,69 @@ export default function HomeScreen() {
       </View>
 
       {/* Weather Section (Container for Image + Card) */}
-      {/* Weather Section (Container for Image + Card) */}
-      {weather && (
+      {!weather ? (
+        <View style={styles.weatherSectionWrapper}>
+          {/* 1. 背景画像レイヤー (カードからはみ出すように配置) */}
+          <View style={styles.mountainBackgroundContainer}>
+            <HomeBgMountain
+              width={screenWidth}
+              height={300}
+              preserveAspectRatio="xMidYMid meet"
+              style={{ opacity: 0.6 }}
+            />
+          </View>
+
+          {/* 2. No Home Resort Card (半透明のガラス表現) */}
+          <View style={[
+            styles.weatherCard,
+            {
+              borderColor: colorScheme === 'dark'
+                ? 'rgba(255, 255, 255, 0.15)'
+                : 'rgba(255, 255, 255, 0.4)',
+              shadowColor: colorScheme === 'dark' ? '#000' : '#fff',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: colorScheme === 'dark' ? 0.3 : 0.1,
+              shadowRadius: 12,
+              elevation: 8,
+            }
+          ]}>
+            {/* Blur背景 */}
+            <BlurView
+              intensity={colorScheme === 'dark' ? 40 : 60}
+              tint={colorScheme === 'dark' ? 'dark' : 'light'}
+              style={StyleSheet.absoluteFill}
+            />
+
+            {/* 半透明オーバーレイ */}
+            <View style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: colorScheme === 'dark'
+                  ? 'rgba(20, 30, 50, 0.3)'
+                  : 'rgba(255, 255, 255, 0.5)',
+              }
+            ]} />
+
+            {/* メッセージコンテンツ */}
+            <View style={styles.weatherCardContent}>
+              <View style={styles.noHomeResortMessageContainer}>
+                <IconSymbol
+                  name="mountain.2"
+                  size={32}
+                  color={Colors[colorScheme ?? 'light'].textSecondary}
+                  style={{ opacity: 0.7 }}
+                />
+                <Text style={[styles.noHomeResortMessage, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  {t('home.noHomeResort')}
+                </Text>
+                <Text style={[styles.noHomeResortSubMessage, { color: Colors[colorScheme ?? 'light'].textSecondary }]}>
+                  {t('home.setHomeResortFromSnowfeed')}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      ) : (
         <View style={styles.weatherSectionWrapper}>
 
           {/* 1. 背景画像レイヤー (カードからはみ出すように配置) */}
@@ -443,6 +504,28 @@ const styles = StyleSheet.create({
     fontSize: 14,
     // color is set dynamically in the component
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  // No Home Resort Message (overlaid on background image)
+  noHomeResortMessageContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 20,
+  },
+  noHomeResortMessage: {
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  noHomeResortSubMessage: {
+    fontSize: 13,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },

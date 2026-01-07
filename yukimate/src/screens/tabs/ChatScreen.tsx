@@ -128,7 +128,7 @@ export default function ChatScreen() {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accent} />
+          <ActivityIndicator size="large" color={colors.tint} />
         </View>
       </View>
     );
@@ -344,7 +344,7 @@ export default function ChatScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.actionButton, styles.approveButton, { backgroundColor: colors.accent }]}
+            style={[styles.actionButton, styles.approveButton, { backgroundColor: colors.tint }]}
             onPress={() => handleApprove(item.id, item.event_id, item.applicant_user_id, applicantName)}>
             <Text style={styles.approveButtonText}>
               {t('chat.approveButton')}
@@ -369,12 +369,12 @@ export default function ChatScreen() {
             style={[
               styles.tabText,
               { color: colors.textSecondary },
-              activeTab === 'chats' && { color: colors.accent, fontWeight: fontWeight.semibold },
+              activeTab === 'chats' && { color: colors.tint, fontWeight: fontWeight.semibold },
             ]}>
             {t('chat.tabChats')}
           </Text>
           {activeTab === 'chats' && (
-            <View style={[styles.tabIndicator, { backgroundColor: colors.accent }]} />
+            <View style={[styles.tabIndicator, { backgroundColor: colors.tint }]} />
           )}
         </TouchableOpacity>
         <TouchableOpacity
@@ -385,18 +385,18 @@ export default function ChatScreen() {
               style={[
                 styles.tabText,
                 { color: colors.textSecondary },
-                activeTab === 'requests' && { color: colors.accent, fontWeight: fontWeight.semibold },
+                activeTab === 'requests' && { color: colors.tint, fontWeight: fontWeight.semibold },
               ]}>
               {t('chat.tabRequests')}
             </Text>
             {applications.length > 0 && (
-              <View style={[styles.tabBadge, { backgroundColor: colors.accent }]}>
+              <View style={[styles.tabBadge, { backgroundColor: colors.tint }]}>
                 <Text style={styles.tabBadgeText}>{applications.length}</Text>
               </View>
             )}
           </View>
           {activeTab === 'requests' && (
-            <View style={[styles.tabIndicator, { backgroundColor: colors.accent }]} />
+            <View style={[styles.tabIndicator, { backgroundColor: colors.tint }]} />
           )}
         </TouchableOpacity>
       </View>
@@ -404,7 +404,7 @@ export default function ChatScreen() {
       {/* Content */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accent} />
+          <ActivityIndicator size="large" color={colors.tint} />
         </View>
       ) : activeTab === 'chats' ? (
         <SectionList
@@ -423,8 +423,8 @@ export default function ChatScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={colors.accent}
-              colors={[colors.accent]}
+              tintColor={colors.tint}
+              colors={[colors.tint]}
             />
           }
           ListEmptyComponent={
@@ -449,8 +449,8 @@ export default function ChatScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              tintColor={colors.accent}
-              colors={[colors.accent]}
+              tintColor={colors.tint}
+              colors={[colors.tint]}
             />
           }
           ListEmptyComponent={

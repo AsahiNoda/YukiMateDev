@@ -27,6 +27,8 @@ let globalInitialized = false;
 let isNavigating = false;
 // パスワードリカバリーセッション中フラグ
 let isRecoverySession = false;
+// パスワード設定セッション中フラグ
+let isSetPasswordSession = false;
 
 export default function RootLayout() {
   console.log('📱 RootLayout: Component rendering...');
@@ -111,6 +113,9 @@ export default function RootLayout() {
                 if (type === 'recovery') {
                   console.log('🔐 Setting recovery session flag BEFORE setting session (initial)');
                   isRecoverySession = true;
+                } else if (urlObj.hostname === 'set-password' || urlObj.pathname?.includes('set-password')) {
+                  console.log('🔐 Setting set-password session flag BEFORE setting session (initial)');
+                  isSetPasswordSession = true;
                 }
 
                 console.log('✅ Tokens found in URL, setting session...');
@@ -132,6 +137,16 @@ export default function RootLayout() {
                       router.replace('/(auth)/reset-password');
                     }
                     return; // 早期リターン
+                  }
+
+                  // set-passwordの場合、パスワード設定画面へ遷移
+                  if (urlObj.hostname === 'set-password' || urlObj.pathname?.includes('set-password')) {
+                    console.log('➡️  Set password link detected (initial), navigating to set password screen...');
+                    if (mounted) {
+                      setIsReady(true);
+                      router.replace('/(auth)/set-password');
+                    }
+                    return;
                   }
                 } else if (error) {
                   console.error('❌ Error restoring session from URL:', error);
@@ -214,6 +229,20 @@ export default function RootLayout() {
 
           // セッションがある場合、プロフィールの存在を確認
           if (session?.user) {
+            console.log('🔍 Checking email confirmation...');
+            console.log('📧 Email confirmed at:', session.user.email_confirmed_at);
+
+            // メール未確認の場合はサインアウトして認証画面に戻す
+            if (!session.user.email_confirmed_at) {
+              console.log('⚠️ Email not confirmed during initialization, signing out...');
+              await supabase.auth.signOut();
+              if (mounted) {
+                setIsReady(true);
+                router.replace('/(auth)/sign-in');
+              }
+              return;
+            }
+
             console.log('🔍 Checking profile existence...');
             const { data: profile, error } = await supabase
               .from('profiles')
@@ -301,10 +330,27 @@ export default function RootLayout() {
             console.log('🔐 [RootLayout] SIGNED_IN event received');
             console.log('🔍 [RootLayout] Recovery session flag:', isRecoverySession);
             console.log('🔍 [RootLayout] Is navigating:', isNavigating);
+            console.log('📧 [RootLayout] Email confirmed:', session.user.email_confirmed_at);
+
+            // メール未確認の場合はサインアウトして認証画面に戻す
+            if (!session.user.email_confirmed_at) {
+              console.log('⚠️ [RootLayout] Email not confirmed, signing out and redirecting to auth screen');
+              (async () => {
+                await supabase.auth.signOut();
+                router.replace('/(auth)/sign-in');
+              })();
+              return;
+            }
 
             // パスワードリカバリーセッション中の場合は自動ナビゲーションをスキップ
             if (isRecoverySession) {
               console.log('🔐 [RootLayout] Recovery session detected, staying on reset password screen');
+              return;
+            }
+
+            // パスワード設定セッション中の場合は自動ナビゲーションをスキップ
+            if (isSetPasswordSession) {
+              console.log('🔐 [RootLayout] Set password session detected, staying on set password screen');
               return;
             }
 
@@ -360,6 +406,10 @@ export default function RootLayout() {
             if (isRecoverySession) {
               console.log('🔄 Resetting recovery session flag on sign out');
               isRecoverySession = false;
+            }
+            if (isSetPasswordSession) {
+              console.log('🔄 Resetting set password session flag on sign out');
+              isSetPasswordSession = false;
             }
             router.replace('/(auth)/sign-in');
           }
@@ -433,6 +483,9 @@ export default function RootLayout() {
               if (type === 'recovery') {
                 console.log('🔐 Setting recovery session flag BEFORE setting session');
                 isRecoverySession = true;
+              } else if (urlObj.hostname === 'set-password' || urlObj.pathname?.includes('set-password')) {
+                console.log('🔐 Setting set-password session flag BEFORE setting session');
+                isSetPasswordSession = true;
               }
 
               console.log('✅ Tokens found in deep link, setting session...');
@@ -450,6 +503,12 @@ export default function RootLayout() {
                 if (type === 'recovery') {
                   console.log('➡️ Recovery type detected, navigating to reset password screen...');
                   router.replace('/(auth)/reset-password');
+                }
+
+                // set-passwordの場合
+                if (urlObj.hostname === 'set-password' || urlObj.pathname?.includes('set-password')) {
+                  console.log('➡️ Set password link detected, navigating to set password screen...');
+                  router.replace('/(auth)/set-password');
                 }
               } else if (error) {
                 console.error('❌ Error setting session from deep link:', error);
@@ -508,6 +567,8 @@ export default function RootLayout() {
                 >
                   <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                   <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
+                  <Stack.Screen name="(auth)/reset-password" options={{ headerShown: false }} />
+                  <Stack.Screen name="(auth)/set-password" options={{ headerShown: false }} />
                   <Stack.Screen name="event-detail" options={{ presentation: 'card' }} />
                   <Stack.Screen name="event-chat/[eventId]" options={{ presentation: 'card' }} />
                   <Stack.Screen name="post-event-action/[eventId]" options={{ presentation: 'card' }} />

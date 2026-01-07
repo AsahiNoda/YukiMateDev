@@ -225,10 +225,30 @@ export default function DiscoverScreen() {
   }
 
   if (eventsState.status === 'error') {
+    const isAuthError = eventsState.error.includes('ログイン');
+
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
+        <IconSymbol
+          name={isAuthError ? 'person.crop.circle.badge.exclamationmark' : 'exclamationmark.triangle.fill'}
+          size={60}
+          color={colors.error}
+          style={{ marginBottom: 16 }}
+        />
         <Text style={[styles.errorText, { color: colors.error }]}>{t('discover.errorOccurred')}</Text>
         <Text style={[styles.errorSubText, { color: colors.textSecondary }]}>{eventsState.error}</Text>
+
+        {isAuthError && (
+          <TouchableOpacity
+            style={[styles.loginButton, { backgroundColor: colors.tint }]}
+            onPress={() => router.push('/(tabs)/profile')}
+            activeOpacity={0.8}>
+            <IconSymbol name="person.circle.fill" size={20} color={colors.background} />
+            <Text style={[styles.loginButtonText, { color: colors.background }]}>
+              {t('auth.goToLogin')}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
     );
   }
@@ -605,6 +625,20 @@ const styles = StyleSheet.create({
   errorSubText: {
     fontSize: 14,
     textAlign: 'center',
+    marginBottom: 16,
+  },
+  loginButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    marginTop: 8,
+  },
+  loginButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
   },
   emptyText: {
     fontSize: 18,

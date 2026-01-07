@@ -1,5 +1,99 @@
 import { supabase } from '@/lib/supabase';
-import { registerForPushNotificationsAsync } from '@/utils/notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { translations } from '@/i18n/translations';
+import type { Locale } from '@/contexts/LocaleContext';
+
+const NOTIFICATION_SETTINGS_KEY = '@notification_settings';
+const LOCALE_STORAGE_KEY = '@locale';
+
+interface NotificationSettings {
+  pushEnabled: boolean;
+  eventApplications: boolean;
+  eventReminders: boolean;
+  eventCancellations: boolean;
+  newParticipants: boolean;
+  newApplications: boolean;
+  starredUserEvents: boolean;
+  chatMessages: boolean;
+  postEventReminders: boolean;
+}
+
+/**
+ * 通知設定を取得
+ */
+async function getNotificationSettings(): Promise<NotificationSettings> {
+  try {
+    const savedSettings = await AsyncStorage.getItem(NOTIFICATION_SETTINGS_KEY);
+    if (savedSettings) {
+      return JSON.parse(savedSettings);
+    }
+  } catch (error) {
+    console.error('通知設定の取得エラー:', error);
+  }
+
+  // デフォルト設定（全てON）
+  return {
+    pushEnabled: true,
+    eventApplications: true,
+    eventReminders: true,
+    eventCancellations: true,
+    newParticipants: true,
+    newApplications: true,
+    starredUserEvents: true,
+    chatMessages: true,
+    postEventReminders: true,
+  };
+}
+
+/**
+ * 通知が有効かチェック
+ */
+async function isNotificationEnabled(settingKey: keyof NotificationSettings): Promise<boolean> {
+  const settings = await getNotificationSettings();
+  return settings.pushEnabled && settings[settingKey];
+}
+
+/**
+ * 現在のロケールを取得
+ */
+async function getCurrentLocale(): Promise<Locale> {
+  try {
+    const savedLocale = await AsyncStorage.getItem(LOCALE_STORAGE_KEY);
+    return (savedLocale as Locale) || 'ja';
+  } catch (error) {
+    console.error('ロケール取得エラー:', error);
+    return 'ja';
+  }
+}
+
+/**
+ * 通知文字列を取得（プレースホルダー置換付き）
+ */
+function getNotificationText(
+  locale: Locale,
+  key: string,
+  replacements: Record<string, string | number> = {}
+): string {
+  const keys = key.split('.');
+  let value: any = translations[locale];
+
+  for (const k of keys) {
+    value = value?.[k];
+  }
+
+  if (typeof value !== 'string') {
+    return key;
+  }
+
+  // プレースホルダーを置換
+  let result = value;
+  for (const [placeholder, replacement] of Object.entries(replacements)) {
+    result = result.replace(`{${placeholder}}`, String(replacement));
+  }
+
+  return result;
+}
+
 
 /**
  * 通知トークンをデータベースに保存
@@ -133,10 +227,21 @@ export async function notifyEventApplicationApproved(
   eventTitle: string,
   eventId: string
 ) {
-  return sendPushNotification(
+  // 通知設定をチェック
+  const enabled = await isNotificationEnabled('eventApplications');
+  if (!enabled) {
+    console.log('⚠️ イベント申請通知が無効のためスキップ');
+    return { success: false, error: 'Notification disabled by user settings' };
+  }
+
+  const locale = await getCurrentLocale();
+  const title = getNotificationText(locale, 'notifications.eventApplicationApproved.title');
+  const body = getNotificationText(locale, 'notifications.eventApplicationApproved.body', { eventTitle });
+
+  return await sendPushNotification(
     applicantUserId,
-    'イベント申請が承認されました',
-    `「${eventTitle}」への参加が承認されました。`,
+    title,
+    body,
     {
       type: 'event_application_approved',
       eventId,
@@ -152,10 +257,21 @@ export async function notifyEventApplicationRejected(
   eventTitle: string,
   eventId: string
 ) {
-  return sendPushNotification(
+  // 通知設定をチェック
+  const enabled = await isNotificationEnabled('eventApplications');
+  if (!enabled) {
+    console.log('⚠️ イベント申請通知が無効のためスキップ');
+    return { success: false, error: 'Notification disabled by user settings' };
+  }
+
+  const locale = await getCurrentLocale();
+  const title = getNotificationText(locale, 'notifications.eventApplicationRejected.title');
+  const body = getNotificationText(locale, 'notifications.eventApplicationRejected.body', { eventTitle });
+
+  return await sendPushNotification(
     applicantUserId,
-    'イベント申請が却下されました',
-    `「${eventTitle}」への参加申請が却下されました。`,
+    title,
+    body,
     {
       type: 'event_application_rejected',
       eventId,
@@ -172,10 +288,24 @@ export async function notifyEventStarting(
   eventId: string,
   minutesUntilStart: number
 ) {
-  return sendPushNotification(
+  // 通知設定をチェック
+  const enabled = await isNotificationEnabled('eventReminders');
+  if (!enabled) {
+    console.log('⚠️ イベントリマインダー通知が無効のためスキップ');
+    return { success: false, error: 'Notification disabled by user settings' };
+  }
+
+  const locale = await getCurrentLocale();
+  const title = getNotificationText(locale, 'notifications.eventStarting.title');
+  const body = getNotificationText(locale, 'notifications.eventStarting.body', {
+    eventTitle,
+    minutes: minutesUntilStart
+  });
+
+  return await sendPushNotification(
     participantUserId,
-    'イベント開始まであと少し',
-    `「${eventTitle}」が${minutesUntilStart}分後に始まります。`,
+    title,
+    body,
     {
       type: 'event_starting',
       eventId,
@@ -191,10 +321,21 @@ export async function notifyEventCancelled(
   eventTitle: string,
   eventId: string
 ) {
-  return sendPushNotification(
+  // 通知設定をチェック
+  const enabled = await isNotificationEnabled('eventCancellations');
+  if (!enabled) {
+    console.log('⚠️ イベントキャンセル通知が無効のためスキップ');
+    return { success: false, error: 'Notification disabled by user settings' };
+  }
+
+  const locale = await getCurrentLocale();
+  const title = getNotificationText(locale, 'notifications.eventCancelled.title');
+  const body = getNotificationText(locale, 'notifications.eventCancelled.body', { eventTitle });
+
+  return await sendPushNotification(
     participantUserId,
-    'イベントがキャンセルされました',
-    `「${eventTitle}」がホストによってキャンセルされました。`,
+    title,
+    body,
     {
       type: 'event_cancelled',
       eventId,
@@ -211,10 +352,24 @@ export async function notifyNewParticipant(
   eventTitle: string,
   eventId: string
 ) {
-  return sendPushNotification(
+  // 通知設定をチェック
+  const enabled = await isNotificationEnabled('newParticipants');
+  if (!enabled) {
+    console.log('⚠️ 新しい参加者通知が無効のためスキップ');
+    return { success: false, error: 'Notification disabled by user settings' };
+  }
+
+  const locale = await getCurrentLocale();
+  const title = getNotificationText(locale, 'notifications.newParticipant.title');
+  const body = getNotificationText(locale, 'notifications.newParticipant.body', {
+    participantName,
+    eventTitle
+  });
+
+  return await sendPushNotification(
     hostUserId,
-    '新しい参加者',
-    `${participantName}さんが「${eventTitle}」に参加しました。`,
+    title,
+    body,
     {
       type: 'new_participant',
       eventId,
@@ -230,13 +385,128 @@ export async function notifyPostEventAction(
   eventTitle: string,
   eventId: string
 ) {
-  return sendPushNotification(
+  // 通知設定をチェック
+  const enabled = await isNotificationEnabled('postEventReminders');
+  if (!enabled) {
+    console.log('⚠️ イベント後の評価通知が無効のためスキップ');
+    return { success: false, error: 'Notification disabled by user settings' };
+  }
+
+  const locale = await getCurrentLocale();
+  const title = getNotificationText(locale, 'notifications.postEventAction.title');
+  const body = getNotificationText(locale, 'notifications.postEventAction.body', { eventTitle });
+
+  return await sendPushNotification(
     participantUserId,
-    'イベントの評価をお願いします',
-    `「${eventTitle}」はいかがでしたか？参加者を評価してください。`,
+    title,
+    body,
     {
       type: 'post_event_action',
       eventId,
     }
   );
 }
+
+/**
+ * 新しい参加申請が送られてきた時の通知（ホスト向け）
+ */
+export async function notifyNewApplication(
+  hostUserId: string,
+  applicantName: string,
+  eventTitle: string,
+  eventId: string
+) {
+  // 通知設定をチェック
+  const enabled = await isNotificationEnabled('newApplications');
+  if (!enabled) {
+    console.log('⚠️ 新しい参加申請通知が無効のためスキップ');
+    return { success: false, error: 'Notification disabled by user settings' };
+  }
+
+  const locale = await getCurrentLocale();
+  const title = getNotificationText(locale, 'notifications.newApplication.title');
+  const body = getNotificationText(locale, 'notifications.newApplication.body', {
+    applicantName,
+    eventTitle
+  });
+
+  return await sendPushNotification(
+    hostUserId,
+    title,
+    body,
+    {
+      type: 'new_application',
+      eventId,
+    }
+  );
+}
+
+/**
+ * ★登録したユーザーがホストまたはイベントに参加した時の通知
+ */
+export async function notifyStarredUserEvent(
+  userId: string,
+  starredUserName: string,
+  eventTitle: string,
+  eventId: string,
+  isHost: boolean
+) {
+  // 通知設定をチェック
+  const enabled = await isNotificationEnabled('starredUserEvents');
+  if (!enabled) {
+    console.log('⚠️ ★登録ユーザーイベント通知が無効のためスキップ');
+    return { success: false, error: 'Notification disabled by user settings' };
+  }
+
+  const locale = await getCurrentLocale();
+  const title = getNotificationText(locale, isHost ? 'notifications.starredUserEvent.titleHost' : 'notifications.starredUserEvent.titleParticipant');
+  const body = getNotificationText(locale, isHost ? 'notifications.starredUserEvent.bodyHost' : 'notifications.starredUserEvent.bodyParticipant', {
+    starredUserName,
+    eventTitle
+  });
+
+  return await sendPushNotification(
+    userId,
+    title,
+    body,
+    {
+      type: 'starred_user_event',
+      eventId,
+    }
+  );
+}
+
+/**
+ * イベントチャットに新しいメッセージが送られた時の通知
+ */
+export async function notifyNewChatMessage(
+  participantUserId: string,
+  senderName: string,
+  eventTitle: string,
+  eventId: string
+) {
+  // 通知設定をチェック
+  const enabled = await isNotificationEnabled('chatMessages');
+  if (!enabled) {
+    console.log('⚠️ チャットメッセージ通知が無効のためスキップ');
+    return { success: false, error: 'Notification disabled by user settings' };
+  }
+
+  const locale = await getCurrentLocale();
+  const title = getNotificationText(locale, 'notifications.newChatMessage.title');
+  const body = getNotificationText(locale, 'notifications.newChatMessage.body', {
+    senderName,
+    eventTitle
+  });
+
+  return await sendPushNotification(
+    participantUserId,
+    title,
+    body,
+    {
+      type: 'new_chat_message',
+      eventId,
+    }
+  );
+}
+

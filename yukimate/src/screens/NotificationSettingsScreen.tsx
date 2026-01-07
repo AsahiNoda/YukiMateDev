@@ -24,6 +24,8 @@ interface NotificationSettings {
   eventReminders: boolean;
   eventCancellations: boolean;
   newParticipants: boolean;
+  newApplications: boolean;
+  starredUserEvents: boolean;
   chatMessages: boolean;
   postEventReminders: boolean;
 }
@@ -34,6 +36,8 @@ const DEFAULT_SETTINGS: NotificationSettings = {
   eventReminders: true,
   eventCancellations: true,
   newParticipants: true,
+  newApplications: true,
+  starredUserEvents: true,
   chatMessages: true,
   postEventReminders: true,
 };
@@ -97,6 +101,8 @@ export default function NotificationSettingsScreen() {
                 eventReminders: false,
                 eventCancellations: false,
                 newParticipants: false,
+                newApplications: false,
+                starredUserEvents: false,
                 chatMessages: false,
                 postEventReminders: false,
               };
@@ -234,6 +240,49 @@ export default function NotificationSettingsScreen() {
               onValueChange={() => handleToggle('newParticipants')}
               trackColor={{ false: colors.border, true: colors.accent }}
               thumbColor={settings.newParticipants ? colors.background : colors.backgroundSecondary}
+              disabled={!settings.pushEnabled}
+            />
+          </View>
+
+          <View style={[styles.settingRow, { borderBottomColor: colors.border, opacity: settings.pushEnabled ? 1 : 0.5 }]}>
+            <View style={styles.settingLeft}>
+              <Text style={[styles.settingTitle, { color: colors.text }]}>
+                {t('notificationSettings.newApplications')}
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                {t('notificationSettings.newApplicationsDesc')}
+              </Text>
+            </View>
+            <Switch
+              value={settings.newApplications}
+              onValueChange={() => handleToggle('newApplications')}
+              trackColor={{ false: colors.border, true: colors.accent }}
+              thumbColor={settings.newApplications ? colors.background : colors.backgroundSecondary}
+              disabled={!settings.pushEnabled}
+            />
+          </View>
+        </View>
+
+        {/* Social Notifications */}
+        <View style={styles.categorySection}>
+          <Text style={[styles.categoryTitle, { color: colors.textSecondary }]}>
+            {t('notificationSettings.socialNotifications')}
+          </Text>
+
+          <View style={[styles.settingRow, { borderBottomColor: colors.border, opacity: settings.pushEnabled ? 1 : 0.5 }]}>
+            <View style={styles.settingLeft}>
+              <Text style={[styles.settingTitle, { color: colors.text }]}>
+                {t('notificationSettings.starredUserEvents')}
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                {t('notificationSettings.starredUserEventsDesc')}
+              </Text>
+            </View>
+            <Switch
+              value={settings.starredUserEvents}
+              onValueChange={() => handleToggle('starredUserEvents')}
+              trackColor={{ false: colors.border, true: colors.accent }}
+              thumbColor={settings.starredUserEvents ? colors.background : colors.backgroundSecondary}
               disabled={!settings.pushEnabled}
             />
           </View>

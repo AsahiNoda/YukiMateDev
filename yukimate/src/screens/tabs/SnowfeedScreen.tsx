@@ -97,22 +97,6 @@ export default function SnowfeedScreen() {
               dbHomeResortName = getResortName(resort, locale);
             }
           }
-
-          // Fallback to first searchable resort if no home resort (same logic as useHomeData)
-          if (!dbHomeResortId) {
-            const { data: defaultResort } = await supabase
-              .from('resorts')
-              .select('id, name, name_en')
-              .eq('searchable', true)
-              .order('name')
-              .limit(1)
-              .single();
-
-            if (defaultResort) {
-              dbHomeResortId = defaultResort.id;
-              dbHomeResortName = getResortName(defaultResort, locale);
-            }
-          }
         }
 
         // If we found a home resort in database, use it and sync to AsyncStorage
@@ -138,31 +122,12 @@ export default function SnowfeedScreen() {
             setSelectedResortName(dbHomeResortName);
           }
         } else {
-          // Fallback: Check AsyncStorage for legacy data
-          const homeResort = await AsyncStorage.getItem(HOME_RESORT_KEY);
+          // No home resort in database - clear AsyncStorage and show first-time setup
+          await AsyncStorage.removeItem(HOME_RESORT_KEY);
+          await AsyncStorage.removeItem(CURRENT_RESORT_KEY);
 
-          if (homeResort) {
-            // User has set a home resort in AsyncStorage
-            const { id, name } = JSON.parse(homeResort);
-            setHomeResortId(id);
-            setHomeResortName(name);
-
-            // Check if there's a currently viewed resort
-            const currentResort = await AsyncStorage.getItem(CURRENT_RESORT_KEY);
-            if (currentResort) {
-              const { id: currentId, name: currentName } = JSON.parse(currentResort);
-              setSelectedResortId(currentId);
-              setSelectedResortName(currentName);
-            } else {
-              // Default to home resort
-              setSelectedResortId(id);
-              setSelectedResortName(name);
-            }
-          } else {
-            // First-time user - no home resort set anywhere
-            setIsFirstTime(true);
-            setShowSearch(true);
-          }
+          setIsFirstTime(true);
+          setShowSearch(true);
         }
       } catch (error) {
         console.error('Error loading resort data:', error);
@@ -276,33 +241,41 @@ export default function SnowfeedScreen() {
     }
   };
 
-  // Show empty state if no resort selected (shouldn't happen with new flow, but keep as fallback)
+  // Show empty state if no resort selected - require home resort to be set
   if (!selectedResortId && !isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={[styles.emptyStateContainer, styles.centered]}>
           <IconSymbol name="mountain.2" size={80} color={colors.icon} />
           <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
-            {t('snowfeed.selectResort')}
+            {isFirstTime ? t('snowfeed.setHomeResort') : t('snowfeed.selectResort')}
           </Text>
           <Text style={[styles.emptyStateSubtitle, { color: colors.textSecondary }]}>
-            {t('snowfeed.selectResortSubtitle')}
+            {isFirstTime ? t('snowfeed.setHomeResortSubtitle') : t('snowfeed.selectResortSubtitle')}
           </Text>
           <TouchableOpacity
-            style={[styles.searchButton, { backgroundColor: colors.accent }]}
-            onPress={() => setShowSearch(true)}>
+            style={[styles.searchButton, { backgroundColor: colors.tint }]}
+            onPress={() => {
+              setIsChangingHome(isFirstTime);
+              setShowSearch(true);
+            }}>
             <IconSymbol name="magnifyingglass" size={20} color="#FFFFFF" />
-            <Text style={styles.searchButtonText}>{t('snowfeed.searchResort')}</Text>
+            <Text style={styles.searchButtonText}>
+              {isFirstTime ? t('snowfeed.setHomeResortButton') : t('snowfeed.searchResort')}
+            </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Search Modal */}
+        {/* Search Modal - Cannot be closed without selecting when first time */}
         <Modal visible={showSearch} animationType="slide" presentationStyle="pageSheet">
           <ResortSearch
             onSelectResort={handleSelectResort}
             onClose={() => {
-              setShowSearch(false);
-              setIsChangingHome(false);
+              // Only allow closing if not first time (has home resort already)
+              if (!isFirstTime) {
+                setShowSearch(false);
+                setIsChangingHome(false);
+              }
             }}
             isFirstTime={isFirstTime}
             hasHomeResort={!!homeResortId}
@@ -355,7 +328,7 @@ export default function SnowfeedScreen() {
           <View
             style={[
               styles.ratingBar,
-              { width: `${percentage}%`, backgroundColor: colors.accent },
+              { width: `${percentage}%`, backgroundColor: colors.tint },
             ]}
           />
         </View>
@@ -370,7 +343,7 @@ export default function SnowfeedScreen() {
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header with Home Button and Search */}
       <View style={[styles.header, {
-        backgroundColor: isViewingHome ? colors.accent + '15' : colors.background,
+        backgroundColor: isViewingHome ? colors.tint + '15' : colors.background,
         paddingTop: Math.max(insets.top, 16) + spacing.md
       }]}>
         {/* Home Button - Always visible */}
@@ -381,7 +354,7 @@ export default function SnowfeedScreen() {
           <IconSymbol
             name="house.fill"
             size={24}
-            color={isViewingHome ? colors.accent : colors.textSecondary}
+            color={isViewingHome ? colors.tint : colors.textSecondary}
           />
         </TouchableOpacity>
 
@@ -390,7 +363,7 @@ export default function SnowfeedScreen() {
           style={[styles.searchBox, {
             backgroundColor: isViewingHome ? colors.background : colors.backgroundSecondary,
             borderWidth: isViewingHome ? 1 : 0,
-            borderColor: isViewingHome ? colors.accent + '40' : 'transparent'
+            borderColor: isViewingHome ? colors.tint + '40' : 'transparent'
           }]}
           onPress={() => {
             setIsChangingHome(false);
@@ -406,7 +379,7 @@ export default function SnowfeedScreen() {
         {/* Change Home Button - Only show when on home resort */}
         {isViewingHome && (
           <TouchableOpacity
-            style={[styles.changeHomeButton, { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.accent + '40' }]}
+            style={[styles.changeHomeButton, { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.tint + '40' }]}
             onPress={() => {
               setIsChangingHome(true);
               setShowSearch(true);
@@ -452,7 +425,7 @@ export default function SnowfeedScreen() {
             {renderRatingBar('Night', rating.night)}
             <View style={styles.overallRating}>
               <Text style={[styles.overallLabel, { color: colors.text }]}>Overall</Text>
-              <Text style={[styles.overallValue, { color: colors.accent }]}>
+              <Text style={[styles.overallValue, { color: colors.tint }]}>
                 {rating.overall?.toFixed(1) || 'N/A'} / 5.0
               </Text>
             </View>
@@ -561,7 +534,7 @@ export default function SnowfeedScreen() {
           style={[
             styles.fab,
             {
-              backgroundColor: colors.accent,
+              backgroundColor: colors.tint,
               bottom: insets.bottom + 80,
             },
           ]}

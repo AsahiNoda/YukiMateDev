@@ -1,4 +1,12 @@
 .vscode
 .idea
 .claude
+archive
+scripts
+docs
+.expo/web
+supabase/.temp
+*.log
+*.orig.*
+.DS_Store
 

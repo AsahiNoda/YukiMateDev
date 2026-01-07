@@ -24,86 +24,9 @@ export default function AccountSettingsScreen() {
   const { user } = useAuth();
   const { t } = useTranslation();
 
-  const [showEmailSection, setShowEmailSection] = useState(false);
-  const [showPasswordSection, setShowPasswordSection] = useState(false);
-
-  const [newEmail, setNewEmail] = useState('');
-  const [emailLoading, setEmailLoading] = useState(false);
-
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
-
-  const handleChangeEmail = async () => {
-    if (!newEmail.trim()) {
-      Alert.alert(t('common.error'), t('accountSettings.enterNewEmail'));
-      return;
-    }
-
-    // メールアドレスの形式チェック
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newEmail)) {
-      Alert.alert(t('common.error'), t('accountSettings.enterValidEmail'));
-      return;
-    }
-
-    setEmailLoading(true);
-    const startTime = Date.now();
-    console.log('[AccountSettings] メールアドレス変更開始');
-
-    try {
-      // タイムアウト付きでメールアドレス更新（10秒）
-      const updatePromise = supabase.auth.updateUser({
-        email: newEmail,
-      });
-
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error(t('accountSettings.connectionTimeout'))), 10000)
-      );
-
-      const result = await Promise.race([
-        updatePromise,
-        timeoutPromise,
-      ]) as { error: any };
-
-      const { error } = result;
-
-      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-      console.log(`[AccountSettings] メールアドレス変更完了 (${duration}秒)`);
-
-      if (error) throw error;
-
-      // ローディング状態を即座にクリア
-      setEmailLoading(false);
-
-      // フォームをリセット
-      setNewEmail('');
-      setShowEmailSection(false);
-
-      // 成功時の処理（ローディング解除後に表示）
-      Alert.alert(
-        t('accountSettings.emailUpdateSuccess'),
-        t('accountSettings.emailUpdateSuccessMessage')
-      );
-    } catch (error: any) {
-      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-      console.error(`[AccountSettings] メールアドレス変更エラー (${duration}秒):`, error);
-
-      // ローディング状態を即座にクリア
-      setEmailLoading(false);
-
-      // エラーメッセージを日本語化
-      let errorMessage = t('accountSettings.emailUpdateError');
-      if (error.message?.includes('タイムアウト') || error.message?.includes('Timeout')) {
-        errorMessage = t('accountSettings.timeoutMessage');
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      Alert.alert(t('common.error'), errorMessage);
-    }
-  };
 
   const handleChangePassword = async () => {
     if (!newPassword || !confirmPassword) {
@@ -121,84 +44,58 @@ export default function AccountSettingsScreen() {
       return;
     }
 
-    Alert.alert(
-      t('accountSettings.passwordChangeConfirm'),
-      t('accountSettings.passwordChangeMessage'),
-      [
-        {
-          text: t('common.cancel'),
-          style: 'cancel',
-        },
-        {
-          text: t('accountSettings.changeButton'),
-          onPress: async () => {
-            setPasswordLoading(true);
-            const startTime = Date.now();
-            console.log('[AccountSettings] パスワード変更開始');
+    setPasswordLoading(true);
+    const startTime = Date.now();
 
-            try {
-              // タイムアウト付きでパスワード更新（10秒）
-              const updatePromise = supabase.auth.updateUser({
-                password: newPassword,
-              });
+    try {
+      const updatePromise = supabase.auth.updateUser({
+        password: newPassword,
+      });
 
-              const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error(t('accountSettings.connectionTimeout'))), 10000)
-              );
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(t('accountSettings.connectionTimeout'))), 10000)
+      );
 
-              const result = await Promise.race([
-                updatePromise,
-                timeoutPromise,
-              ]) as { error: any };
+      const result = await Promise.race([
+        updatePromise,
+        timeoutPromise,
+      ]) as { error: any };
 
-              const { error: updateError } = result;
+      const { error: updateError } = result;
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.log(`[AccountSettings] パスワード変更完了 (${duration}秒)`);
 
-              const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-              console.log(`[AccountSettings] パスワード変更完了 (${duration}秒)`);
+      if (updateError) {
+        throw updateError;
+      }
 
-              if (updateError) {
-                throw updateError;
-              }
+      setPasswordLoading(false);
+      setNewPassword('');
+      setConfirmPassword('');
 
-              // ローディング状態を即座にクリア
-              setPasswordLoading(false);
+      Alert.alert(
+        t('accountSettings.passwordChangeSuccess'),
+        t('accountSettings.passwordChangeSuccessMessage')
+      );
+    } catch (error: any) {
+      const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+      console.error(`[AccountSettings] パスワード変更エラー (${duration}秒):`, error);
 
-              // フォームをリセット
-              setCurrentPassword('');
-              setNewPassword('');
-              setConfirmPassword('');
-              setShowPasswordSection(false);
+      setPasswordLoading(false);
 
-              // 成功時の処理（ローディング解除後に表示）
-              Alert.alert(
-                t('accountSettings.passwordChangeSuccess'),
-                t('accountSettings.passwordChangeSuccessMessage')
-              );
-            } catch (error: any) {
-              const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-              console.error(`[AccountSettings] パスワード変更エラー (${duration}秒):`, error);
+      let errorMessage = t('accountSettings.passwordChangeError');
+      if (error.message?.includes('タイムアウト') || error.message?.includes('Timeout')) {
+        errorMessage = t('accountSettings.timeoutMessage');
+      } else if (error.message?.includes('New password should be different') || error.message?.includes('same_password')) {
+        errorMessage = t('accountSettings.passwordMustDiffer');
+      } else if (error.message?.includes('Password should be at least')) {
+        errorMessage = t('auth.passwordTooShort');
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
 
-              // ローディング状態を即座にクリア
-              setPasswordLoading(false);
-
-              // エラーメッセージを日本語化
-              let errorMessage = t('accountSettings.passwordChangeError');
-              if (error.message?.includes('タイムアウト') || error.message?.includes('Timeout')) {
-                errorMessage = t('accountSettings.timeoutMessage');
-              } else if (error.message?.includes('New password should be different') || error.message?.includes('same_password')) {
-                errorMessage = t('accountSettings.passwordMustDiffer');
-              } else if (error.message?.includes('Password should be at least')) {
-                errorMessage = t('auth.passwordTooShort');
-              } else if (error.message) {
-                errorMessage = error.message;
-              }
-
-              Alert.alert(t('common.error'), errorMessage);
-            }
-          },
-        },
-      ]
-    );
+      Alert.alert(t('common.error'), errorMessage);
+    }
   };
 
   return (
@@ -216,81 +113,28 @@ export default function AccountSettingsScreen() {
       </View>
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
-        {/* Current Email */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('accountSettings.currentEmail')}</Text>
-          <View style={[styles.infoCard, { backgroundColor: colors.border }]}>
-            <Text style={[styles.infoText, { color: colors.text }]}>{user?.email || t('settings.notSet')}</Text>
+        {/* Account Info Card */}
+        <View style={[styles.card, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
+          <View style={styles.cardHeader}>
+            <IconSymbol name="person.circle" size={24} color={colors.text} />
+            <Text style={[styles.cardTitle, { color: colors.text }]}>{t('accountSettings.accountInfo')}</Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('settings.email')}</Text>
+            <Text style={[styles.infoValue, { color: colors.text }]}>{user?.email || t('settings.notSet')}</Text>
           </View>
         </View>
 
-        {/* Change Email */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={[styles.expandButton, { borderColor: colors.border }]}
-            onPress={() => setShowEmailSection(!showEmailSection)}
-          >
-            <View style={styles.expandButtonLeft}>
-              <IconSymbol name="envelope" size={20} color={colors.text} />
-              <Text style={[styles.expandButtonText, { color: colors.text }]}>{t('accountSettings.changeEmail')}</Text>
-            </View>
-            <IconSymbol
-              name={showEmailSection ? 'chevron.up' : 'chevron.down'}
-              size={20}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
+        {/* Change Password Card */}
+        <View style={[styles.card, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
+          <View style={styles.cardHeader}>
+            <IconSymbol name="lock.shield" size={24} color={colors.text} />
+            <Text style={[styles.cardTitle, { color: colors.text }]}>{t('accountSettings.changePassword')}</Text>
+          </View>
 
-          {showEmailSection && (
-            <View style={[styles.formSection, { backgroundColor: colors.border }]}>
-              <Text style={[styles.label, { color: colors.text }]}>{t('accountSettings.newEmailLabel')}</Text>
-              <TextInput
-                style={[styles.input, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}
-                placeholder="new.email@example.com"
-                placeholderTextColor={colors.textSecondary}
-                value={newEmail}
-                onChangeText={setNewEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                editable={!emailLoading}
-              />
-              <Text style={[styles.helpText, { color: colors.textSecondary }]}>
-                {t('accountSettings.confirmEmailMessage')}
-              </Text>
-              <TouchableOpacity
-                style={[styles.submitButton, { backgroundColor: colors.accent }]}
-                onPress={handleChangeEmail}
-                disabled={emailLoading}
-              >
-                <Text style={styles.submitButtonText}>
-                  {emailLoading ? t('common.sending') : t('accountSettings.changeEmail')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-
-        {/* Change Password */}
-        <View style={styles.section}>
-          <TouchableOpacity
-            style={[styles.expandButton, { borderColor: colors.border }]}
-            onPress={() => setShowPasswordSection(!showPasswordSection)}
-          >
-            <View style={styles.expandButtonLeft}>
-              <IconSymbol name="lock" size={20} color={colors.text} />
-              <Text style={[styles.expandButtonText, { color: colors.text }]}>{t('accountSettings.changePassword')}</Text>
-            </View>
-            <IconSymbol
-              name={showPasswordSection ? 'chevron.up' : 'chevron.down'}
-              size={20}
-              color={colors.textSecondary}
-            />
-          </TouchableOpacity>
-
-          {showPasswordSection && (
-            <View style={[styles.formSection, { backgroundColor: colors.border }]}>
-              <Text style={[styles.label, { color: colors.text }]}>{t('accountSettings.newPassword')}</Text>
+          <View style={styles.formContent}>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>{t('accountSettings.newPassword')}</Text>
               <TextInput
                 style={[styles.input, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}
                 placeholder={t('accountSettings.newPasswordPlaceholder')}
@@ -302,8 +146,10 @@ export default function AccountSettingsScreen() {
                 autoCorrect={false}
                 editable={!passwordLoading}
               />
+            </View>
 
-              <Text style={[styles.label, { color: colors.text, marginTop: 16 }]}>{t('accountSettings.confirmNewPassword')}</Text>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.inputLabel, { color: colors.text }]}>{t('accountSettings.confirmNewPassword')}</Text>
               <TextInput
                 style={[styles.input, { color: colors.text, backgroundColor: colors.background, borderColor: colors.border }]}
                 placeholder={t('accountSettings.confirmNewPasswordPlaceholder')}
@@ -315,27 +161,33 @@ export default function AccountSettingsScreen() {
                 autoCorrect={false}
                 editable={!passwordLoading}
               />
-
-              <Text style={[styles.helpText, { color: colors.textSecondary }]}>
-                {t('accountSettings.passwordMinLength')}
-              </Text>
-
-              <TouchableOpacity
-                style={[styles.submitButton, { backgroundColor: colors.accent }]}
-                onPress={handleChangePassword}
-                disabled={passwordLoading}
-              >
-                <Text style={styles.submitButtonText}>
-                  {passwordLoading ? t('accountSettings.changing') : t('accountSettings.changePassword')}
-                </Text>
-              </TouchableOpacity>
             </View>
-          )}
+
+            <Text style={[styles.helpText, { color: colors.textSecondary }]}>
+              {t('accountSettings.passwordMinLength')}
+            </Text>
+
+            <TouchableOpacity
+              style={[
+                styles.submitButton,
+                { backgroundColor: colors.accent },
+                passwordLoading && styles.submitButtonDisabled
+              ]}
+              onPress={handleChangePassword}
+              disabled={passwordLoading}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.submitButtonText}>
+                {passwordLoading ? t('accountSettings.changing') : t('accountSettings.changePassword')}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <View style={styles.warningSection}>
-          <IconSymbol name="exclamationmark.triangle" size={20} color="#FFA500" />
-          <Text style={[styles.warningText, { color: colors.textSecondary }]}>
+        {/* Security Note */}
+        <View style={[styles.noteCard, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
+          <IconSymbol name="info.circle" size={20} color={colors.textSecondary} />
+          <Text style={[styles.noteText, { color: colors.textSecondary }]}>
             {t('accountSettings.securityNote')}
           </Text>
         </View>
@@ -376,82 +228,80 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 40,
   },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  infoCard: {
-    padding: 16,
-    borderRadius: 8,
-  },
-  infoText: {
-    fontSize: 16,
-  },
-  expandButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
+  card: {
+    borderRadius: 16,
     borderWidth: 1,
-    borderRadius: 8,
+    padding: 20,
+    marginBottom: 16,
   },
-  expandButtonLeft: {
+  cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    marginBottom: 20,
   },
-  expandButtonText: {
-    fontSize: 16,
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  infoLabel: {
+    fontSize: 15,
+  },
+  infoValue: {
+    fontSize: 15,
     fontWeight: '500',
   },
-  formSection: {
-    marginTop: 16,
-    padding: 16,
-    borderRadius: 8,
+  formContent: {
+    gap: 16,
   },
-  label: {
+  inputGroup: {
+    gap: 8,
+  },
+  inputLabel: {
     fontSize: 14,
     fontWeight: '500',
-    marginBottom: 8,
   },
   input: {
     height: 48,
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
   },
   helpText: {
-    fontSize: 12,
-    marginTop: 8,
-    marginBottom: 16,
+    fontSize: 13,
+    lineHeight: 18,
   },
   submitButton: {
-    height: 48,
-    borderRadius: 8,
+    height: 52,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 8,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
   },
   submitButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
-  warningSection: {
+  noteCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     padding: 16,
-    marginTop: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginTop: 8,
   },
-  warningText: {
+  noteText: {
     flex: 1,
     fontSize: 13,
     lineHeight: 18,

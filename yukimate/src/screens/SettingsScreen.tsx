@@ -50,6 +50,7 @@ export default function SettingsScreen() {
     );
   };
 
+
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Header */}
@@ -187,26 +188,11 @@ export default function SettingsScreen() {
             <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]}>
-            <View style={styles.menuItemLeft}>
-              <IconSymbol name="lock" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.privacy')}</Text>
-            </View>
-            <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
-          </TouchableOpacity>
         </View>
 
-        {/* About Section */}
+        {/* Legal Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.info')}</Text>
-
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.border }]}>
-            <View style={styles.menuItemLeft}>
-              <IconSymbol name="info.circle" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.about')}</Text>
-            </View>
-            <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
-          </TouchableOpacity>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.legal')}</Text>
 
           <TouchableOpacity
             style={[styles.menuItem, { borderBottomColor: colors.border }]}

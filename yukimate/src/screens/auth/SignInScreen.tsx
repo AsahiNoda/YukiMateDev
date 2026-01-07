@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   Alert,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -39,20 +40,15 @@ export default function SignInScreen() {
       return;
     }
 
-    // パスワードのバリデーション
-    const passwordValidation = validatePassword(password);
-    if (!passwordValidation.isValid) {
-      // サインアップ時のみ厳格なバリデーション
-      if (mode === 'signup') {
-        console.log('❌ [SignIn] Password validation failed:', passwordValidation.error);
-        Alert.alert(t('common.error'), passwordValidation.error);
-        return;
-      }
-      // サインイン時は基本的なチェックのみ
-      if (!password || password.trim() === '') {
-        console.log('❌ [SignIn] Password is empty');
-        Alert.alert(t('common.error'), t('auth.enterPassword'));
-        return;
+    // パスワードのバリデーション（サインイン時のみ）
+    if (mode === 'signin') {
+      const passwordValidation = validatePassword(password);
+      if (!passwordValidation.isValid) {
+        if (!password || password.trim() === '') {
+          console.log('❌ [SignIn] Password is empty');
+          Alert.alert(t('common.error'), t('auth.enterPassword'));
+          return;
+        }
       }
     }
 
@@ -60,25 +56,89 @@ export default function SignInScreen() {
     setLoading(true);
     try {
       if (mode === 'signup') {
-        // サインアップ
-        console.log('📝 [SignIn] Calling signUp...');
+        // サインアップ (ユーザー存在チェックのためにsignUpを使用)
+        console.log('📝 [SignIn] Calling signUp with dummy password...');
+        // ランダムなダミーパスワードを生成 (ユーザーには見えない)
+        const dummyPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8) + 'Aa1!';
+
         const { data, error } = await supabase.auth.signUp({
           email,
-          password,
+          password: dummyPassword,
+          options: {
+            emailRedirectTo: 'slopelink://set-password',
+          },
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ [SignIn] Sign up error:', error);
+          // Database error handling
+          if (error.message.includes('Database error')) {
+            throw new Error(t('auth.databaseError'));
+          }
+          throw error;
+        }
 
+        // 既存ユーザーの判定
         if (data?.user?.identities?.length === 0) {
           console.log('⚠️  [SignIn] Account already exists');
-          Alert.alert(t('common.error'), t('auth.accountAlreadyExists'));
+          Alert.alert(
+            t('common.error'),
+            t('auth.accountAlreadyExists'),
+            [
+              {
+                text: 'ログインへ',
+                onPress: () => setMode('signin')
+              },
+              {
+                text: 'キャンセル',
+                style: 'cancel'
+              }
+            ]
+          );
           return;
         }
 
-        console.log('✅ [SignIn] SignUp successful, confirmation email sent');
+        // 自動ログインされてしまった場合（Supabaseの設定でメール確認が不要になっている場合など）
+        if (data.session) {
+          console.log('⚠️ [SignIn] User was logged in immediately. Signing out and sending magic link...');
+          await supabase.auth.signOut();
+
+          // 改めてマジックリンクを送信
+          const { error: otpError } = await supabase.auth.signInWithOtp({
+            email,
+            options: {
+              emailRedirectTo: 'slopelink://set-password',
+              shouldCreateUser: false, // 既に作成済みなのでfalse
+            }
+          });
+
+          if (otpError) {
+            console.error('❌ [SignIn] Failed to send magic link:', otpError);
+            throw otpError;
+          }
+        } else {
+          // セッションがない場合（通常のメール確認待ち状態）でも、マジックリンクを明示的に送信する
+          // (Supabaseのデフォルトの確認メールが届かない場合や、テンプレートの違いを吸収するため)
+          console.log('📝 [SignIn] sending magic link explicity...');
+          const { error: otpError } = await supabase.auth.signInWithOtp({
+            email,
+            options: {
+              emailRedirectTo: 'slopelink://set-password',
+              shouldCreateUser: false, // 既に作成済み
+            }
+          });
+
+          if (otpError) {
+            // レート制限などで失敗する可能性はあるが、signUp自体の確認メールが飛んでいる可能性もあるので
+            // 致命的なエラーにはしないがログは出す
+            console.warn('⚠️ [SignIn] Failed to send magic link (secondary):', otpError);
+          }
+        }
+
+        console.log('✅ [SignIn] SignUp initiated, confirmation email sent');
         Alert.alert(
           t('auth.confirmEmailSent'),
-          t('auth.checkEmailMessage'),
+          '認証メールを送信しました。メール内のリンクをクリックしてパスワード設定へ進んでください。',
           [{ text: t('common.ok') }]
         );
       } else {
@@ -92,6 +152,10 @@ export default function SignInScreen() {
 
         if (error) {
           console.error('❌ [SignIn] Sign in error:', error);
+          // Invalid Login Credentialsエラーの場合、分かりやすいメッセージに変換
+          if (error.message.includes('Invalid login credentials')) {
+            throw new Error(t('auth.invalidCredentials'));
+          }
           throw error;
         }
 
@@ -201,9 +265,11 @@ export default function SignInScreen() {
         >
           {/* ロゴ */}
           <View style={styles.logoContainer}>
-            <Text style={styles.logoIcon}>❄️</Text>
-            <Text style={[styles.logoText, { color: colors.text }]}>YukiMate</Text>
-            <Text style={[styles.tagline, { color: colors.textSecondary }]}>{t('auth.tagline')}</Text>
+            <Image
+              source={require('../../../assets/images/app_icon.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
           </View>
 
           {/* フォーム */}
@@ -225,17 +291,19 @@ export default function SignInScreen() {
                 editable={!loading}
               />
 
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                placeholder={t('auth.password')}
-                placeholderTextColor={colors.textSecondary}
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                autoCapitalize="none"
-                autoComplete={mode === 'signin' ? 'password' : 'new-password'}
-                editable={!loading}
-              />
+              {mode === 'signin' && (
+                <TextInput
+                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+                  placeholder={t('auth.password')}
+                  placeholderTextColor={colors.textSecondary}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoComplete="password"
+                  editable={!loading}
+                />
+              )}
             </View>
 
             {/* パスワードを忘れた場合 (サインインモード時のみ表示) */}
@@ -289,20 +357,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  languageButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 40,
-    right: 20,
-    zIndex: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(128, 128, 128, 0.1)',
-  },
-  languageButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
   keyboardView: {
     flex: 1,
   },
@@ -314,22 +368,12 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 56,
+    marginBottom: 48,
   },
-  logoIcon: {
-    fontSize: 72,
-    marginBottom: 12,
-  },
-  logoText: {
-    fontSize: 36,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    marginBottom: 8,
-  },
-  tagline: {
-    fontSize: 13,
-    textAlign: 'center',
-    opacity: 0.7,
+  logoImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
   },
   form: {
     width: '100%',
@@ -397,6 +441,20 @@ const styles = StyleSheet.create({
   },
   switchModeLink: {
     fontSize: 15,
+    fontWeight: '600',
+  },
+  languageButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    right: 20,
+    zIndex: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(128, 128, 128, 0.1)',
+  },
+  languageButtonText: {
+    fontSize: 14,
     fontWeight: '600',
   },
 });
