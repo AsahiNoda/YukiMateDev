@@ -38,8 +38,9 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              // サインアウトのみを実行
+              // RootLayoutのSIGNED_OUTイベントが自動的にログイン画面へリダイレクト
               await signOut();
-              router.replace('/(auth)/sign-in');
             } catch (error) {
               console.error('Logout error:', error);
               Alert.alert(t('common.error'), t('settings.logoutError'));

@@ -1,15 +1,32 @@
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import React from 'react';
 import 'react-native-url-polyfill/auto';
 import 'react-native-get-random-values';
+import { ActivityIndicator, View } from 'react-native';
 
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { GlassmorphicTabBar } from '@components/glassmorphic-tab-bar';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@hooks/use-color-scheme';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { session, loading } = useAuth();
+
+  // 認証状態を確認中はローディング表示
+  if (loading) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A202C' }}>
+        <ActivityIndicator size="large" color="#5A7D9A" />
+      </View>
+    );
+  }
+
+  // セッションがない場合はログイン画面にリダイレクト
+  if (!session) {
+    return <Redirect href="/(auth)/sign-in" />;
+  }
 
   return (
     <Tabs

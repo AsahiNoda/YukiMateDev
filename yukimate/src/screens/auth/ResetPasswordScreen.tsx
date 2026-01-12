@@ -1,5 +1,5 @@
-import { router, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router } from 'expo-router';
+import { useEffect, useState, useRef } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -34,14 +34,23 @@ export default function ResetPasswordScreen() {
   const [sessionReady, setSessionReady] = useState(false);
   const [passwordUpdated, setPasswordUpdated] = useState(false);
 
+  // loadingの最新値を参照するためのref
+  const loadingRef = useRef(loading);
+
+  // loadingが変わるたびにrefを更新
+  useEffect(() => {
+    loadingRef.current = loading;
+  }, [loading]);
+
   console.log('🔍 [ResetPassword] Render - Session exists:', !!session, 'sessionReady:', sessionReady);
 
   // USER_UPDATEDイベントをリッスンしてパスワード更新を検出
   useEffect(() => {
     console.log('📡 [ResetPassword] Setting up auth state listener...');
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       console.log('🔔 [ResetPassword] Auth event:', event);
-      if (event === 'USER_UPDATED' && loading) {
+      // refを使って最新のloading状態を参照
+      if (event === 'USER_UPDATED' && loadingRef.current) {
         console.log('✅ [ResetPassword] USER_UPDATED event detected - password update successful!');
         setPasswordUpdated(true);
       }
@@ -51,7 +60,7 @@ export default function ResetPasswordScreen() {
       console.log('🔕 [ResetPassword] Cleaning up auth listener');
       subscription.unsubscribe();
     };
-  }, [loading]);
+  }, []); // 依存配列を空にして、マウント時に一度だけ登録
 
   // セッションの有効性を確認
   useEffect(() => {

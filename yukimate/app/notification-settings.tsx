@@ -1,2 +1,10 @@
-// Re-export NotificationSettingsScreen from src/screens
-export { default } from '@/screens/NotificationSettingsScreen';
+import { RequireAuth } from '@/components/auth/RequireAuth';
+import NotificationSettingsScreen from '@/screens/NotificationSettingsScreen';
+
+export default function NotificationSettings() {
+  return (
+    <RequireAuth>
+      <NotificationSettingsScreen />
+    </RequireAuth>
+  );
+}

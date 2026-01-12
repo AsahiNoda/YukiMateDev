@@ -35,6 +35,8 @@ export const translations = {
       count: '件',
       pending: '件の同期待ち',
       unknown: '不明',
+      confirmBack: '戻る確認',
+      discard: '破棄',
     },
 
     // Date/Time
@@ -89,7 +91,12 @@ export const translations = {
       enterEmailForReset: 'メールアドレスを入力してください',
       resetPasswordFailed: 'パスワードリセットメールの送信に失敗しました',
       emailServiceNotConfigured: 'メール送信サービスが設定されていません。管理者に連絡してください。',
-      accountAlreadyExists: 'このメールアドレスは既に登録されています',
+      accountAlreadyExists: 'このメールアドレスは既に登録されています。ログインしてください。',
+      accountExistsTitle: 'アカウントが存在します',
+      accountExistsEmailNotConfirmed: 'このメールアドレスは既に登録されていますが、メール確認が完了していません。確認メールを再送信しますか？',
+      resendEmail: '確認メールを再送信',
+      resendEmailSuccess: '確認メールを再送信しました。メールをご確認ください。',
+      resendEmailFailed: '確認メールの再送信に失敗しました',
       authenticationFailed: '認証に失敗しました',
       resetPasswordTitle: 'パスワードをリセット',
       newPassword: '新しいパスワード',
@@ -400,6 +407,7 @@ export const translations = {
       limitLabel: '制限',
       selectTime: '時刻を選択',
       capacityPlaceholder: '例: 6',
+      unsavedChangesWarning: '保存されていない変更があります。破棄して戻りますか？',
     },
 
     // Chat
@@ -754,6 +762,8 @@ export const translations = {
       count: 'items',
       pending: 'pending sync',
       unknown: 'Unknown',
+      confirmBack: 'Confirm Back',
+      discard: 'Discard',
     },
 
     // Date/Time
@@ -808,7 +818,12 @@ export const translations = {
       enterEmailForReset: 'Please enter your email address',
       resetPasswordFailed: 'Failed to send password reset email',
       emailServiceNotConfigured: 'Email service is not configured. Please contact the administrator.',
-      accountAlreadyExists: 'This email address is already registered',
+      accountAlreadyExists: 'This email address is already registered. Please login.',
+      accountExistsTitle: 'Account Exists',
+      accountExistsEmailNotConfirmed: 'This email address is already registered but email confirmation is not complete. Would you like to resend the confirmation email?',
+      resendEmail: 'Resend Confirmation Email',
+      resendEmailSuccess: 'Confirmation email has been resent. Please check your email.',
+      resendEmailFailed: 'Failed to resend confirmation email',
       authenticationFailed: 'Authentication failed',
       resetPasswordTitle: 'Reset Password',
       newPassword: 'New Password',
@@ -1119,6 +1134,7 @@ export const translations = {
       limitLabel: 'Limit',
       selectTime: 'Select time',
       capacityPlaceholder: 'e.g. 6',
+      unsavedChangesWarning: 'You have unsaved changes. Discard and go back?',
     },
 
     // Chat

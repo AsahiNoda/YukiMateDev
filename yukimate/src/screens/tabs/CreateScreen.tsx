@@ -284,7 +284,7 @@ export default function CreateEventScreen() {
     setSelectedImages([]);
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = (_event: any, selectedDate?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
     if (selectedDate) {
       setDate(selectedDate);
@@ -338,6 +338,8 @@ export default function CreateEventScreen() {
                 {
                   text: t('common.ok'),
                   onPress: () => {
+                    resetForm();
+                    // After deletion, go back (the event detail will handle the missing event)
                     router.back();
                   },
                 },
@@ -495,7 +497,7 @@ export default function CreateEventScreen() {
 
           // Update event with photo paths (not URLs)
           console.log('Updating posts_events.photos field...');
-          const { data: updateData, error: updateError } = await supabase
+          const { error: updateError } = await supabase
             .from('posts_events')
             .update({ photos: photoPaths })
             .eq('id', eventId)
@@ -506,7 +508,7 @@ export default function CreateEventScreen() {
             throw updateError;
           }
 
-          console.log('Photos field updated successfully:', updateData);
+          console.log('Photos field updated successfully');
         } catch (uploadError) {
           console.error('Image upload/update error:', uploadError);
           // Continue even if image upload fails
@@ -521,9 +523,8 @@ export default function CreateEventScreen() {
         {
           text: t('common.ok'),
           onPress: () => {
-            if (!isEditMode) {
-              resetForm();
-            }
+            // Always reset form to prevent leftover data
+            resetForm();
             router.back();
           },
         },
@@ -548,9 +549,45 @@ export default function CreateEventScreen() {
     SKILL_LEVELS.find((l) => l.value === level)?.labelKey ? t(SKILL_LEVELS.find((l) => l.value === level)!.labelKey) : t('create.levelNone');
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingTop: Math.max(insets.top, 16) }}>
-      <View style={styles.content}>
-        <Text style={styles.title}>{isEditMode ? t('create.editTitle') : t('create.title')}</Text>
+    <View style={styles.container}>
+      {/* Custom header for edit mode */}
+      {isEditMode && (
+        <View style={[styles.customHeader, { paddingTop: insets.top }]}>
+          <TouchableOpacity
+            onPress={() => {
+              Alert.alert(
+                t('common.confirmBack'),
+                t('create.unsavedChangesWarning'),
+                [
+                  {
+                    text: t('common.cancel'),
+                    style: 'cancel',
+                  },
+                  {
+                    text: t('common.discard'),
+                    style: 'destructive',
+                    onPress: () => {
+                      resetForm();
+                      router.back();
+                    },
+                  },
+                ],
+                { cancelable: true }
+              );
+            }}
+            style={styles.backButton}
+          >
+            <IconSymbol name="chevron.left" size={28} color={colors.text} />
+            <Text style={[styles.backButtonText, { color: colors.text }]}>{t('common.back')}</Text>
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('create.editTitle')}</Text>
+          <View style={styles.backButton} />
+        </View>
+      )}
+
+      <ScrollView style={styles.scrollContainer} contentContainerStyle={{ paddingTop: isEditMode ? 0 : Math.max(insets.top, 16) }}>
+        <View style={styles.content}>
+          {!isEditMode && <Text style={styles.title}>{t('create.title')}</Text>}
 
         {/* Title */}
         <View style={styles.section}>
@@ -987,6 +1024,7 @@ export default function CreateEventScreen() {
         <View style={{ height: 120 }} />
       </View>
     </ScrollView>
+    </View>
   );
 }
 
@@ -1259,17 +1297,14 @@ function createStyles(colors: typeof Colors.light) {
     },
     deleteButton: {
       marginTop: 16,
-      paddingVertical: 16,
+      paddingVertical: 14,
       backgroundColor: 'transparent',
-      borderRadius: 12,
-      borderWidth: 2,
-      borderColor: colors.error,
       alignItems: 'center',
     },
     deleteButtonText: {
       color: colors.error,
-      fontSize: 18,
-      fontWeight: '600',
+      fontSize: 16,
+      fontWeight: '500',
     },
     errorText: {
       color: colors.error,
@@ -1277,6 +1312,35 @@ function createStyles(colors: typeof Colors.light) {
     },
     placeholderText: {
       color: colors.textSecondary,
+    },
+    customHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+      backgroundColor: colors.background,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 8,
+      minWidth: 80,
+    },
+    backButtonText: {
+      fontSize: 16,
+      marginLeft: 4,
+    },
+    headerTitle: {
+      fontSize: 18,
+      fontWeight: '600',
+      flex: 1,
+      textAlign: 'center',
+    },
+    scrollContainer: {
+      flex: 1,
     },
   });
 }

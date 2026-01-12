@@ -1,2 +1,10 @@
-// Re-export StarredUsersScreen from src/screens
-export { default } from '@/screens/StarredUsersScreen';
+import { RequireAuth } from '@/components/auth/RequireAuth';
+import StarredUsersScreen from '@/screens/StarredUsersScreen';
+
+export default function StarredUsers() {
+  return (
+    <RequireAuth>
+      <StarredUsersScreen />
+    </RequireAuth>
+  );
+}

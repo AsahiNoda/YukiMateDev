@@ -81,20 +81,76 @@ export default function SignInScreen() {
         // 既存ユーザーの判定
         if (data?.user?.identities?.length === 0) {
           console.log('⚠️  [SignIn] Account already exists');
-          Alert.alert(
-            t('common.error'),
-            t('auth.accountAlreadyExists'),
-            [
-              {
-                text: 'ログインへ',
-                onPress: () => setMode('signin')
-              },
-              {
-                text: 'キャンセル',
-                style: 'cancel'
-              }
-            ]
-          );
+
+          // 既存ユーザーの詳細情報を取得して適切なメッセージを表示
+          const { data: existingUser } = await supabase.auth.getUser();
+          const isEmailConfirmed = existingUser?.user?.email_confirmed_at;
+
+          if (!isEmailConfirmed) {
+            // メール未確認の既存ユーザー - 確認メールの再送信を提案
+            console.log('⚠️  [SignIn] Account exists but email not confirmed');
+            Alert.alert(
+              t('auth.accountExistsTitle'),
+              t('auth.accountExistsEmailNotConfirmed'),
+              [
+                {
+                  text: t('auth.resendEmail'),
+                  onPress: async () => {
+                    try {
+                      setLoading(true);
+                      const { error: otpError } = await supabase.auth.signInWithOtp({
+                        email,
+                        options: {
+                          emailRedirectTo: 'slopelink://set-password',
+                          shouldCreateUser: false,
+                        }
+                      });
+
+                      if (otpError) {
+                        throw otpError;
+                      }
+
+                      Alert.alert(
+                        t('auth.confirmEmailSent'),
+                        t('auth.resendEmailSuccess'),
+                        [{ text: t('common.ok') }]
+                      );
+                    } catch (error: any) {
+                      console.error('❌ [SignIn] Failed to resend email:', error);
+                      Alert.alert(t('common.error'), error.message || t('auth.resendEmailFailed'));
+                    } finally {
+                      setLoading(false);
+                    }
+                  }
+                },
+                {
+                  text: t('common.cancel'),
+                  style: 'cancel'
+                }
+              ]
+            );
+          } else {
+            // メール確認済みの既存ユーザー - ログインへ誘導
+            console.log('⚠️  [SignIn] Account exists and email confirmed');
+            Alert.alert(
+              t('auth.accountExistsTitle'),
+              t('auth.accountAlreadyExists'),
+              [
+                {
+                  text: t('auth.goToLogin'),
+                  onPress: () => setMode('signin')
+                },
+                {
+                  text: t('auth.forgotPasswordLink'),
+                  onPress: handleForgotPassword
+                },
+                {
+                  text: t('common.cancel'),
+                  style: 'cancel'
+                }
+              ]
+            );
+          }
           return;
         }
 

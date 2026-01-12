@@ -1,3 +1,4 @@
+import { RequireAuth } from '@/components/auth/RequireAuth';
 import ProfileSetupScreen from '@/screens/tabs/ProfileSetupScreen';
 import { useNavigation } from 'expo-router';
 import { useLayoutEffect } from 'react';
@@ -21,5 +22,9 @@ export default function ProfileSetup() {
     };
   }, [navigation]);
 
-  return <ProfileSetupScreen />;
+  return (
+    <RequireAuth>
+      <ProfileSetupScreen />
+    </RequireAuth>
+  );
 }
