@@ -29,7 +29,11 @@
         "simulator": false
       },
       "android": {
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "image": "latest"
+      },
+      "cache": {
+        "disabled": true
       }
     }
   },
