@@ -1,12 +1,49 @@
-.vscode
-.idea
-.claude
-archive
-scripts
-docs
-.expo/web
-supabase/.temp
-*.log
-*.orig.*
-.DS_Store
+# EAS Build ignore file
+# Reduce upload size by excluding unnecessary files
 
+# Native build directories (EAS will rebuild these)
+android/
+ios/
+
+# Development files
+.expo/
+.expo-shared/
+node_modules/
+
+# Git repository (not needed for build)
+.git/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+__tests__/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+coverage/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Temporary files
+tmp/
+temp/
+*.tmp
