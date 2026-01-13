@@ -25,15 +25,22 @@
     },
     "production": {
       "distribution": "store",
+      "resourceClass": "large",
       "ios": {
         "simulator": false
       },
       "android": {
         "buildType": "app-bundle",
-        "image": "latest"
+        "image": "stable",
+        "gradleCommand": ":app:bundleRelease"
       },
       "cache": {
-        "disabled": true
+        "key": "production-v1",
+        "cacheDefaultPaths": false,
+        "customPaths": []
+      },
+      "env": {
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=-Xmx4096m -Dorg.gradle.daemon=false"
       }
     }
   },
