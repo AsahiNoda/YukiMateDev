@@ -3,15 +3,22 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
-// 環境変数から読み込み（app.config.js経由）
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+// 環境変数から読み込み（app.config.ts経由）
+const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-// 環境変数が設定されているか検証
+// 環境変数が設定されているか検証（開発時のみthrow、本番時はコンソールログのみ）
 if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error(
-    'Supabase URL and Anon Key are required. Please check your .env file and ensure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set.'
-  );
+  const errorMessage = 'Supabase URL and Anon Key are required. Please check your .env file and ensure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set.';
+
+  if (__DEV__) {
+    // 開発時は明示的にエラーをthrow
+    throw new Error(errorMessage);
+  } else {
+    // 本番時はコンソールエラーのみ（クラッシュを防ぐ）
+    console.error('❌ [Supabase]', errorMessage);
+    console.error('❌ [Supabase] App may not function properly without valid credentials');
+  }
 }
 
 // カスタムfetch関数でタイムアウトを実装
