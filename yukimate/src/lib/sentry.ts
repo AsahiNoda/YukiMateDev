@@ -30,8 +30,6 @@ export function initSentry() {
     environment: __DEV__ ? 'development' : 'production',
     // サンプリング率（本番環境では調整）
     tracesSampleRate: 1.0,
-    // エラーログの詳細度
-    enableInExpoDevelopment: false,
     // ネイティブクラッシュも追跡
     enableNative: true,
     // デバッグモード（開発時のみ）
@@ -47,6 +45,13 @@ export function initSentry() {
         routingInstrumentation: new Sentry.ReactNativeTracing.RoutingInstrumentation(),
       }),
     ],
+    // Expo固有のタグを手動で追加
+    initialScope: {
+      tags: {
+        'expo-release-channel': Constants.expoConfig?.extra?.releaseChannel || 'default',
+        'expo-app-version': Constants.expoConfig?.version || '1.0.0',
+      },
+    },
     // 個人情報を含むイベントをフィルタリング
     beforeSend(event, hint) {
       // パスワードやトークンを含むイベントは送信しない
