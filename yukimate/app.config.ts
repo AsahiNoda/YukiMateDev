@@ -57,6 +57,14 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-notifications',
+    [
+      '@sentry/react-native/expo',
+      {
+        url: 'https://sentry.io/',
+        project: 'react-native',
+        organization: 'slope-link',
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,
