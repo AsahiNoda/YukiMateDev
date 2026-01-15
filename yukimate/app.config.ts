@@ -57,14 +57,15 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-notifications',
-    [
-      '@sentry/react-native/expo',
-      {
-        url: 'https://sentry.io/',
-        project: 'react-native',
-        organization: 'slope-link',
-      },
-    ],
+    // Sentryプラグインを一時的に無効化（New Architectureとの互換性問題のため）
+    // [
+    //   '@sentry/react-native/expo',
+    //   {
+    //     url: 'https://sentry.io/',
+    //     project: 'react-native',
+    //     organization: 'slope-link',
+    //   },
+    // ],
   ],
   experiments: {
     typedRoutes: true,
