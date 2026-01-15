@@ -1,7 +1,9 @@
 const path = require('path');
-const { getDefaultConfig } = require('expo/metro-config');
+const {
+  getSentryExpoConfig
+} = require("@sentry/react-native/metro");
 
-const config = getDefaultConfig(__dirname);
+const config = getSentryExpoConfig(__dirname);
 
 // Get the default source and asset extensions
 const defaultSourceExts = config.resolver.sourceExts || [];
