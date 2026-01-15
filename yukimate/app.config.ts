@@ -19,7 +19,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   android: {
-    versionCode: 3, // Play Console用の内部バージョン番号（整数、毎回インクリメント）
+    versionCode: 13, // Play Console用の内部バージョン番号（整数、毎回インクリメント）
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
       foregroundImage: './assets/images/app_icon.png',
@@ -68,7 +68,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
     // EAS Secretsから環境変数を安全に注入
     // EAS Build時はprocess.envに自動的に値が入る
-    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || '',
-    supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
+    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+    supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
   },
 });

@@ -7,19 +7,32 @@ import Constants from 'expo-constants';
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
 
-// 環境変数が設定されているか検証（開発時のみthrow、本番時はコンソールログのみ）
-if (!supabaseUrl || !supabaseAnonKey) {
-  const errorMessage = 'Supabase URL and Anon Key are required. Please check your .env file and ensure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set.';
+// デバッグ情報を出力（セキュリティのため値の長さのみ）
+console.log('🔍 [Supabase] Environment variable check:');
+console.log('  - Constants.expoConfig?.extra?.supabaseUrl:', Constants.expoConfig?.extra?.supabaseUrl ? `${Constants.expoConfig.extra.supabaseUrl.length} chars` : 'undefined');
+console.log('  - Constants.expoConfig?.extra?.supabaseAnonKey:', Constants.expoConfig?.extra?.supabaseAnonKey ? `${Constants.expoConfig.extra.supabaseAnonKey.length} chars` : 'undefined');
+console.log('  - process.env.EXPO_PUBLIC_SUPABASE_URL:', process.env.EXPO_PUBLIC_SUPABASE_URL ? `${process.env.EXPO_PUBLIC_SUPABASE_URL.length} chars` : 'undefined');
+console.log('  - process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY:', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? `${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY.length} chars` : 'undefined');
+console.log('  - Final supabaseUrl:', supabaseUrl ? `${supabaseUrl.length} chars` : 'empty');
+console.log('  - Final supabaseAnonKey:', supabaseAnonKey ? `${supabaseAnonKey.length} chars` : 'empty');
 
-  if (__DEV__) {
-    // 開発時は明示的にエラーをthrow
-    throw new Error(errorMessage);
-  } else {
-    // 本番時はコンソールエラーのみ（クラッシュを防ぐ）
-    console.error('❌ [Supabase]', errorMessage);
-    console.error('❌ [Supabase] App may not function properly without valid credentials');
-  }
+// 環境変数が設定されているか検証
+if (!supabaseUrl || !supabaseAnonKey) {
+  const errorMessage = 'Supabase URL and Anon Key are required. Please check your environment variables and ensure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set in EAS Secrets.';
+
+  // 環境変数がない場合は必ずエラーをthrow（開発・本番問わず）
+  // これにより、空の値でcreateClient()が呼ばれることを防ぐ
+  console.error('❌ [Supabase]', errorMessage);
+  console.error('❌ [Supabase] Debug info:');
+  console.error('   - __DEV__:', __DEV__);
+  console.error('   - Constants.expoConfig?.extra:', JSON.stringify(Constants.expoConfig?.extra, null, 2));
+  console.error('❌ [Supabase] To fix this, run:');
+  console.error('   eas env:create --environment production --name EXPO_PUBLIC_SUPABASE_URL --value "your_url"');
+  console.error('   eas env:create --environment production --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "your_key"');
+
+  throw new Error(errorMessage);
 }
+
 
 // カスタムfetch関数でタイムアウトを実装
 const fetchWithTimeout = async (url: RequestInfo | URL, options: RequestInit = {}) => {

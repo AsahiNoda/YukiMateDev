@@ -1,68 +1,77 @@
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
 
-// Sentry DSNを環境変数から取得
-const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN;
+// Sentry DSNを環境変数から取得（app.config.ts経由）
+// リリースビルドではprocess.envが利用できないため、Constants.expoConfigを優先
+const SENTRY_DSN = Constants.expoConfig?.extra?.sentryDsn || process.env.EXPO_PUBLIC_SENTRY_DSN;
+
+// デバッグ情報を出力
+console.log('🔍 [Sentry] DSN check:');
+console.log('  - Constants.expoConfig?.extra?.sentryDsn:', Constants.expoConfig?.extra?.sentryDsn ? 'configured' : 'undefined');
+console.log('  - process.env.EXPO_PUBLIC_SENTRY_DSN:', process.env.EXPO_PUBLIC_SENTRY_DSN ? 'configured' : 'undefined');
+console.log('  - Final SENTRY_DSN:', SENTRY_DSN ? 'configured' : 'NOT CONFIGURED');
 
 /**
  * Sentryを初期化
  * 本番環境でのみエラー追跡を有効化
  */
 export function initSentry() {
+  console.log('🚀 [Sentry] Initializing Sentry...');
+  console.log('  - __DEV__:', __DEV__);
+  console.log('  - SENTRY_DSN configured:', !!SENTRY_DSN);
+
   // Sentry DSNが設定されていない場合はスキップ
   if (!SENTRY_DSN) {
-    console.log('ℹ️ Sentry DSN not configured, error tracking disabled');
+    console.warn('⚠️ [Sentry] DSN not configured, error tracking disabled');
+    console.warn('⚠️ [Sentry] This means crashes will NOT be reported to Sentry!');
     return;
   }
 
   // 開発環境では無効化（オプション）
   if (__DEV__) {
-    console.log('ℹ️ Sentry disabled in development mode');
+    console.log('ℹ️ [Sentry] Disabled in development mode');
     return;
   }
+
+  console.log('🔧 [Sentry] Configuring Sentry with DSN...');
 
   Sentry.init({
     dsn: SENTRY_DSN,
     // アプリバージョン情報
-    release: Constants.expoConfig?.version || '1.0.0',
-    dist: '1',
+    release: `com.slopelink.app@${Constants.expoConfig?.version || '1.0.0'}`,
+    dist: String(Constants.expoConfig?.android?.versionCode || '1'),
     // 環境設定
-    environment: __DEV__ ? 'development' : 'production',
-    // サンプリング率（本番環境では調整）
+    environment: 'production',
+    // サンプリング率を100%に設定（全てのエラーをキャプチャ）
     tracesSampleRate: 1.0,
     // ネイティブクラッシュも追跡
     enableNative: true,
-    // デバッグモード（開発時のみ）
-    debug: __DEV__,
+    // 本番環境でもデバッグモードを有効化（一時的）
+    debug: true,
     // パンくずリスト（ユーザーの操作履歴）
     maxBreadcrumbs: 50,
-    // 統合設定
-    integrations: [
-      new Sentry.ReactNativeTracing({
-        // パフォーマンス監視の設定
-        tracingOrigins: ['localhost', /^\//],
-        // ルーティング追跡
-        routingInstrumentation: new Sentry.ReactNativeTracing.RoutingInstrumentation(),
-      }),
-    ],
-    // Expo固有のタグを手動で追加
-    initialScope: {
-      tags: {
-        'expo-release-channel': Constants.expoConfig?.extra?.releaseChannel || 'default',
-        'expo-app-version': Constants.expoConfig?.version || '1.0.0',
-      },
-    },
     // 個人情報を含むイベントをフィルタリング
     beforeSend(event, hint) {
+      console.log('📤 [Sentry] Sending event to Sentry:', event.event_id);
+
       // パスワードやトークンを含むイベントは送信しない
       if (event.message?.includes('password') || event.message?.includes('token')) {
+        console.log('🚫 [Sentry] Blocked event containing sensitive data');
         return null;
       }
       return event;
     },
   });
 
-  console.log('✅ Sentry initialized successfully');
+  // Expo固有のタグを設定
+  Sentry.setTag('expo-release-channel', Constants.expoConfig?.extra?.releaseChannel || 'default');
+  Sentry.setTag('expo-app-version', Constants.expoConfig?.version || '1.0.0');
+  Sentry.setTag('expo-platform', 'android');
+
+  console.log('✅ [Sentry] Initialized successfully');
+  console.log('  - Release:', `com.slopelink.app@${Constants.expoConfig?.version || '1.0.0'}`);
+  console.log('  - Environment: production');
+  console.log('  - Debug mode: enabled');
 }
 
 /**

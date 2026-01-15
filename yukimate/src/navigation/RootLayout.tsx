@@ -8,18 +8,90 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { checkPendingEventActions } from '@/utils/event-checker';
 import { initAnalytics } from '@lib/analytics';
-import { initSentry } from '@lib/sentry';
-import { supabase } from '@lib/supabase';
+// import { initSentry } from '@lib/sentry'; // 一時的に無効化
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Linking, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+// import * as Sentry from '@sentry/react-native'; // 一時的に無効化
+
+// ErrorUtilsの型定義
+declare const ErrorUtils: {
+  setGlobalHandler: (handler: (error: Error, isFatal?: boolean) => void) => void;
+  getGlobalHandler: () => (error: Error, isFatal?: boolean) => void;
+};
+
+// グローバルエラーハンドラーを最初に設定（Sentry初期化前）
+if (typeof ErrorUtils !== 'undefined') {
+  const originalHandler = ErrorUtils.getGlobalHandler();
+  ErrorUtils.setGlobalHandler((error, isFatal) => {
+    console.error('🔴 GLOBAL ERROR HANDLER:', {
+      isFatal,
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    });
+
+    // Sentryにエラーを送信（一時的に無効化）
+    // try {
+    //   Sentry.captureException(error, {
+    //     level: 'fatal',
+    //     extra: {
+    //       isFatal,
+    //     },
+    //   });
+    //   console.log('📤 [Global Handler] Error sent to Sentry');
+    // } catch (sentryError) {
+    //   console.error('❌ [Global Handler] Failed to send to Sentry:', sentryError);
+    // }
+
+    // 元のハンドラーを呼び出し
+    if (originalHandler) {
+      originalHandler(error, isFatal);
+    }
+  });
+  console.log('✅ Global error handler registered');
+}
+
+// Supabaseを遅延ロード（エラーハンドリング付き）
+let supabase: any = null;
+try {
+  console.log('📦 Loading Supabase module...');
+  const supabaseModule = require('@lib/supabase');
+  supabase = supabaseModule.supabase;
+  console.log('✅ Supabase module loaded successfully');
+} catch (error: any) {
+  console.error('❌ CRITICAL: Failed to load Supabase module:', {
+    name: error.name,
+    message: error.message,
+    stack: error.stack,
+  });
+  // Supabaseの読み込みに失敗した場合、アプリを続行させない
+  throw new Error(`Supabase initialization failed: ${error.message}`);
+}
 
 // Sentryを初期化（アプリ起動時に1回だけ実行）
-initSentry();
+// 一時的に無効化: New Architectureとの互換性問題のため
+// try {
+//   console.log('📦 Initializing Sentry...');
+//   initSentry();
+//   console.log('✅ Sentry initialized successfully');
+// } catch (error: any) {
+//   console.error('⚠️ Failed to initialize Sentry:', error);
+//   // Sentryの初期化失敗は致命的ではないので続行
+// }
+console.log('ℹ️ Sentry is temporarily disabled due to New Architecture compatibility');
+
 // Amplitudeアナリティクスを初期化
-initAnalytics();
+try {
+  console.log('📦 Initializing Analytics...');
+  initAnalytics();
+  console.log('✅ Analytics initialized successfully');
+} catch (error: any) {
+  console.error('⚠️ Failed to initialize Analytics:', error);
+  // Analyticsの初期化失敗は致命的ではないので続行
+}
 
 // グローバル変数で初期化状態を管理（再マウント時もリセットされない）
 let globalInitialized = false;
