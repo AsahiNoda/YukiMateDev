@@ -326,6 +326,18 @@ export default function CreateEventScreen() {
             try {
               setLoading(true);
 
+              // イベント削除前に参加者に通知を送信
+              if (params.eventId && title) {
+                try {
+                  const { notifyEventCancellation } = await import('@/services/eventNotificationService');
+                  await notifyEventCancellation(params.eventId, title);
+                  console.log('✅ Sent cancellation notifications to participants');
+                } catch (notifyError) {
+                  console.error('Failed to send cancellation notifications:', notifyError);
+                  // 通知失敗してもイベント削除は続行
+                }
+              }
+
               // Delete event
               const { error } = await supabase
                 .from('posts_events')
@@ -516,6 +528,17 @@ export default function CreateEventScreen() {
             t('common.warning'),
             isEditMode ? t('create.imageUploadWarningEdit') : t('create.imageUploadWarning')
           );
+        }
+      }
+
+      // 新規作成の場合、★登録ユーザーに通知
+      if (!isEditMode) {
+        try {
+          const { notifyStarredUsersOfNewEvent } = await import('@/hooks/useEventCreation');
+          await notifyStarredUsersOfNewEvent(session.user.id, title, eventId);
+        } catch (notifyError) {
+          console.error('Failed to notify starred users:', notifyError);
+          // 通知失敗してもイベント作成は成功として扱う
         }
       }
 

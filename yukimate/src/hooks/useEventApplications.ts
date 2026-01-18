@@ -216,6 +216,25 @@ export function useEventApplications() {
           application.event.title,
           eventId
         );
+
+        // ホストに新規参加者通知を送信
+        const { notifyHostOfNewParticipant } = await import('@/services/eventNotificationService');
+        await notifyHostOfNewParticipant(eventId, application.event.title, applicantUserId);
+
+        // ★登録ユーザーに参加通知を送信
+        const { notifyStarredUsersOfParticipation } = await import('@/hooks/useEventCreation');
+        await notifyStarredUsersOfParticipation(applicantUserId, application.event.title, eventId);
+
+        // イベント開始リマインダーをスケジュール
+        if (application.event.start_at) {
+          const { scheduleReminderOnJoin } = await import('@/services/eventNotificationService');
+          await scheduleReminderOnJoin(
+            applicantUserId,
+            eventId,
+            application.event.title,
+            application.event.start_at
+          );
+        }
       }
 
       return { success: true };

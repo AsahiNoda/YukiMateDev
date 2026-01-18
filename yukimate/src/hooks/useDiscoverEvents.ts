@@ -363,6 +363,34 @@ export async function applyToEvent(
       throw error;
     }
 
+    // ホストに新規申請通知を送信
+    try {
+      const { data: eventData } = await supabase
+        .from('posts_events')
+        .select('host_user_id, title')
+        .eq('id', eventId)
+        .single();
+
+      const { data: applicantProfile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (eventData && applicantProfile) {
+        const { notifyNewApplication } = await import('@/services/notificationService');
+        await notifyNewApplication(
+          eventData.host_user_id,
+          applicantProfile.display_name || 'New User',
+          eventData.title,
+          eventId
+        );
+      }
+    } catch (notifyError) {
+      console.error('Failed to send application notification:', notifyError);
+      // 通知失敗しても申請は成功として扱う
+    }
+
     return { success: true };
   } catch (error) {
     console.error('Error applying to event:', error);

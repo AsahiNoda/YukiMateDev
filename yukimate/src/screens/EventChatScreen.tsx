@@ -580,6 +580,29 @@ export default function EventChatScreen() {
       // 一時IDを実際のIDに置き換え
       setMessages((prev) => prev.map((msg) => (msg.id === tempId ? sentMessage as any : msg)));
 
+      // 他の参加者に通知を送信
+      try {
+        if (event && currentUserProfile) {
+          const { notifyNewChatMessage } = await import('@/services/notificationService');
+          const senderName = currentUserProfile.display_name || 'Someone';
+
+          // イベントの全参加者に通知（送信者以外）
+          for (const participant of event.participants) {
+            if (participant.user.id !== currentUserId) {
+              await notifyNewChatMessage(
+                participant.user.id,
+                senderName,
+                event.title,
+                params.eventId
+              );
+            }
+          }
+        }
+      } catch (notifyError) {
+        console.error('Failed to send chat notification:', notifyError);
+        // 通知失敗してもメッセージ送信は成功として扱う
+      }
+
       // PostgreSQL changesで自動的に他のユーザーに通知されます
       console.log('✅ Message sent, will be broadcast via PostgreSQL changes');
     } catch (error: any) {

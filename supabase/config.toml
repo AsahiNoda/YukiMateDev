@@ -1,0 +1,29 @@
+# Supabase Project Configuration
+
+[api]
+# API port
+port = 54321
+# Schemas to expose in your API
+schemas = ["public"]
+# Extra schemas to add to the search_path of every request
+extra_search_path = ["extensions"]
+# Max rows to return from a query
+max_rows = 1000
+
+[db]
+# Database port
+port = 54322
+
+[studio]
+# Studio port
+port = 54323
+
+[edge_functions]
+# Edge Functions port
+port = 54324
+
+# Cron Jobs Configuration
+[functions.schedule-event-notifications]
+# Run every hour to check for events that ended 6 hours ago
+# and send post-event evaluation notifications
+schedule = "0 * * * *"  # Every hour at minute 0
