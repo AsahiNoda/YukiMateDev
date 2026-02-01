@@ -16,10 +16,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     infoPlist: {
       NSCameraUsageDescription: 'Slope Linkはプロフィール写真やイベント写真の撮影にカメラを使用します。',
       NSPhotoLibraryUsageDescription: 'Slope Linkはプロフィール写真やイベント写真の選択にフォトライブラリを使用します。',
+      ITSAppUsesNonExemptEncryption: false,
     },
   },
   android: {
-    versionCode: 13, // Play Console用の内部バージョン番号（整数、毎回インクリメント）
+    versionCode: 14, // Play Console用の内部バージョン番号（整数、毎回インクリメント）
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
       foregroundImage: './assets/images/app_icon.png',
