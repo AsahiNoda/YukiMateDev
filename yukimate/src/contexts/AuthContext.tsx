@@ -80,18 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         console.log(`🔔 AuthContext: Auth event: ${event}, Has session: ${!!session}`);
 
-        // Invalid Refresh Tokenエラーをキャッチ
-        if (event === 'TOKEN_REFRESHED' && !session) {
-          console.log('🔄 AuthContext: Token refresh failed, signing out...');
-          await supabase.auth.signOut().catch(e => console.error('Error during signOut:', e));
-          setSession(null);
-          setUser(null);
-          setProfile(null);
-          setUserRole(null);
-          setLoading(false);
-          return;
-        }
-
         console.log(`🔔 AuthContext: User email: ${session?.user?.email}`);
         console.log(`🔔 AuthContext: Session type: ${session?.user?.app_metadata?.provider}`);
         setSession(session);

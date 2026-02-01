@@ -63,7 +63,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: true, // Deep linkからのセッションを検出（パスワードリセット用）
+    detectSessionInUrl: false, // React Nativeではディープリンクを手動処理するため不要
   },
   global: {
     headers: {
@@ -76,16 +76,3 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-// グローバルエラーハンドラー: Invalid Refresh Tokenエラーを検出
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_OUT') {
-    console.log('🔓 Supabase: User signed out');
-  }
-  if (event === 'TOKEN_REFRESHED') {
-    if (!session) {
-      console.error('❌ Supabase: Token refresh failed - session is null');
-      console.log('🔄 Supabase: Clearing invalid session...');
-      supabase.auth.signOut().catch(e => console.error('Error during auto signOut:', e));
-    }
-  }
-});

@@ -231,12 +231,12 @@ export default function RootLayout() {
             }
           }
 
-          // 高速化: getSession()は遅い場合があるので、短いタイムアウトを設定
+          // getSession()のタイムアウト（モバイル回線でもトークンリフレッシュが完了するよう余裕を持たせる）
           let session;
           try {
             const sessionPromise = supabase.auth.getSession();
             const timeoutPromise = new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('Session check timeout')), 2000)
+              setTimeout(() => reject(new Error('Session check timeout')), 10000)
             );
 
             const result = await Promise.race([
