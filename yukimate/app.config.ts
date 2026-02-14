@@ -20,7 +20,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   android: {
-    versionCode: 14, // Play Console用の内部バージョン番号（整数、毎回インクリメント）
+    versionCode: 15, // Play Console用の内部バージョン番号（整数、毎回インクリメント）
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
       foregroundImage: './assets/images/app_icon.png',
