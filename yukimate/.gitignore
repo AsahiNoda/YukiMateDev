@@ -9,7 +9,6 @@
 
 # Development files (not needed for builds)
 scripts/
-docs/
 
 # dependencies
 node_modules/
