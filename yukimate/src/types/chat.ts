@@ -14,6 +14,14 @@ export type EventMessage = {
   createdAt: string;
 };
 
+// Participant in an event
+export type EventParticipant = {
+  userId: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  role: string;
+};
+
 // Event chat thread
 export type EventChat = {
   id: string;
@@ -21,5 +29,7 @@ export type EventChat = {
   eventTitle: string;
   eventResortName: string | null;
   eventStartAt: string;
+  eventPhotos: string[];
   messages: EventMessage[];
+  participants: EventParticipant[];
 };

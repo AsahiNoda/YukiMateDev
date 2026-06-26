@@ -1,17 +1,26 @@
 /**
  * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
  * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * 
+ * Color Palette: Charcoal Navy (案A)
+ * - 背景色: 深みのあるチャコールネイビー (#1A202C, #242B38)
+ * - カード背景: 背景より少し明るいトーン (#2D3748, #374151)
+ * - メインカラー: 落ち着いたスレートブルー (#5A7D9A)
+ * - アクセント: 上品なシャンパンゴールド (#D4AF37, #C0B283)
+ * - テキスト: オフホワイト、ライトグレー (#F7FAFC, #E2E8F0)
  */
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+// 案A: チャコール・ネイビー パレット
+const tintColorLight = '#5A7D9A'; // 落ち着いたスレートブルー
+const tintColorDark = '#F7FAFC'; // オフホワイト
+const accentGold = '#D4AF37'; // シャンパンゴールド
 
 export const Colors = {
   light: {
     text: '#11181C',
-    background: '#fff',
+    background: 'rgba(236, 250, 255, 1)',
     tint: tintColorLight,
     icon: '#687076',
     tabIconDefault: '#687076',
@@ -22,30 +31,40 @@ export const Colors = {
     backgroundTertiary: '#E5E7EB',
     border: '#E5E7EB',
     borderLight: '#F3F4F6',
-    accent: tintColorLight,
+    accent: accentGold,
     error: '#EF4444',
     success: '#10B981',
     warning: '#F59E0B',
-    card: '#FFFFFF',
+    info: '#3B82F6',
+    card: '#F7FAFC',
+    // Role badge colors
+    roleDeveloper: '#22c55e', // グリーン
+    roleOfficial: '#eab308', // イエロー
+    roleUser: '#06b6d4', // シアン
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
+    text: '#F7FAFC', // オフホワイト
+    background: 'rgba(26, 32, 44, 1)', // 深みのあるチャコールネイビー
+    tint: tintColorLight, // スレートブルー
+    icon: '#d3f1ffe0',
     tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    tabIconSelected: tintColorLight, // スレートブルー
     // Extended colors for Phase 2
-    textSecondary: '#9BA1A6',
-    backgroundSecondary: '#1F2937',
-    backgroundTertiary: '#374151',
+    textSecondary: '#E2E8F0', // ライトグレー
+    backgroundSecondary: '#2D3748', // カード背景（少し明るいトーン）
+    backgroundTertiary: '#374151', // より明るいトーン
     border: '#374151',
-    borderLight: '#1F2937',
-    accent: tintColorDark,
+    borderLight: '#2D3748',
+    accent: accentGold, // シャンパンゴールド
     error: '#EF4444',
     success: '#10B981',
     warning: '#F59E0B',
-    card: '#1F2937',
+    info: '#3B82F6',
+    card: '#242B38', // カード背景
+    // Role badge colors
+    roleDeveloper: '#22c55e', // グリーン
+    roleOfficial: '#eab308', // イエロー
+    roleUser: '#06b6d4', // シアン
   },
 };
 

@@ -6,6 +6,7 @@ export const mockDiscoverEvents: DiscoverEvent[] = [
     title: 'Epic Niseko Powder Session',
     description:
       "Looking for experienced riders to explore the Niseko backcountry. Let's chase some fresh tracks!",
+    category: 'event',
     hostName: 'Yuki',
     hostAvatar: null,
     resortName: 'Niseko Grand Hirafu',
@@ -17,12 +18,15 @@ export const mockDiscoverEvents: DiscoverEvent[] = [
     pricePerPersonJpy: 5000,
     tags: ['Powder', 'Backcountry'],
     photoUrl: null,
+    photoUrls: [],
+    meetingPlace: null,
     hostUserId: 'stub-host-1',
   },
   {
     id: 'evt-2',
     title: 'Beginner Carving Meetup',
     description: 'Friendly session for beginner-intermediate riders to practice carving turns together.',
+    category: 'lesson',
     hostName: 'Aoi',
     hostAvatar: null,
     resortName: 'Hakuba Happo-One',
@@ -34,6 +38,8 @@ export const mockDiscoverEvents: DiscoverEvent[] = [
     pricePerPersonJpy: 0,
     tags: ['Carving', 'Beginner'],
     photoUrl: null,
+    photoUrls: [],
+    meetingPlace: null,
     hostUserId: 'stub-host-2',
   },
 ];

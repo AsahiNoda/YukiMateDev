@@ -1,5 +1,15 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
+# IDE and Editor files
+.vscode/
+.idea/
+
+# Claude AI
+.claude/
+
+# Development files (not needed for builds)
+scripts/
+
 # dependencies
 node_modules/
 
@@ -31,7 +41,11 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+
+# Firebase
+google-services.json
 
 # typescript
 *.tsbuildinfo
@@ -41,3 +55,5 @@ app-example
 # generated native folders
 /ios
 /android
+
+.env.local

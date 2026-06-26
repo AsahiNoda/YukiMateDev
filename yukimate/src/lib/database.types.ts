@@ -11,15 +11,26 @@ export type SnowQuality = 'powder' | 'packed' | 'slushy' | 'icy';
 export type SkillLevel = 'beginner' | 'intermediate' | 'advanced';
 export type PostType = 'snow' | 'spot' | 'access';
 export type EventStatus = 'open' | 'closed' | 'cancelled' | 'full';
+export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
+export type UserRole = 'user' | 'official' | 'developer';
 
 // ==========================================
 // Database Tables
 // ==========================================
 
+export interface User {
+  id: string; // uuid
+  email: string | null;
+  role: UserRole;
+  created_at: string;
+}
+
 export interface Resort {
   id: string; // uuid
   name: string;
-  area: string;
+  name_en: string | null; // English resort name
+  area: string; // 日本語の県名（例：「長野県」）
+  region: string | null; // 地方名（例：「中部」）※将来的に英語県名に移行予定
   latitude: number | null;
   longitude: number | null;
   official_site_url: string | null;
@@ -62,6 +73,7 @@ export interface Profile {
   user_id: string; // uuid (primary key)
   display_name: string | null;
   avatar_url: string | null;
+  header_url: string | null;
   country_code: string | null;
   languages: string[] | null;
   level: SkillLevel | null;
@@ -76,15 +88,18 @@ export interface Event {
   id: string; // uuid
   title: string;
   description: string | null;
-  category: string;
+  type: string; // event type (from schema)
   resort_id: string | null; // uuid
-  host_id: string; // uuid
+  host_user_id: string; // uuid
   start_at: string; // timestamptz
   end_at: string | null; // timestamptz
   capacity_total: number | null;
-  level: SkillLevel | null;
+  level_required: SkillLevel | null; // from schema
   status: EventStatus;
-  image_url: string | null;
+  photos: string[] | null;
+  tags: string[] | null;
+  price_per_person_jpy: number | null;
+  meeting_place: string | null;
   created_at: string;
   updated_at: string | null;
 }
@@ -109,6 +124,57 @@ export interface Gear {
   updated_at: string | null;
 }
 
+export interface EventParticipant {
+  id: string; // uuid
+  event_id: string; // uuid
+  user_id: string; // uuid
+  joined_at: string; // timestamptz
+  left_at: string | null; // timestamptz
+}
+
+export interface EventApplication {
+  id: string; // uuid
+  event_id: string; // uuid
+  applicant_user_id: string; // uuid
+  status: ApplicationStatus;
+  message: string | null;
+  created_at: string; // timestamptz
+  updated_at: string | null; // timestamptz
+}
+
+// Phase 7: Chat-related types
+export type MessageType = 'text' | 'image';
+
+export interface EventChat {
+  id: string; // uuid
+  event_id: string; // uuid
+  created_at: string; // timestamptz
+  updated_at: string | null; // timestamptz
+}
+
+export interface EventMessage {
+  id: string; // uuid
+  chat_id: string; // uuid
+  sender_user_id: string; // uuid
+  content_text: string | null;
+  content_image_url: string | null;
+  created_at: string; // timestamptz
+}
+
+export interface Star {
+  id: string; // uuid
+  user_id: string; // uuid
+  target_user_id: string; // uuid
+  created_at: string; // timestamptz
+}
+
+export interface Block {
+  id: string; // uuid
+  user_id: string; // uuid
+  blocked_user_id: string; // uuid
+  created_at: string; // timestamptz
+}
+
 // ==========================================
 // Supabase Response Types (with relations)
 // ==========================================
@@ -119,13 +185,26 @@ export interface ResortWithWeather extends Resort {
 }
 
 export interface EventWithDetails extends Event {
-  resorts: Pick<Resort, 'id' | 'name' | 'area'> | null;
+  resorts: Pick<Resort, 'id' | 'name' | 'name_en' | 'area'> | null;
   profiles: Pick<Profile, 'user_id' | 'display_name' | 'avatar_url' | 'country_code' | 'level'> | null;
 }
 
 export interface FeedPostWithDetails extends FeedPost {
-  resorts: Pick<Resort, 'id' | 'name'> | null;
+  resorts: Pick<Resort, 'id' | 'name' | 'name_en'> | null;
   profiles: Pick<Profile, 'user_id' | 'display_name' | 'avatar_url'> | null;
+}
+
+export interface EventMessageWithSender extends EventMessage {
+  sender: {
+    id: string;
+    profiles: Pick<Profile, 'user_id' | 'display_name' | 'avatar_url'>;
+  } | null;
+}
+
+export interface EventChatWithDetails extends EventChat {
+  posts_events: Pick<Event, 'id' | 'title' | 'start_at'> & {
+    resorts: Pick<Resort, 'id' | 'name' | 'name_en'> | null;
+  } | null;
 }
 
 // ==========================================
@@ -165,6 +244,15 @@ export type SupabaseClient = ReturnType<typeof createClient<Database>>;
 export interface Database {
   public: {
     Tables: {
+      users: {
+        Row: User;
+        Insert: Omit<User, 'id' | 'created_at' | 'role'> & {
+          id?: string;
+          created_at?: string;
+          role?: UserRole;
+        };
+        Update: Partial<Omit<User, 'id'>>;
+      };
       resorts: {
         Row: Resort;
         Insert: Omit<Resort, 'id' | 'created_at' | 'updated_at'> & {
@@ -221,6 +309,23 @@ export interface Database {
         };
         Update: Partial<Omit<Gear, 'user_id'>>;
       };
+      event_participants: {
+        Row: EventParticipant;
+        Insert: Omit<EventParticipant, 'id' | 'joined_at'> & {
+          id?: string;
+          joined_at?: string;
+        };
+        Update: Partial<Omit<EventParticipant, 'id' | 'event_id' | 'user_id'>>;
+      };
+      event_applications: {
+        Row: EventApplication;
+        Insert: Omit<EventApplication, 'id' | 'created_at' | 'updated_at'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<EventApplication, 'id' | 'event_id' | 'applicant_user_id'>>;
+      };
     };
     Views: {
       // ビューがある場合はここに追加
@@ -234,6 +339,8 @@ export interface Database {
       skill_level: SkillLevel;
       post_type: PostType;
       event_status: EventStatus;
+      application_status: ApplicationStatus;
+      user_role: UserRole;
     };
   };
 }

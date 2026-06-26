@@ -11,6 +11,7 @@ export type SnowfeedPost = {
   userId: string;
   userName: string;
   userAvatar: string | null;
+  userRole: string;
   resortId: string | null;
   resortName: string | null;
   type: PostType;
@@ -52,6 +53,7 @@ export type SnowfeedWeather = {
   windMs: number | null;
   visibility: 'good' | 'moderate' | 'poor' | null;
   snowQuality: 'powder' | 'packed' | 'slushy' | 'icy' | null;
+  weatherCode: number | null; // WMO Weather interpretation codes
 };
 
 // Complete snowfeed data

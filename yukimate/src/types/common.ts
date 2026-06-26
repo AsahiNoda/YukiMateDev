@@ -5,6 +5,9 @@
 // Skill levels for events and users
 export type SkillLevel = 'beginner' | 'intermediate' | 'advanced';
 
+// User roles
+export type UserRole = 'user' | 'official' | 'developer';
+
 // Generic API state types
 export type LoadingState = { status: 'loading' };
 export type ErrorState = { status: 'error'; error: string };

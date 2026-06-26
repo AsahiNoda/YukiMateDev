@@ -1,11 +1,16 @@
 {
   "cli": {
+<<<<<<< HEAD
     "version": ">= 16.28.0",
+=======
+    "version": ">= 13.2.0",
+>>>>>>> d19a5baf107f0f665a6402b3800f1d91f54121d5
     "appVersionSource": "remote"
   },
   "build": {
     "development": {
       "developmentClient": true,
+<<<<<<< HEAD
       "distribution": "internal"
     },
     "preview": {
@@ -19,3 +24,55 @@
     "production": {}
   }
 }
+=======
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "distribution": "store",
+      "resourceClass": "default",
+      "ios": {
+        "simulator": false
+      },
+      "android": {
+        "buildType": "app-bundle",
+        "gradleCommand": ":app:bundleRelease"
+      },
+      "cache": {
+        "key": "production-v1",
+        "paths": []
+      },
+      "env": {
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=-Xmx4096m -Dorg.gradle.daemon=false"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "slopelinkdev@gmail.com",
+        "ascAppId": "6758881419",
+        "appleTeamId": "22X4BFYQ6R"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./play-store-service-account.json",
+        "track": "internal"
+      }
+    }
+  }
+}
+>>>>>>> d19a5baf107f0f665a6402b3800f1d91f54121d5

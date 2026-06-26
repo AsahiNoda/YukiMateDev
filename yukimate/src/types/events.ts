@@ -16,6 +16,10 @@ export type HomeEvent = {
   levelRequired: SkillLevel;
   pricePerPersonJpy: number;
   isOfficial?: boolean;
+  photoUrl: string | null;
+  hostRole?: string;
+  resortArea?: string;
+  resortRegion?: string | null;
 };
 
 // Extended event type for discover/swipe feature
@@ -23,6 +27,7 @@ export type DiscoverEvent = {
   id: string;
   title: string;
   description: string | null;
+  category: 'event' | 'lesson' | 'filming' | 'group';
   hostName: string;
   hostAvatar: string | null;
   resortName: string;
@@ -32,14 +37,19 @@ export type DiscoverEvent = {
   spotsTaken: number;
   levelRequired: SkillLevel | null;
   pricePerPersonJpy: number | null;
+  meetingPlace: string | null;
   tags: string[];
-  photoUrl: string | null;
+  photoUrl: string | null; // 下位互換性のため残す（最初の画像）
+  photoUrls: string[]; // 全画像のURL配列
   hostUserId: string;
+  hostRole: string;
+  isHostStarred?: boolean; // ホストが★登録されているか
+  starredParticipants?: string[]; // ★登録された参加者のユーザーID配列
 };
 
 // Event filter options
 export type EventFilterOptions = {
-  category?: string;
+  category?: 'event' | 'lesson' | 'filming' | 'group';
   level?: SkillLevel;
   resortId?: string;
   limit?: number;

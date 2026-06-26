@@ -1,50 +1,143 @@
-# Welcome to your Expo app 👋
+# Slope Link
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+スキー・スノーボード愛好者のためのソーシャルプラットフォーム
 
-## Get started
+## 🚀 セットアップ
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### 1. 依存関係のインストール
 
 ```bash
-npm run reset-project
+npm install
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### 2. 環境変数の設定
 
-## Learn more
+`.env.example`をコピーして`.env`ファイルを作成します：
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+cp .env.example .env
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+`.env`ファイルを編集して、Supabaseの認証情報を設定します：
 
-## Join the community
+```env
+EXPO_PUBLIC_SUPABASE_URL=your_supabase_url_here
+EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
+```
 
-Join our community of developers creating universal apps.
+**Supabase認証情報の取得方法：**
+1. [Supabase Dashboard](https://app.supabase.com/)にアクセス
+2. プロジェクトを選択
+3. Settings → API に移動
+4. `Project URL`を`EXPO_PUBLIC_SUPABASE_URL`に設定
+5. `anon/public key`を`EXPO_PUBLIC_SUPABASE_ANON_KEY`に設定
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+⚠️ **セキュリティ注意事項：**
+- `.env`ファイルは絶対にGitにコミットしないでください
+- 本番環境では、環境変数を適切に管理してください（EAS Secrets等）
+
+### 3. アプリの起動
+
+```bash
+npx expo start
+```
+
+開発メニューから以下を選択：
+- `i` - iOSシミュレータで起動
+- `a` - Androidエミュレータで起動
+- Expo Goアプリでスキャン
+
+## 🏗️ プロジェクト構成
+
+```
+yukimate/
+├── src/
+│   ├── app/              # Expo Router（画面）
+│   ├── components/       # 再利用可能なコンポーネント
+│   ├── hooks/            # カスタムフック
+│   ├── services/         # APIサービス
+│   ├── lib/              # ライブラリ設定
+│   ├── constants/        # 定数
+│   └── types/            # TypeScript型定義
+├── assets/               # 画像、フォント等
+├── .env                  # 環境変数（gitignore）
+├── .env.example          # 環境変数テンプレート
+├── app.config.js         # Expo設定（動的）
+└── package.json
+```
+
+## 🔑 主要機能
+
+- ✅ ユーザー認証（Supabase Auth）
+- ✅ イベント作成・管理
+- ✅ リアルタイムチャット
+- ✅ ソーシャル機能（スター、ブロック）
+- ✅ 天気情報統合（Snowfeed）
+- ✅ プロフィール管理
+- ✅ プッシュ通知
+
+## 🛠️ 技術スタック
+
+- **フレームワーク**: React Native + Expo
+- **ルーティング**: Expo Router
+- **バックエンド**: Supabase（Auth, Database, Storage, Realtime）
+- **言語**: TypeScript
+- **UI**: React Native（カスタムコンポーネント）
+
+## 📱 対応プラットフォーム
+
+- iOS
+- Android
+- Web（限定サポート）
+
+## 🔐 セキュリティ
+
+このプロジェクトでは以下のセキュリティ対策を実施しています：
+
+- 環境変数による認証情報管理
+- Supabase Row Level Security (RLS)
+- セッションベース認証
+- 包括的な入力値検証とサニタイズ
+- Sentryによるエラー追跡
+- グローバルエラーバウンダリ
+
+## 📦 ビルドとデプロイ
+
+### EAS Buildを使用したビルド
+
+```bash
+# 開発ビルド（開発用）
+npx eas build --profile development --platform ios
+npx eas build --profile development --platform android
+
+# プレビュービルド（内部テスト用）
+npx eas build --profile preview --platform ios
+npx eas build --profile preview --platform android
+
+# 本番ビルド（ストア提出用）
+npx eas build --profile production --platform ios
+npx eas build --profile production --platform android
+```
+
+### ストアへの提出
+
+```bash
+# iOS App Storeへ提出
+npx eas submit --platform ios
+
+# Google Play Storeへ提出
+npx eas submit --platform android
+```
+
+### 環境変数の設定（EAS Build用）
+
+```bash
+# 本番環境の環境変数を設定
+npx eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_URL --value your_value
+npx eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value your_value
+npx eas secret:create --scope project --name EXPO_PUBLIC_SENTRY_DSN --value your_value
+```
+
+## 📄 ライセンス
+
+All rights reserved.

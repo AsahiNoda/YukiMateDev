@@ -4,7 +4,14 @@
  */
 
 // Common types
-export type { SkillLevel, LoadingState, ErrorState, SuccessState, ApiState } from './common';
+export type { SkillLevel, UserRole, LoadingState, ErrorState, SuccessState, ApiState } from './common';
+
+// Database types
+export type {
+  ApplicationStatus,
+  EventParticipant,
+  EventApplication,
+} from '@/lib/database.types';
 
 // Event types
 export type { HomeEvent, DiscoverEvent, EventFilterOptions } from './events';
@@ -33,3 +40,17 @@ export type {
   SnowfeedWeather,
   SnowfeedData,
 } from './social';
+
+export type RootStackParamList = {
+  Auth: undefined;
+  ProfileSetup: undefined;
+  Main: undefined;
+  EditProfile: undefined;
+  EventDetail: { eventId: string };
+  EventChat: { eventId: string; roomId: string };
+  CreateEvent: undefined;
+  UserProfile: { userId: string };
+  ResortDetail: { resortId: number };
+  Explore: { filters?: string };
+  ExploreFilter: { currentFilters?: string };
+};

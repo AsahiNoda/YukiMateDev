@@ -1,1 +1,5 @@
-export { default } from '@/screens/EventDetailScreen';
+import EventDetailScreen from '@/screens/EventDetailScreen';
+
+export default function EventDetail() {
+  return <EventDetailScreen />;
+}

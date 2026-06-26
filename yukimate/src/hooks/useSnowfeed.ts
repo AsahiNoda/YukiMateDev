@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@lib/supabase';
+import { fetchWeatherData } from '../services/weatherApi';
+import { getResortName } from '@/utils/resort-helpers';
 import type { SocialResortRating as ResortRating, SnowfeedWeather, SnowfeedPost, SnowfeedData } from '@types';
+import { useTranslation } from './useTranslation';
 
 type SnowfeedState =
   | { status: 'loading' }
   | { status: 'error'; error: string }
   | { status: 'success'; data: SnowfeedData };
 
-export function useSnowfeed(resortId: string | null): SnowfeedState {
+export function useSnowfeed(resortId: string | null, refreshKey?: number): SnowfeedState {
   const [state, setState] = useState<SnowfeedState>({ status: 'loading' });
+  const { locale } = useTranslation();
 
   useEffect(() => {
     if (!resortId) {
@@ -20,6 +24,29 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
 
     const load = async () => {
       try {
+        // 0. リゾート情報を取得（名前、座標、都道府県）
+        const { data: resortData, error: resortError } = await supabase
+          .from('resorts')
+          .select('name, name_en, latitude, longitude, area, region')
+          .eq('id', resortId)
+          .single();
+
+        if (resortError) {
+          console.warn('リゾート情報取得エラー:', resortError);
+        }
+
+        const resortName = resortData ? getResortName(resortData, locale) : resortId;
+        const resortCoords = resortData?.latitude && resortData?.longitude
+          ? { latitude: resortData.latitude, longitude: resortData.longitude }
+          : undefined;
+        // areaは常に使用（天気APIは日本語の県名が必要）
+        const resortPrefecture = resortData?.area;
+
+        console.log(`[useSnowfeed] Resort: ${resortName} (ID: ${resortId})`, {
+          coords: resortCoords || 'no coordinates',
+          prefecture: resortPrefecture || 'no prefecture'
+        });
+
         // 1. レーティングサマリーを取得
         const { data: ratingData, error: ratingError } = await supabase
           .from('resort_rating_summary')
@@ -32,7 +59,7 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
           console.warn('レーティング取得エラー:', ratingError);
         }
 
-        // 2. 天気データを取得
+        // 2. 天気データを取得（DBから）
         const { data: weatherData, error: weatherError } = await supabase
           .from('weather_daily_cache')
           .select('*')
@@ -43,6 +70,50 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
 
         if (weatherError && weatherError.code !== 'PGRST116') {
           console.warn('天気データ取得エラー:', weatherError);
+        }
+
+        // 2.5. DBに天気データがない、または古い場合、APIから取得
+        let apiWeatherData = null;
+        const today = new Date().toISOString().split('T')[0];
+        const isDataStale = !weatherData || weatherData.date !== today;
+
+        if (isDataStale) {
+          console.log(
+            weatherData
+              ? `天気データが古い（${weatherData.date}）ため、APIから最新データを取得します...`
+              : 'DBに天気データがないため、APIから取得します...'
+          );
+          try {
+            // リゾート名、座標、都道府県を使用して天気データを取得
+            apiWeatherData = await fetchWeatherData(resortName, resortCoords, resortPrefecture);
+
+            if (apiWeatherData) {
+              // APIから取得したデータをDBに保存（既存データがあればUPSERT）
+              const { error: upsertError } = await supabase
+                .from('weather_daily_cache')
+                .upsert({
+                  resort_id: resortId,
+                  date: new Date().toISOString().split('T')[0],
+                  temp_c: apiWeatherData.tempC,
+                  new_snow_cm: apiWeatherData.newSnowCm,
+                  base_depth_cm: apiWeatherData.baseDepthCm,
+                  wind_ms: apiWeatherData.windMs,
+                  visibility: apiWeatherData.visibility,
+                  snow_quality: apiWeatherData.snowQuality,
+                  weather_code: apiWeatherData.weatherCode,
+                }, {
+                  onConflict: 'resort_id,date'
+                });
+
+              if (upsertError) {
+                console.warn('天気データのDB保存エラー:', upsertError);
+              }
+            } else {
+              console.warn('天気APIからデータを取得できませんでした（nullが返されました）');
+            }
+          } catch (apiError) {
+            console.error('天気API取得中にエラーが発生:', apiError);
+          }
         }
 
         // 3. 投稿を取得
@@ -58,8 +129,7 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
             tags,
             photos,
             created_at,
-            resorts(name),
-            profiles!feed_posts_user_id_fkey(display_name, avatar_url)
+            resorts(name, name_en)
           `
           )
           .eq('resort_id', resortId)
@@ -68,6 +138,34 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
 
         if (postsError) {
           throw new Error(`投稿取得エラー: ${postsError.message}`);
+        }
+
+        // 3.5. ユーザープロフィールとロールを取得
+        const userIds = postsData?.map((p: any) => p.user_id) || [];
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select(`
+            user_id,
+            display_name,
+            avatar_url,
+            users!profiles_user_id_fkey(role)
+          `)
+          .in('user_id', userIds);
+
+        if (profilesError) {
+          console.warn('プロフィール取得エラー:', profilesError);
+        }
+
+        // プロフィールをMapに変換
+        const profilesMap = new Map();
+        if (profilesData) {
+          profilesData.forEach((profile: any) => {
+            profilesMap.set(profile.user_id, {
+              display_name: profile.display_name,
+              avatar_url: profile.avatar_url,
+              role: profile.users?.role || 'user',
+            });
+          });
         }
 
         // 4. いいね数とコメント数を取得
@@ -113,7 +211,18 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
             }
           : null;
 
-        const weather: SnowfeedWeather | null = weatherData
+        // APIから取得した新しいデータを優先
+        const weather: SnowfeedWeather | null = apiWeatherData
+          ? {
+              tempC: apiWeatherData.tempC,
+              newSnowCm: apiWeatherData.newSnowCm,
+              baseDepthCm: apiWeatherData.baseDepthCm,
+              windMs: apiWeatherData.windMs,
+              visibility: apiWeatherData.visibility,
+              snowQuality: apiWeatherData.snowQuality,
+              weatherCode: apiWeatherData.weatherCode,
+            }
+          : weatherData
           ? {
               tempC: weatherData.temp_c ? Number(weatherData.temp_c) : null,
               newSnowCm: weatherData.new_snow_cm ? Number(weatherData.new_snow_cm) : null,
@@ -121,20 +230,22 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
               windMs: weatherData.wind_ms ? Number(weatherData.wind_ms) : null,
               visibility: weatherData.visibility as SnowfeedWeather['visibility'],
               snowQuality: weatherData.snow_quality as SnowfeedWeather['snowQuality'],
+              weatherCode: weatherData.weather_code ? Number(weatherData.weather_code) : null,
             }
           : null;
 
         const posts: SnowfeedPost[] = (postsData || []).map((row: any) => {
           const resort = Array.isArray(row.resorts) ? row.resorts[0] : row.resorts;
-          const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
+          const profile = profilesMap.get(row.user_id);
 
           return {
             id: row.id,
             userId: row.user_id,
             userName: profile?.display_name || 'Unknown',
             userAvatar: profile?.avatar_url || null,
+            userRole: profile?.role || 'user',
             resortId: row.resort_id,
-            resortName: resort?.name || null,
+            resortName: resort ? getResortName(resort, locale) : null,
             type: row.type,
             text: row.text,
             tags: row.tags || [],
@@ -165,18 +276,18 @@ export function useSnowfeed(resortId: string | null): SnowfeedState {
     return () => {
       isMounted = false;
     };
-  }, [resortId]);
+  }, [resortId, refreshKey, locale]);
 
   return state;
 }
 
 export async function getResorts(): Promise<
-  { id: string; name: string }[] | { error: string }
+  { id: string; name: string; name_en: string | null }[] | { error: string }
 > {
   try {
     const { data, error } = await supabase
       .from('resorts')
-      .select('id, name')
+      .select('id, name, name_en')
       .order('name', { ascending: true });
 
     if (error) {

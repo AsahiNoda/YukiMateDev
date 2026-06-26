@@ -1,14 +1,91 @@
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
+<<<<<<< HEAD
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || 'https://rmdpetmotoafaddkvyrk.supabase.co';
 const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtZHBldG1vdG9hZmFkZGt2eXJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyNDc1NzEsImV4cCI6MjA3NDgyMzU3MX0.oaY0nv82XIG8OvHF7Z0q2cYdJFB74s1I-ys00Ab7lp8';
+=======
+// 環境変数から読み込み（app.config.ts経由）
+const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
+const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+
+// デバッグ情報を出力（セキュリティのため値の長さのみ）
+console.log('🔍 [Supabase] Environment variable check:');
+console.log('  - Constants.expoConfig?.extra?.supabaseUrl:', Constants.expoConfig?.extra?.supabaseUrl ? `${Constants.expoConfig.extra.supabaseUrl.length} chars` : 'undefined');
+console.log('  - Constants.expoConfig?.extra?.supabaseAnonKey:', Constants.expoConfig?.extra?.supabaseAnonKey ? `${Constants.expoConfig.extra.supabaseAnonKey.length} chars` : 'undefined');
+console.log('  - process.env.EXPO_PUBLIC_SUPABASE_URL:', process.env.EXPO_PUBLIC_SUPABASE_URL ? `${process.env.EXPO_PUBLIC_SUPABASE_URL.length} chars` : 'undefined');
+console.log('  - process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY:', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? `${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY.length} chars` : 'undefined');
+console.log('  - Final supabaseUrl:', supabaseUrl ? `${supabaseUrl.length} chars` : 'empty');
+console.log('  - Final supabaseAnonKey:', supabaseAnonKey ? `${supabaseAnonKey.length} chars` : 'empty');
+
+// 環境変数が設定されているか検証
+if (!supabaseUrl || !supabaseAnonKey) {
+  const errorMessage = 'Supabase URL and Anon Key are required. Please check your environment variables and ensure EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY are set in EAS Secrets.';
+
+  // 環境変数がない場合は必ずエラーをthrow（開発・本番問わず）
+  // これにより、空の値でcreateClient()が呼ばれることを防ぐ
+  console.error('❌ [Supabase]', errorMessage);
+  console.error('❌ [Supabase] Debug info:');
+  console.error('   - __DEV__:', __DEV__);
+  console.error('   - Constants.expoConfig?.extra:', JSON.stringify(Constants.expoConfig?.extra, null, 2));
+  console.error('❌ [Supabase] To fix this, run:');
+  console.error('   eas env:create --environment production --name EXPO_PUBLIC_SUPABASE_URL --value "your_url"');
+  console.error('   eas env:create --environment production --name EXPO_PUBLIC_SUPABASE_ANON_KEY --value "your_key"');
+
+  throw new Error(errorMessage);
+}
+>>>>>>> d19a5baf107f0f665a6402b3800f1d91f54121d5
+
+
+// カスタムfetch関数でタイムアウトを実装
+const fetchWithTimeout = async (url: RequestInfo | URL, options: RequestInit = {}) => {
+  const timeout = 15000; // 15秒タイムアウト
+
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error: any) {
+    clearTimeout(id);
+    if (error.name === 'AbortError') {
+      console.error('[Supabase] Request timeout after', timeout, 'ms');
+      throw new Error('ネットワークタイムアウト: 接続が遅すぎます');
+    }
+    throw error;
+  }
+};
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
+<<<<<<< HEAD
     autoRefreshToken: true,
     persistSession: false,
     detectSessionInUrl: false,
   },
 });
+=======
+    storage: AsyncStorage,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false, // React Nativeではディープリンクを手動処理するため不要
+  },
+  global: {
+    headers: {
+      'x-client-info': 'supabase-js-react-native',
+    },
+    fetch: fetchWithTimeout,
+  },
+  db: {
+    schema: 'public',
+  },
+});
+
+>>>>>>> d19a5baf107f0f665a6402b3800f1d91f54121d5
