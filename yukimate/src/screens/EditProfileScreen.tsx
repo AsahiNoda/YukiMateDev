@@ -1,9 +1,11 @@
 import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
 import type { SkillLevel } from '@/types/common';
+import type { SocialLinks } from '@/types';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useAuth } from '@contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import { updateProfile, useProfile } from '@hooks/useProfile';
+import { updateFavoriteResorts, updateGear, updateProfile, useProfile } from '@hooks/useProfile';
+import { useResorts } from '@hooks/useResorts';
 import { pickAndUploadImage } from '@lib/imageUpload';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -55,6 +57,22 @@ export default function EditProfileScreen() {
   const [ridingStyle, setRidingStyle] = useState<RidingStyle[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
+  // お気に入りスキー場（複数）
+  const [favoriteResortIds, setFavoriteResortIds] = useState<string[]>([]);
+  const [showResortPicker, setShowResortPicker] = useState(false);
+  const resortsState = useResorts();
+
+  // ギア
+  const [board, setBoard] = useState('');
+  const [binding, setBinding] = useState('');
+  const [boots, setBoots] = useState('');
+
+  // SNSリンク（ハンドル/URL）
+  const [instagram, setInstagram] = useState('');
+  const [twitterX, setTwitterX] = useState('');
+  const [youtube, setYoutube] = useState('');
+  const [tiktok, setTiktok] = useState('');
+
   // 画像関連の状態
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [headerUrl, setHeaderUrl] = useState<string | null>(null);
@@ -74,6 +92,14 @@ export default function EditProfileScreen() {
       setCountryCode(profile.countryCode || 'JP');
       // setLanguages(profile.languages || []); // Language selection removed
       setRidingStyle((profile.styles as RidingStyle[]) || []);
+      setFavoriteResortIds(profile.favoriteResorts.map((r) => r.id));
+      setBoard(profile.gear?.board || '');
+      setBinding(profile.gear?.binding || '');
+      setBoots(profile.gear?.boots || '');
+      setInstagram(profile.socialLinks.instagram || '');
+      setTwitterX(profile.socialLinks.x || '');
+      setYoutube(profile.socialLinks.youtube || '');
+      setTiktok(profile.socialLinks.tiktok || '');
 
       // 画像URLは、既にローカルステートに最新のものがある場合はそれを維持
       // （アップロード直後の場合、ローカルステートの方が新しいため）
@@ -111,6 +137,16 @@ export default function EditProfileScreen() {
       setRidingStyle([...ridingStyle, style]);
     }
   };
+
+  const toggleFavoriteResort = (resortId: string) => {
+    setFavoriteResortIds((prev) =>
+      prev.includes(resortId) ? prev.filter((id) => id !== resortId) : [...prev, resortId]
+    );
+  };
+
+  // ハンドルから余計な記号/URLを除去（@や末尾スラッシュなど）
+  const cleanHandle = (value: string) =>
+    value.trim().replace(/^@/, '').replace(/\/+$/, '');
 
   const { t, locale } = useTranslation();
 
@@ -182,28 +218,47 @@ export default function EditProfileScreen() {
       const cleanAvatarUrl = avatarUrl ? avatarUrl.split('?')[0] : undefined;
       const cleanHeaderUrl = headerUrl ? headerUrl.split('?')[0] : undefined;
 
-      const result = await updateProfile({
-        displayName: displayName.trim(),
-        bio: bio.trim() || undefined,
-        level: level || undefined,
-        countryCode,
-        languages: [], // Empty array or logic to keep existing languages if needed, but UI is removed. 
-        // Assuming we just send empty or don't update languages. 
-        // If backend requires it, valid logic is needed. 
-        // For now sending empty array as per requirement to remove selection.
-        // Or better, let's just not send languages if the API supports partial updates.
-        // Looking at useProfile hook logic might be needed but I can't see it now.
-        // Safest is to remove it if possible or send current value if I had it.
-        // Since I commented out state, I can't send it. 
-        // Let's assume we don't update languages anymore.
-        // But wait, typescript might complain if I don't pass it if it's required.
-        // Let's pass empty array for now as requested to "remove language selection".
-        styles: ridingStyle,
-        avatarUrl: cleanAvatarUrl,
-        headerUrl: cleanHeaderUrl,
-      });
+      // SNSリンク（入力があるものだけ保存）
+      const socialLinks: SocialLinks = {};
+      const ig = cleanHandle(instagram);
+      const xh = cleanHandle(twitterX);
+      const yt = youtube.trim();
+      const tt = cleanHandle(tiktok);
+      if (ig) socialLinks.instagram = ig;
+      if (xh) socialLinks.x = xh;
+      if (yt) socialLinks.youtube = yt;
+      if (tt) socialLinks.tiktok = tt;
 
-      if (result.success) {
+      // プロフィール本体・ギア・お気に入りを並行更新
+      const [result, gearResult, favResult] = await Promise.all([
+        updateProfile({
+          displayName: displayName.trim(),
+          bio: bio.trim() || undefined,
+          level: level || undefined,
+          countryCode,
+          languages: [],
+          styles: ridingStyle,
+          avatarUrl: cleanAvatarUrl,
+          headerUrl: cleanHeaderUrl,
+          socialLinks,
+        }),
+        updateGear({
+          board: board.trim(),
+          binding: binding.trim(),
+          boots: boots.trim(),
+        }),
+        updateFavoriteResorts(favoriteResortIds),
+      ]);
+
+      const firstError = !result.success
+        ? result.error
+        : !gearResult.success
+          ? gearResult.error
+          : !favResult.success
+            ? favResult.error
+            : null;
+
+      if (!firstError) {
         Alert.alert(t('editProfileScreen.updateSuccessTitle'), t('editProfileScreen.updateSuccessMessage'), [
           {
             text: 'OK',
@@ -211,7 +266,7 @@ export default function EditProfileScreen() {
           },
         ]);
       } else {
-        Alert.alert(t('editProfileScreen.updateErrorTitle'), result.error || t('editProfileScreen.updateErrorMessage'));
+        Alert.alert(t('editProfileScreen.updateErrorTitle'), firstError || t('editProfileScreen.updateErrorMessage'));
       }
     } catch (error) {
       console.error('Profile update error:', error);
@@ -473,6 +528,173 @@ export default function EditProfileScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+        </View>
+
+        {/* お気に入りスキー場（複数選択） */}
+        <View style={styles.section}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('editProfileScreen.favoriteResortsLabel')}</Text>
+          <TouchableOpacity
+            style={[styles.countrySelector, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
+            onPress={() => setShowResortPicker(true)}
+          >
+            <Ionicons name="snow-outline" size={20} color={colors.icon} />
+            <Text style={[styles.selectedCountryText, { color: colors.text }]}>
+              {favoriteResortIds.length > 0
+                ? `${favoriteResortIds.length} ${t('editProfileScreen.favoriteResortsSelected')}`
+                : t('editProfileScreen.favoriteResortsPlaceholder')}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color={colors.icon} />
+          </TouchableOpacity>
+
+          {/* 選択中のチップ */}
+          {resortsState.status === 'success' && favoriteResortIds.length > 0 && (
+            <View style={[styles.styleGrid, { marginTop: 12 }]}>
+              {favoriteResortIds.map((id) => {
+                const resort = resortsState.resorts.find((r) => r.id === id);
+                if (!resort) return null;
+                return (
+                  <TouchableOpacity
+                    key={id}
+                    style={[styles.styleButton, { backgroundColor: colors.tint }]}
+                    onPress={() => toggleFavoriteResort(id)}
+                  >
+                    <Text style={[styles.styleText, { color: '#fff', fontWeight: '600' }]}>
+                      {resort.name}  ✕
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          {/* Resort Picker Modal（複数選択） */}
+          <Modal
+            visible={showResortPicker}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setShowResortPicker(false)}
+          >
+            <TouchableOpacity
+              style={styles.modalOverlay}
+              activeOpacity={1}
+              onPress={() => setShowResortPicker(false)}
+            >
+              <View style={[styles.pickerModal, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, paddingBottom: insets.bottom }]}>
+                <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
+                  <Text style={[styles.pickerTitle, { color: colors.text }]}>{t('editProfileScreen.favoriteResortsLabel')}</Text>
+                  <TouchableOpacity onPress={() => setShowResortPicker(false)}>
+                    <Ionicons name="close" size={24} color={colors.text} />
+                  </TouchableOpacity>
+                </View>
+                {resortsState.status === 'success' ? (
+                  <FlatList
+                    data={resortsState.resorts}
+                    style={{ flex: 1 }}
+                    keyExtractor={(item) => item.id}
+                    initialNumToRender={20}
+                    renderItem={({ item: resort }) => {
+                      const selected = favoriteResortIds.includes(resort.id);
+                      return (
+                        <TouchableOpacity
+                          style={[styles.pickerItem, { borderBottomColor: colors.border }]}
+                          onPress={() => toggleFavoriteResort(resort.id)}
+                        >
+                          <Text style={[styles.pickerItemText, { color: selected ? colors.text : colors.textSecondary, fontWeight: selected ? '600' : '400' }]}>
+                            {resort.name}
+                          </Text>
+                          {selected && <Ionicons name="checkmark" size={20} color={colors.tint} />}
+                        </TouchableOpacity>
+                      );
+                    }}
+                  />
+                ) : (
+                  <ActivityIndicator color={colors.tint} style={{ marginTop: 24 }} />
+                )}
+              </View>
+            </TouchableOpacity>
+          </Modal>
+        </View>
+
+        {/* ギア */}
+        <View style={styles.section}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('editProfileScreen.gearLabel')}</Text>
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text, marginBottom: 8 }]}
+            value={board}
+            onChangeText={setBoard}
+            placeholder={t('editProfileScreen.gearBoardPlaceholder')}
+            placeholderTextColor={colors.textSecondary}
+            maxLength={60}
+          />
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text, marginBottom: 8 }]}
+            value={binding}
+            onChangeText={setBinding}
+            placeholder={t('editProfileScreen.gearBindingPlaceholder')}
+            placeholderTextColor={colors.textSecondary}
+            maxLength={60}
+          />
+          <TextInput
+            style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+            value={boots}
+            onChangeText={setBoots}
+            placeholder={t('editProfileScreen.gearBootsPlaceholder')}
+            placeholderTextColor={colors.textSecondary}
+            maxLength={60}
+          />
+        </View>
+
+        {/* SNSリンク */}
+        <View style={styles.section}>
+          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('editProfileScreen.socialLinksLabel')}</Text>
+          <View style={styles.snsRow}>
+            <Ionicons name="logo-instagram" size={22} color={colors.icon} style={styles.snsIcon} />
+            <TextInput
+              style={[styles.input, styles.snsInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+              value={instagram}
+              onChangeText={setInstagram}
+              placeholder="instagram (@なし)"
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="none"
+              maxLength={60}
+            />
+          </View>
+          <View style={styles.snsRow}>
+            <Ionicons name="logo-twitter" size={22} color={colors.icon} style={styles.snsIcon} />
+            <TextInput
+              style={[styles.input, styles.snsInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+              value={twitterX}
+              onChangeText={setTwitterX}
+              placeholder="X / Twitter (@なし)"
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="none"
+              maxLength={60}
+            />
+          </View>
+          <View style={styles.snsRow}>
+            <Ionicons name="logo-youtube" size={22} color={colors.icon} style={styles.snsIcon} />
+            <TextInput
+              style={[styles.input, styles.snsInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+              value={youtube}
+              onChangeText={setYoutube}
+              placeholder="YouTube (URL)"
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="none"
+              maxLength={120}
+            />
+          </View>
+          <View style={styles.snsRow}>
+            <Ionicons name="musical-notes" size={22} color={colors.icon} style={styles.snsIcon} />
+            <TextInput
+              style={[styles.input, styles.snsInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+              value={tiktok}
+              onChangeText={setTiktok}
+              placeholder="TikTok (@なし)"
+              placeholderTextColor={colors.textSecondary}
+              autoCapitalize="none"
+              maxLength={60}
+            />
           </View>
         </View>
 
@@ -739,6 +961,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
+  },
+  snsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 8,
+  },
+  snsIcon: {
+    width: 24,
+    textAlign: 'center',
+  },
+  snsInput: {
+    flex: 1,
   },
   styleButton: {
     paddingHorizontal: 16,

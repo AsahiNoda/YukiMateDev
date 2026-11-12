@@ -23,6 +23,9 @@ export type {
   RecentEvent,
   RecentPost,
   ProfileData,
+  FavoriteResortSummary,
+  TopResort,
+  SocialLinks,
 } from './user';
 
 // Weather types

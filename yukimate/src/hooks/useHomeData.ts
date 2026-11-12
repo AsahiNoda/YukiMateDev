@@ -6,23 +6,79 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from './useTranslation';
 
-type HomeDataState =
+export type FavoriteResortInfo = {
+  id: string;
+  name: string;
+  name_en: string | null;
+  area: string | null;
+  region: string | null;
+  latitude: number | null;
+  longitude: number | null;
+};
+
+type BaseState =
   | { status: 'loading'; data: null }
   | { status: 'error'; error: string; data: null }
   | { status: 'success'; data: HomeData };
 
-export function useHomeData(): HomeDataState {
-  const [state, setState] = useState<HomeDataState>({ status: 'loading', data: null });
+export type HomeDataResult = BaseState & {
+  /** ユーザーのお気に入りスキー場（天気の切り替え表示用） */
+  favorites: FavoriteResortInfo[];
+  /** 現在表示中のリゾートID */
+  selectedResortId: string | null;
+  /** 表示リゾートを切り替える */
+  setSelectedResortId: (id: string) => void;
+};
+
+export function useHomeData(): HomeDataResult {
+  const [state, setState] = useState<BaseState>({ status: 'loading', data: null });
+  const [favorites, setFavorites] = useState<FavoriteResortInfo[]>([]);
+  const [selectedResortId, setSelectedResortId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const { locale } = useTranslation();
 
   // Refresh data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      setRefreshKey(prev => prev + 1);
+      setRefreshKey((prev) => prev + 1);
     }, [])
   );
 
+  // お気に入りスキー場を取得し、選択中リゾートを決定
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadFavorites = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: favRows } = await supabase
+        .from('favorite_resorts')
+        .select('resort_id, resorts(id, name, name_en, area, region, latitude, longitude)')
+        .eq('user_id', user.id);
+
+      if (!isMounted) return;
+
+      const favs = (favRows || [])
+        .map((row: any) => row.resorts)
+        .filter(Boolean) as FavoriteResortInfo[];
+
+      setFavorites(favs);
+      setSelectedResortId((prev) => {
+        if (prev && favs.some((f) => f.id === prev)) return prev;
+        return favs.length > 0 ? favs[0].id : null;
+      });
+    };
+
+    loadFavorites();
+    return () => {
+      isMounted = false;
+    };
+  }, [refreshKey]);
+
+  // イベント・天気・トレンド投稿を取得（選択リゾートの天気を表示）
   useEffect(() => {
     let isMounted = true;
 
@@ -50,8 +106,7 @@ export function useHomeData(): HomeDataState {
 
         if (error) throw error;
 
-        // Transform to match HomeData structure
-        const featuredEvents = events?.map(event => ({
+        const featuredEvents = events?.map((event) => ({
           id: event.id,
           title: event.title,
           photoUrl: event.photos && event.photos.length > 0
@@ -63,9 +118,9 @@ export function useHomeData(): HomeDataState {
           resortName: event.resorts ? getResortName(event.resorts, locale) : '',
           resortArea: event.resorts?.area,
           resortRegion: event.resorts?.region,
-          startAt: '', // Not needed for featured cards
-          endAt: '', // Not needed for featured cards
-          levelRequired: 'beginner' as const, // Not needed for featured cards
+          startAt: '',
+          endAt: '',
+          levelRequired: 'beginner' as const,
           spotsTaken: event.event_participants?.[0]?.count || 0,
           capacityTotal: 0,
           pricePerPersonJpy: 0,
@@ -78,52 +133,17 @@ export function useHomeData(): HomeDataState {
           return priorityA - priorityB;
         });
 
-        // Fetch user's home resort from profile
-        const { data: { user } } = await supabase.auth.getUser();
-
-        let resort = null;
-        let resortError = null;
-        let hasHomeResort = false;
-
-        if (user) {
-          // Get user's profile to find home resort
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('home_resort_id')
-            .eq('user_id', user.id)
-            .single();
-
-          if (profile?.home_resort_id) {
-            // Fetch home resort details
-            const { data: homeResort, error: homeResortError } = await supabase
-              .from('resorts')
-              .select('id, name, name_en, area, region, latitude, longitude')
-              .eq('id', profile.home_resort_id)
-              .single();
-
-            resort = homeResort;
-            resortError = homeResortError;
-            hasHomeResort = true;
-          }
-        }
-
-        // ホームゲレンデが未設定の場合はnullを返す（フォールバックしない）
-
+        // 選択中のお気に入りリゾートの天気を取得
+        const resort = favorites.find((f) => f.id === selectedResortId) || null;
         let weatherData = null;
 
-        if (!resortError && resort) {
+        if (resort) {
           console.log('[useHomeData] Fetching weather for:', resort.name);
-
-          // Fetch weather data using coordinates from database
           const coordinates = resort.latitude && resort.longitude
             ? { latitude: resort.latitude, longitude: resort.longitude }
             : undefined;
 
-          const weather = await fetchWeatherData(
-            resort.id,
-            coordinates,
-            resort.area
-          );
+          const weather = await fetchWeatherData(resort.id, coordinates, resort.area ?? undefined);
 
           if (weather) {
             weatherData = {
@@ -141,7 +161,7 @@ export function useHomeData(): HomeDataState {
         }
 
         // Fetch trending posts from posts_snow
-        const { data: trendingPostsData, error: postsError } = await supabase
+        const { data: trendingPostsData } = await supabase
           .from('posts_snow')
           .select(`
             id,
@@ -156,7 +176,7 @@ export function useHomeData(): HomeDataState {
           .order('like_count', { ascending: false })
           .limit(5);
 
-        const trendingPosts = trendingPostsData?.map(post => ({
+        const trendingPosts = trendingPostsData?.map((post) => ({
           id: post.id,
           resortName: post.resorts ? getResortName(post.resorts, locale) : 'Unknown Resort',
           photoUrl: post.photos && post.photos.length > 0
@@ -175,7 +195,7 @@ export function useHomeData(): HomeDataState {
         setState({
           status: 'success',
           data: {
-            weather: hasHomeResort ? weatherData : null, // ホームゲレンデ未設定の場合はnull
+            weather: resort ? weatherData : null, // お気に入り未設定の場合はnull
             recommendedEvents: featuredEvents,
             suggestedEvents: [],
             trendingPosts: trendingPosts.length > 0 ? trendingPosts : mockHomeData.trendingPosts,
@@ -192,11 +212,10 @@ export function useHomeData(): HomeDataState {
     };
 
     load();
-
     return () => {
       isMounted = false;
     };
-  }, [refreshKey]);
+  }, [refreshKey, selectedResortId, favorites, locale]);
 
-  return state;
+  return { ...state, favorites, selectedResortId, setSelectedResortId };
 }

@@ -1,4 +1,5 @@
 import { OfficialBadge } from '@/components/OfficialBadge';
+import { ProfilePostCreateModal } from '@/components/profile/ProfilePostCreateModal';
 import { getFlagSource } from '@/constants/countries';
 import { Colors } from '@/constants/theme';
 import { getAvatarGradientColors, getBadgeColor } from '@/utils/avatar-utils';
@@ -6,6 +7,9 @@ import { useAuth } from '@contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { useProfile } from '@hooks/useProfile';
+import { useProfilePosts } from '@hooks/useProfilePosts';
+import { useUserRating } from '@hooks/useUserRating';
+import type { ReactionKind } from '@lib/database.types';
 import { supabase } from '@lib/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
@@ -14,6 +18,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  Linking,
   ScrollView,
   StyleSheet,
   Text,
@@ -23,6 +28,35 @@ import {
 import Svg, { Path } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
+
+const POST_GRID_SIZE = (width - 40 - 8) / 3; // padding 20*2, gaps
+
+const REACTIONS: { kind: ReactionKind; emoji: string }[] = [
+  { kind: 'super_happy', emoji: '😍' },
+  { kind: 'happy', emoji: '🙂' },
+  { kind: 'neutral', emoji: '😐' },
+  { kind: 'unhappy', emoji: '🙁' },
+  { kind: 'super_unhappy', emoji: '😣' },
+];
+
+// SNSハンドル/URL からタップ時に開くURLを生成
+const buildSocialUrl = (platform: string, value: string): string => {
+  const v = value.trim();
+  if (v.startsWith('http://') || v.startsWith('https://')) return v;
+  const handle = v.replace(/^@/, '');
+  switch (platform) {
+    case 'instagram':
+      return `https://instagram.com/${handle}`;
+    case 'x':
+      return `https://x.com/${handle}`;
+    case 'youtube':
+      return `https://youtube.com/${handle}`;
+    case 'tiktok':
+      return `https://tiktok.com/@${handle}`;
+    default:
+      return v;
+  }
+};
 
 // Edit icon component
 const EditIcon = ({ color, size = 24 }: { color: string; size?: number }) => (
@@ -51,6 +85,11 @@ function ProfileScreen({ userId }: { userId?: string }) {
   const profileState = useProfile(userId, refreshKey);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+
+  // 評価・投稿（表示対象ユーザー）
+  const targetUserId = userId ?? currentUser?.id;
+  const rating = useUserRating(targetUserId);
+  const profilePosts = useProfilePosts(targetUserId);
   // MVP: Gear showcase is disabled
   // const [gearImages, setGearImages] = useState<{ board: string | null; binding: string | null; boots: string | null }>({
   //   board: null,
@@ -61,6 +100,7 @@ function ProfileScreen({ userId }: { userId?: string }) {
   const [headerUrl, setHeaderUrl] = useState<string | null>(null);
   const [isStarred, setIsStarred] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  const [showPostModal, setShowPostModal] = useState(false);
   // const [currentGearIndex, setCurrentGearIndex] = useState(0);
 
   // 画面がフォーカスされた時にプロフィールをリフレッシュ
@@ -445,9 +485,9 @@ function ProfileScreen({ userId }: { userId?: string }) {
 
             {/* Tags Row */}
             <View style={styles.tagsRow}>
-              {profile.homeResortName && (
-                <Text style={[styles.tag, { color: colors.textSecondary }]}>#{profile.homeResortName}</Text>
-              )}
+              {profile.favoriteResorts.slice(0, 2).map((resort) => (
+                <Text key={resort.id} style={[styles.tag, { color: colors.textSecondary }]}>#{resort.name}</Text>
+              ))}
               {profile.level && (
                 <Text style={[styles.tag, { color: colors.textSecondary }]}>#{profile.level.toUpperCase()}</Text>
               )}
@@ -462,6 +502,42 @@ function ProfileScreen({ userId }: { userId?: string }) {
         </View>
       </View>
 
+      {/* オーバーレイを避けるためのスペーサー */}
+      <View style={{ height: 150 }} />
+
+      {/* 評価 Section */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>評価</Text>
+        <View style={[styles.ratingCard, { backgroundColor: colors.backgroundSecondary }]}>
+          {rating.total > 0 ? (
+            <Text style={[styles.ratingValue, { color: colors.text }]}>
+              高評価 <Text style={{ color: colors.tint }}>{rating.highPct}%</Text>
+              <Text style={[styles.ratingSub, { color: colors.textSecondary }]}>　（{rating.total}件中{rating.high}件）</Text>
+            </Text>
+          ) : (
+            <Text style={[styles.ratingSub, { color: colors.textSecondary }]}>まだ評価がありません</Text>
+          )}
+
+          {/* 他ユーザーのプロフィールではリアクションを付けられる */}
+          {!isOwnProfile && (
+            <View style={styles.reactionRow}>
+              {REACTIONS.map((r) => (
+                <TouchableOpacity
+                  key={r.kind}
+                  style={[
+                    styles.reactionButton,
+                    rating.myReaction === r.kind && { backgroundColor: colors.tint + '33', borderColor: colors.tint },
+                  ]}
+                  onPress={() => rating.setReaction(r.kind)}
+                >
+                  <Text style={styles.reactionEmoji}>{r.emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      </View>
+
       {/* Bio Section */}
       {profile.bio && (
         <View style={styles.section}>
@@ -469,6 +545,124 @@ function ProfileScreen({ userId }: { userId?: string }) {
           <Text style={[styles.bioText, { color: colors.textSecondary }]}>{profile.bio}</Text>
         </View>
       )}
+
+      {/* お気に入りスキー場 */}
+      {profile.favoriteResorts.length > 0 && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>お気に入りスキー場</Text>
+          <View style={styles.chipWrap}>
+            {profile.favoriteResorts.map((resort) => (
+              <View key={resort.id} style={[styles.chip, { backgroundColor: colors.backgroundSecondary }]}>
+                <Ionicons name="snow" size={14} color={colors.tint} />
+                <Text style={[styles.chipText, { color: colors.text }]}>{resort.name}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
+      {/* よく行くゲレンデ Top3 */}
+      {profile.topResorts.length > 0 && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>よく行くゲレンデ</Text>
+          {profile.topResorts.map((resort, index) => (
+            <View key={resort.id} style={styles.topResortRow}>
+              <Text style={styles.topResortMedal}>{['🥇', '🥈', '🥉'][index] || '•'}</Text>
+              <Text style={[styles.topResortName, { color: colors.text }]} numberOfLines={1}>{resort.name}</Text>
+              <Text style={[styles.topResortCount, { color: colors.textSecondary }]}>{resort.count}回</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* ギア */}
+      {profile.gear && (profile.gear.board || profile.gear.binding || profile.gear.boots) && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>ギア</Text>
+          {profile.gear.board ? (
+            <View style={styles.gearRow}>
+              <Text style={[styles.gearType, { color: colors.textSecondary }]}>BOARD</Text>
+              <Text style={[styles.gearName, { color: colors.text }]}>{profile.gear.board}</Text>
+            </View>
+          ) : null}
+          {profile.gear.binding ? (
+            <View style={styles.gearRow}>
+              <Text style={[styles.gearType, { color: colors.textSecondary }]}>BINDING</Text>
+              <Text style={[styles.gearName, { color: colors.text }]}>{profile.gear.binding}</Text>
+            </View>
+          ) : null}
+          {profile.gear.boots ? (
+            <View style={styles.gearRow}>
+              <Text style={[styles.gearType, { color: colors.textSecondary }]}>BOOTS</Text>
+              <Text style={[styles.gearName, { color: colors.text }]}>{profile.gear.boots}</Text>
+            </View>
+          ) : null}
+        </View>
+      )}
+
+      {/* SNSリンク */}
+      {(() => {
+        const links = profile.socialLinks;
+        const items: { platform: string; icon: any; value: string }[] = [];
+        if (links.instagram) items.push({ platform: 'instagram', icon: 'logo-instagram', value: links.instagram });
+        if (links.x) items.push({ platform: 'x', icon: 'logo-twitter', value: links.x });
+        if (links.youtube) items.push({ platform: 'youtube', icon: 'logo-youtube', value: links.youtube });
+        if (links.tiktok) items.push({ platform: 'tiktok', icon: 'musical-notes', value: links.tiktok });
+        if (items.length === 0) return null;
+        return (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>SNS</Text>
+            <View style={styles.snsIconRow}>
+              {items.map((item) => (
+                <TouchableOpacity
+                  key={item.platform}
+                  style={[styles.snsCircle, { backgroundColor: colors.backgroundSecondary }]}
+                  onPress={() => Linking.openURL(buildSocialUrl(item.platform, item.value))}
+                >
+                  <Ionicons name={item.icon} size={24} color={colors.text} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        );
+      })()}
+
+      {/* 投稿グリッド */}
+      <View style={styles.section}>
+        <View style={styles.postsHeaderRow}>
+          <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>投稿</Text>
+          {isOwnProfile && (
+            <TouchableOpacity
+              style={[styles.addPostButton, { backgroundColor: colors.tint }]}
+              onPress={() => setShowPostModal(true)}
+            >
+              <Ionicons name="add" size={20} color="#fff" />
+            </TouchableOpacity>
+          )}
+        </View>
+        {profilePosts.loading ? (
+          <ActivityIndicator color={colors.tint} style={{ marginTop: 12 }} />
+        ) : profilePosts.posts.length === 0 ? (
+          <Text style={[styles.ratingSub, { color: colors.textSecondary }]}>まだ投稿がありません</Text>
+        ) : (
+          <View style={styles.postGrid}>
+            {profilePosts.posts.map((post) => (
+              <TouchableOpacity key={post.id} style={styles.postThumbWrap} activeOpacity={0.85}>
+                {post.photos[0] ? (
+                  <Image source={{ uri: post.photos[0] }} style={styles.postThumb} />
+                ) : (
+                  <View style={[styles.postThumb, { backgroundColor: colors.backgroundSecondary }]} />
+                )}
+                {post.resortName && (
+                  <View style={styles.postOverlay}>
+                    <Text style={styles.postOverlayText} numberOfLines={1}>{post.resortName}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
 
       {/* MVP: Gear Showcase is disabled */}
       {/* {gearItems.length > 0 && (
@@ -511,6 +705,14 @@ function ProfileScreen({ userId }: { userId?: string }) {
       )} */}
 
       <View style={{ height: 100 }} />
+
+      {isOwnProfile && (
+        <ProfilePostCreateModal
+          visible={showPostModal}
+          onClose={() => setShowPostModal(false)}
+          onCreated={() => profilePosts.refetch()}
+        />
+      )}
     </ScrollView>
   );
 }
@@ -703,12 +905,153 @@ const styles = StyleSheet.create({
     // color is set dynamically in the component
     marginBottom: 12,
     letterSpacing: 1,
-    marginTop: 130,
   },
   bioText: {
     // color is set dynamically in the component
     fontSize: 14,
     lineHeight: 20,
+  },
+  // 評価
+  ratingCard: {
+    borderRadius: 14,
+    padding: 16,
+  },
+  ratingValue: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  ratingSub: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  reactionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 14,
+  },
+  reactionButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  reactionEmoji: {
+    fontSize: 26,
+  },
+  // チップ
+  chipWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  // よく行くゲレンデ
+  topResortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 12,
+  },
+  topResortMedal: {
+    fontSize: 20,
+    width: 28,
+    textAlign: 'center',
+  },
+  topResortName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  topResortCount: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  // ギア
+  gearRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 12,
+  },
+  gearType: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    width: 72,
+  },
+  gearName: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  // SNS
+  snsIconRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  snsCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // 投稿グリッド
+  postsHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  addPostButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  postGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  postThumbWrap: {
+    width: POST_GRID_SIZE,
+    height: POST_GRID_SIZE,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  postThumb: {
+    width: '100%',
+    height: '100%',
+  },
+  postOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  postOverlayText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '600',
   },
   // MVP: Gear styles are disabled
   // gearHeaderRow: {

@@ -32,6 +32,16 @@ interface Participant {
 
 type ActionType = 'star' | 'block' | null;
 
+type ReactionKind = 'super_happy' | 'happy' | 'neutral' | 'unhappy' | 'super_unhappy';
+
+const REACTIONS: { kind: ReactionKind; emoji: string }[] = [
+  { kind: 'super_happy', emoji: '😍' },
+  { kind: 'happy', emoji: '🙂' },
+  { kind: 'neutral', emoji: '😐' },
+  { kind: 'unhappy', emoji: '🙁' },
+  { kind: 'super_unhappy', emoji: '😣' },
+];
+
 export default function PostEventActionScreen() {
   console.log('[PostEventActionScreen] 🎬 Screen mounted');
 
@@ -61,6 +71,7 @@ export default function PostEventActionScreen() {
   const [processing, setProcessing] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [selections, setSelections] = useState<Record<string, ActionType>>({});
+  const [reactions, setReactions] = useState<Record<string, ReactionKind | null>>({});
   const [isHost, setIsHost] = useState(false);
 
   React.useEffect(() => {
@@ -170,6 +181,13 @@ export default function PostEventActionScreen() {
     participantIds: otherParticipants.map(p => p.user.id),
   });
 
+  function toggleReaction(userId: string, kind: ReactionKind) {
+    setReactions((prev) => ({
+      ...prev,
+      [userId]: prev[userId] === kind ? null : kind,
+    }));
+  }
+
   function toggleSelection(userId: string, action: ActionType) {
     console.log('[PostEventActionScreen] 🎯 Toggle selection:', {
       userId,
@@ -203,7 +221,22 @@ export default function PostEventActionScreen() {
     console.log('[PostEventActionScreen] ⏳ Processing all selections...');
 
     try {
-      // Process all selections
+      // ユーザー評価（5段階絵文字リアクション）を upsert
+      for (const [userId, kind] of Object.entries(reactions)) {
+        if (!kind) continue;
+        console.log('[PostEventActionScreen] 😊 Upserting reaction for user:', userId, kind);
+        await supabase.from('user_reactions').upsert(
+          {
+            reactor_user_id: currentUserId,
+            target_user_id: userId,
+            reaction: kind,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'reactor_user_id,target_user_id' }
+        );
+      }
+
+      // Process all selections (star / block)
       for (const [userId, action] of Object.entries(selections)) {
         if (!action) continue;
 
@@ -326,8 +359,9 @@ export default function PostEventActionScreen() {
           return (
             <View
               key={participant.user.id}
-              style={[styles.participantRow, { backgroundColor: colors.card, borderColor: colors.border }]}
+              style={[styles.participantCard, { backgroundColor: colors.card, borderColor: colors.border }]}
             >
+              <View style={styles.participantTopRow}>
               {/* 左側: アバター + ユーザー情報 */}
               <View style={styles.participantInfo}>
                 <Image
@@ -396,6 +430,27 @@ export default function PostEventActionScreen() {
                     {t('postEventAction.blockAction')}
                   </Text>
                 </TouchableOpacity>
+              </View>
+              </View>
+
+              {/* 5段階絵文字評価（メイン） */}
+              <View style={styles.reactionRow}>
+                {REACTIONS.map((r) => (
+                  <TouchableOpacity
+                    key={r.kind}
+                    style={[
+                      styles.reactionButton,
+                      reactions[participant.user.id] === r.kind && {
+                        backgroundColor: colors.tint + '33',
+                        borderColor: colors.tint,
+                      },
+                    ]}
+                    onPress={() => toggleReaction(participant.user.id, r.kind)}
+                    disabled={processing}
+                  >
+                    <Text style={styles.reactionEmoji}>{r.emoji}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
             </View>
           );
@@ -472,6 +527,34 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     borderRadius: borderRadius.lg,
     borderWidth: 1, // Add border width to make borderColor visible
+  },
+  participantCard: {
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+  },
+  participantTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  reactionRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+  },
+  reactionButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  reactionEmoji: {
+    fontSize: 24,
   },
   participantInfo: {
     flexDirection: 'row',

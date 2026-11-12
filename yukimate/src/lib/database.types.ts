@@ -79,7 +79,8 @@ export interface Profile {
   level: SkillLevel | null;
   styles: string[] | null;
   bio: string | null;
-  home_resort_id: string | null; // uuid
+  home_resort_id: string | null; // uuid（旧ホームリゾート。favorite_resorts へ移行済み・後方互換のため残置）
+  social_links: Record<string, string> | null; // jsonb { instagram, x, youtube, tiktok ... }
   created_at: string;
   updated_at: string | null;
 }
@@ -172,6 +173,48 @@ export interface Block {
   id: string; // uuid
   user_id: string; // uuid
   blocked_user_id: string; // uuid
+  created_at: string; // timestamptz
+}
+
+// お気に入りスキー場（多対多）
+export interface FavoriteResort {
+  user_id: string; // uuid
+  resort_id: string; // uuid
+  created_at: string; // timestamptz
+}
+
+// ユーザー評価リアクション（5段階絵文字）
+export type ReactionKind =
+  | 'super_happy'
+  | 'happy'
+  | 'neutral'
+  | 'unhappy'
+  | 'super_unhappy';
+
+export interface UserReaction {
+  id: string; // uuid
+  reactor_user_id: string; // uuid
+  target_user_id: string; // uuid
+  reaction: ReactionKind;
+  created_at: string; // timestamptz
+  updated_at: string | null; // timestamptz
+}
+
+// get_user_rating RPC の戻り値
+export interface UserRatingSummary {
+  total: number;
+  high: number;
+  high_pct: number;
+  avg_score: number;
+}
+
+// プロフィール投稿（インスタ風グリッド。feed_posts とは別物）
+export interface ProfilePost {
+  id: string; // uuid
+  user_id: string; // uuid
+  photos: string[]; // 写真URL配列
+  caption: string | null;
+  resort_id: string | null; // uuid
   created_at: string; // timestamptz
 }
 
@@ -326,12 +369,37 @@ export interface Database {
         };
         Update: Partial<Omit<EventApplication, 'id' | 'event_id' | 'applicant_user_id'>>;
       };
+      favorite_resorts: {
+        Row: FavoriteResort;
+        Insert: Omit<FavoriteResort, 'created_at'> & { created_at?: string };
+        Update: Partial<FavoriteResort>;
+      };
+      user_reactions: {
+        Row: UserReaction;
+        Insert: Omit<UserReaction, 'id' | 'created_at' | 'updated_at'> & {
+          id?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Omit<UserReaction, 'id' | 'reactor_user_id' | 'target_user_id'>>;
+      };
+      profile_posts: {
+        Row: ProfilePost;
+        Insert: Omit<ProfilePost, 'id' | 'created_at'> & {
+          id?: string;
+          created_at?: string;
+        };
+        Update: Partial<Omit<ProfilePost, 'id' | 'user_id'>>;
+      };
     };
     Views: {
       // ビューがある場合はここに追加
     };
     Functions: {
-      // カスタム関数がある場合はここに追加
+      get_user_rating: {
+        Args: { target: string };
+        Returns: UserRatingSummary[];
+      };
     };
     Enums: {
       visibility_grade: VisibilityGrade;

@@ -1,6 +1,6 @@
 import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
@@ -22,9 +22,7 @@ import { getResortPrefecture } from '@/utils/resort-helpers';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { useHomeData } from '@hooks/useHomeData';
-<<<<<<< HEAD
-import { supabase } from '@/lib/supabase';
-=======
+import { ProfilePostCreateModal } from '@/components/profile/ProfilePostCreateModal';
 import { testSupabaseSetup } from '@lib/testSupabaseSetup';
 
 // SVGコンポーネント
@@ -41,29 +39,14 @@ const DISCOVERY_CATEGORIES = [
   { id: 'park', labelKey: 'home.categoryPark', icon: 'flag.fill' },
   { id: 'onsen', labelKey: 'home.categoryHotspring', icon: 'cup.and.saucer.fill' },
 ] as const;
->>>>>>> d19a5baf107f0f665a6402b3800f1d91f54121d5
 
-useEffect(() => {
-  console.log('🔍 Testing Supabase connection...');
-  
-  supabase
-    .from('resorts')
-    .select('id, name')
-    .limit(3)
-    .then(({ data, error }) => {
-      if (error) {
-        console.error('❌ Supabase Error:', error);
-      } else {
-        console.log('✅ Supabase Connected! Resorts:', data);
-      }
-    });
-}, []);
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const state = useHomeData();
   const colorScheme = useColorScheme();
   const { width: screenWidth } = Dimensions.get('window');
   const { t } = useTranslation();
+  const [showPostModal, setShowPostModal] = useState(false);
 
   // Supabase connection test: runs once when HomeScreen mounts
   useEffect(() => {
@@ -121,19 +104,63 @@ export default function HomeScreen() {
         <View>
           <Text style={[styles.title, { color: Colors[colorScheme ?? 'light'].text }]}>Slope Link</Text>
         </View>
-        <TouchableOpacity
-          style={[styles.profileButton, {
-            backgroundColor: Colors[colorScheme ?? 'light'].backgroundSecondary,
-            borderColor: Colors[colorScheme ?? 'light'].border
-          }]}
-          activeOpacity={0.8}
-          onPress={() => {
-            router.push('/settings');
-          }}
-        >
-          <IconSymbol name="gearshape" size={20} color={Colors[colorScheme ?? 'light'].icon} />
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            style={[styles.profileButton, {
+              backgroundColor: Colors[colorScheme ?? 'light'].backgroundSecondary,
+              borderColor: Colors[colorScheme ?? 'light'].border
+            }]}
+            activeOpacity={0.8}
+            onPress={() => setShowPostModal(true)}
+          >
+            <IconSymbol name="plus.circle" size={22} color={Colors[colorScheme ?? 'light'].icon} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.profileButton, {
+              backgroundColor: Colors[colorScheme ?? 'light'].backgroundSecondary,
+              borderColor: Colors[colorScheme ?? 'light'].border
+            }]}
+            activeOpacity={0.8}
+            onPress={() => {
+              router.push('/settings');
+            }}
+          >
+            <IconSymbol name="gearshape" size={20} color={Colors[colorScheme ?? 'light'].icon} />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* お気に入りスキー場 切替（複数ある場合） */}
+      {state.favorites.length > 1 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.resortSwitcher}
+        >
+          {state.favorites.map((fav) => {
+            const active = state.selectedResortId === fav.id;
+            return (
+              <TouchableOpacity
+                key={fav.id}
+                style={[
+                  styles.resortChip,
+                  {
+                    backgroundColor: active
+                      ? Colors[colorScheme ?? 'light'].tint
+                      : Colors[colorScheme ?? 'light'].backgroundSecondary,
+                    borderColor: Colors[colorScheme ?? 'light'].border,
+                  },
+                ]}
+                onPress={() => state.setSelectedResortId(fav.id)}
+              >
+                <Text style={[styles.resortChipText, { color: active ? '#fff' : Colors[colorScheme ?? 'light'].text }]}>
+                  {fav.name}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
 
       {/* Weather Section (Container for Image + Card) */}
       {!weather ? (
@@ -391,6 +418,12 @@ export default function HomeScreen() {
           ))}
         </View>
       )} */}
+
+      <ProfilePostCreateModal
+        visible={showPostModal}
+        onClose={() => setShowPostModal(false)}
+        onCreated={() => {}}
+      />
     </ScrollView>
   );
 }
@@ -429,6 +462,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     // backgroundColor and borderColor are set dynamically in the component
     borderWidth: StyleSheet.hairlineWidth,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  resortSwitcher: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingBottom: 12,
+    zIndex: 10,
+  },
+  resortChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  resortChipText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   // 新しいラッパー: 画像とカードの配置基準
   weatherSectionWrapper: {

@@ -19,6 +19,27 @@ export type UserStats = {
   starsReceived: number;
 };
 
+// お気に入りスキー場
+export type FavoriteResortSummary = {
+  id: string;
+  name: string;
+};
+
+// よく行くゲレンデ（イベント実績から集計した Top3）
+export type TopResort = {
+  id: string;
+  name: string;
+  count: number;
+};
+
+// SNSリンク（ハンドル/URLを種類別に保持）
+export type SocialLinks = {
+  instagram?: string;
+  x?: string;
+  youtube?: string;
+  tiktok?: string;
+};
+
 // Recent event summary
 export type RecentEvent = {
   id: string;
@@ -48,8 +69,9 @@ export type ProfileData = {
   level: SkillLevel | null;
   styles: string[];
   bio: string | null;
-  homeResortId: string | null;
-  homeResortName: string | null;
+  favoriteResorts: FavoriteResortSummary[];
+  topResorts: TopResort[];
+  socialLinks: SocialLinks;
   gear: UserGear | null;
   stats: UserStats;
   recentEvents: RecentEvent[];

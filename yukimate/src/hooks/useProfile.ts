@@ -1,5 +1,5 @@
 import { supabase } from '@lib/supabase';
-import type { ProfileData, SkillLevel } from '@types';
+import type { ProfileData, SkillLevel, SocialLinks, TopResort } from '@types';
 import { useEffect, useState } from 'react';
 
 type ProfileState =
@@ -38,7 +38,7 @@ export function useProfile(userId?: string, refreshKey?: number): ProfileState {
             level,
             styles,
             bio,
-            home_resort_id,
+            social_links,
             header_url,
             users!inner(role)
           `
@@ -58,34 +58,15 @@ export function useProfile(userId?: string, refreshKey?: number): ProfileState {
           throw new Error('プロフィールが見つかりません。プロフィールを作成してください。');
         }
 
-        // ホームリゾート名を取得（プロフィールにhome_resort_idがある場合）
-        let homeResortName: string | null = null;
-        if (profile.home_resort_id) {
-          const { data: resortData, error: resortError } = await supabase
-            .from('resorts')
-            .select('name')
-            .eq('id', profile.home_resort_id)
-            .single();
+        // 1.5 お気に入りスキー場を取得（多対多）
+        const { data: favRows } = await supabase
+          .from('favorite_resorts')
+          .select('resort_id, resorts(id, name)')
+          .eq('user_id', targetUserId);
 
-          if (!resortError && resortData) {
-            homeResortName = resortData.name;
-          }
-        }
-
-        // Fallback to first searchable resort if no home resort (same logic as useHomeData)
-        if (!homeResortName) {
-          const { data: defaultResort } = await supabase
-            .from('resorts')
-            .select('name')
-            .eq('searchable', true)
-            .order('name')
-            .limit(1)
-            .single();
-
-          if (defaultResort) {
-            homeResortName = defaultResort.name;
-          }
-        }
+        const favoriteResorts = (favRows || [])
+          .map((row: any) => (row.resorts ? { id: row.resorts.id, name: row.resorts.name } : null))
+          .filter(Boolean) as { id: string; name: string }[];
 
         // 2. ギア情報を取得
         const { data: gear, error: gearError } = await supabase
@@ -114,6 +95,39 @@ export function useProfile(userId?: string, refreshKey?: number): ProfileState {
             .select('id', { count: 'exact', head: true })
             .eq('target_user_id', targetUserId),
         ]);
+
+        // 3.5 滑走頻度（よく行くゲレンデ Top3）= 主催 + 参加イベントを resort 単位で集計
+        const [hostedRes, participatedRes] = await Promise.all([
+          supabase
+            .from('posts_events')
+            .select('id, resort_id')
+            .eq('host_user_id', targetUserId),
+          supabase
+            .from('event_participants')
+            .select('posts_events!inner(id, resort_id)')
+            .eq('user_id', targetUserId)
+            .is('left_at', null),
+        ]);
+
+        // event_id ごとに resort_id を集約（主催/参加の重複を排除）
+        const eventResortById = new Map<string, string | null>();
+        (hostedRes.data || []).forEach((e: any) => {
+          if (e?.id) eventResortById.set(e.id, e.resort_id ?? null);
+        });
+        (participatedRes.data || []).forEach((row: any) => {
+          const e = row.posts_events;
+          if (e?.id) eventResortById.set(e.id, e.resort_id ?? null);
+        });
+
+        const resortCount = new Map<string, number>();
+        eventResortById.forEach((resortId) => {
+          if (!resortId) return;
+          resortCount.set(resortId, (resortCount.get(resortId) || 0) + 1);
+        });
+
+        const topResortEntries = [...resortCount.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3);
 
         // 4. 最近のイベントを取得
         const { data: recentEventsData } = await supabase
@@ -157,7 +171,11 @@ export function useProfile(userId?: string, refreshKey?: number): ProfileState {
           ?.map((post: any) => post.resort_id)
           .filter(Boolean) || [];
 
-        const allResortIds = [...new Set([...eventResortIds, ...postResortIds])];
+        const allResortIds = [...new Set([
+          ...eventResortIds,
+          ...postResortIds,
+          ...topResortEntries.map(([id]) => id),
+        ])];
 
         let resortMap: Record<string, string> = {};
         if (allResortIds.length > 0) {
@@ -173,6 +191,12 @@ export function useProfile(userId?: string, refreshKey?: number): ProfileState {
             }, {} as Record<string, string>);
           }
         }
+
+        const topResorts: TopResort[] = topResortEntries.map(([id, count]) => ({
+          id,
+          name: resortMap[id] || 'Unknown',
+          count,
+        }));
 
         // 7. データを変換
         const recentEvents =
@@ -209,8 +233,9 @@ export function useProfile(userId?: string, refreshKey?: number): ProfileState {
             level: profile.level,
             styles: profile.styles || [],
             bio: profile.bio,
-            homeResortId: profile.home_resort_id,
-            homeResortName: homeResortName,
+            favoriteResorts,
+            topResorts,
+            socialLinks: ((profile as any).social_links as SocialLinks) || {},
             gear: gear
               ? {
                 board: gear.board_name,
@@ -259,7 +284,7 @@ export async function updateProfile(
     level: SkillLevel;
     styles: string[];
     bio: string;
-    homeResortId: string;
+    socialLinks: SocialLinks;
   }>
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -284,7 +309,7 @@ export async function updateProfile(
     if (updates.level !== undefined) updateData.level = updates.level;
     if (updates.styles !== undefined) updateData.styles = updates.styles;
     if (updates.bio !== undefined) updateData.bio = updates.bio;
-    if (updates.homeResortId !== undefined) updateData.home_resort_id = updates.homeResortId;
+    if (updates.socialLinks !== undefined) updateData.social_links = updates.socialLinks;
 
     const { error } = await supabase
       .from('profiles')
@@ -293,6 +318,68 @@ export async function updateProfile(
 
     if (error) {
       return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
+  }
+}
+
+/**
+ * お気に入りスキー場を一括更新（差分を計算して追加/削除）
+ */
+export async function updateFavoriteResorts(
+  resortIds: string[]
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.user) {
+      return { success: false, error: 'ユーザーがログインしていません。' };
+    }
+
+    const userId = session.user.id;
+
+    // 既存のお気に入りを取得
+    const { data: existing, error: fetchError } = await supabase
+      .from('favorite_resorts')
+      .select('resort_id')
+      .eq('user_id', userId);
+
+    if (fetchError) {
+      return { success: false, error: fetchError.message };
+    }
+
+    const existingIds = new Set((existing || []).map((r) => r.resort_id));
+    const nextIds = new Set(resortIds);
+
+    const toAdd = resortIds.filter((id) => !existingIds.has(id));
+    const toRemove = [...existingIds].filter((id) => !nextIds.has(id));
+
+    if (toAdd.length > 0) {
+      const { error: insertError } = await supabase
+        .from('favorite_resorts')
+        .insert(toAdd.map((resort_id) => ({ user_id: userId, resort_id })));
+      if (insertError) {
+        return { success: false, error: insertError.message };
+      }
+    }
+
+    if (toRemove.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('favorite_resorts')
+        .delete()
+        .eq('user_id', userId)
+        .in('resort_id', toRemove);
+      if (deleteError) {
+        return { success: false, error: deleteError.message };
+      }
     }
 
     return { success: true };

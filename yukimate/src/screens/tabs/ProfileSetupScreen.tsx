@@ -2,6 +2,8 @@ import { COUNTRIES, getFlagSource } from '@/constants/countries';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { updateFavoriteResorts } from '@/hooks/useProfile';
+import { useResorts } from '@/hooks/useResorts';
 import { useTranslation } from '@/hooks/useTranslation';
 import { pickAndUploadImage } from '@/lib/imageUpload';
 import { supabase } from '@/lib/supabase';
@@ -307,7 +309,11 @@ export default function ProfileSetupScreen() {
   const [skillLevel, setSkillLevel] = useState<SkillLevel>('beginner');
   const [ridingStyle, setRidingStyle] = useState<RidingStyle[]>([]);
   const [bio, setBio] = useState('');
-  const homeResortId = null; // 将来的にホームゲレンデ選択機能を追加予定
+
+  // お気に入りスキー場（複数）
+  const [favoriteResortIds, setFavoriteResortIds] = useState<string[]>([]);
+  const [showResortPicker, setShowResortPicker] = useState(false);
+  const resortsState = useResorts();
 
   // 画像関連の状態
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -324,6 +330,12 @@ export default function ProfileSetupScreen() {
     } else {
       setRidingStyle([...ridingStyle, style]);
     }
+  };
+
+  const toggleFavoriteResort = (resortId: string) => {
+    setFavoriteResortIds((prev) =>
+      prev.includes(resortId) ? prev.filter((id) => id !== resortId) : [...prev, resortId]
+    );
   };
   // プロフィールが既に存在するか確認
   useEffect(() => {
@@ -407,7 +419,7 @@ export default function ProfileSetupScreen() {
         level: skillLevel,
         styles: ridingStyle,
         bio: bio.trim() || null,
-        home_resort_id: homeResortId,
+        home_resort_id: null,
       });
 
       if (error) {
@@ -421,6 +433,11 @@ export default function ProfileSetupScreen() {
 
       // プロフィール作成成功
       console.log('✅ Profile created successfully');
+
+      // お気に入りスキー場を保存
+      if (favoriteResortIds.length > 0) {
+        await updateFavoriteResorts(favoriteResortIds);
+      }
 
       // AuthContextを更新してプロフィール情報を取得
       console.log('🔄 Refreshing profile...');
@@ -669,6 +686,80 @@ export default function ProfileSetupScreen() {
               </TouchableOpacity>
             ))}
           </View>
+        </View>
+
+        {/* お気に入りスキー場（複数選択） */}
+        <View style={styles.section}>
+          <Text style={styles.label}>{t('editProfileScreen.favoriteResortsLabel')}</Text>
+          <TouchableOpacity style={styles.countrySelector} onPress={() => setShowResortPicker(true)}>
+            <Ionicons name="snow-outline" size={20} color={colors.icon} />
+            <Text style={styles.selectedCountryText}>
+              {favoriteResortIds.length > 0
+                ? `${favoriteResortIds.length} ${t('editProfileScreen.favoriteResortsSelected')}`
+                : t('editProfileScreen.favoriteResortsPlaceholder')}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color={colors.icon} />
+          </TouchableOpacity>
+
+          {resortsState.status === 'success' && favoriteResortIds.length > 0 && (
+            <View style={[styles.styleGrid, { marginTop: 12 }]}>
+              {favoriteResortIds.map((id) => {
+                const resort = resortsState.resorts.find((r) => r.id === id);
+                if (!resort) return null;
+                return (
+                  <TouchableOpacity
+                    key={id}
+                    style={[styles.styleButton, styles.styleButtonActive]}
+                    onPress={() => toggleFavoriteResort(id)}
+                  >
+                    <Text style={[styles.styleText, styles.styleTextActive]}>{resort.name}  ✕</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
+          <Modal
+            visible={showResortPicker}
+            transparent
+            animationType="slide"
+            onRequestClose={() => setShowResortPicker(false)}
+          >
+            <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowResortPicker(false)}>
+              <View style={[styles.pickerModal, { paddingBottom: insets.bottom }]}>
+                <View style={styles.pickerHeader}>
+                  <Text style={styles.pickerTitle}>{t('editProfileScreen.favoriteResortsLabel')}</Text>
+                  <TouchableOpacity onPress={() => setShowResortPicker(false)}>
+                    <Ionicons name="close" size={24} color={colors.text} />
+                  </TouchableOpacity>
+                </View>
+                {resortsState.status === 'success' ? (
+                  <FlatList
+                    data={resortsState.resorts}
+                    style={{ flex: 1 }}
+                    keyExtractor={(item) => item.id}
+                    initialNumToRender={20}
+                    renderItem={({ item: resort }) => {
+                      const selected = favoriteResortIds.includes(resort.id);
+                      return (
+                        <TouchableOpacity
+                          style={[styles.pickerItem, selected && styles.pickerItemActive]}
+                          onPress={() => toggleFavoriteResort(resort.id)}
+                        >
+                          <Text style={[styles.pickerItemText, selected && styles.pickerItemTextActive]}>
+                            {resort.name}
+                          </Text>
+                          {selected && <Ionicons name="checkmark" size={20} color={colors.tint} />}
+                        </TouchableOpacity>
+                      );
+                    }}
+                  />
+                ) : (
+                  <ActivityIndicator color={colors.tint} style={{ marginTop: 24 }} />
+                )}
+              </View>
+            </TouchableOpacity>
+          </Modal>
         </View>
 
         {/* Bio */}

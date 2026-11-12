@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-const { getDefaultConfig } = require('expo/metro-config');
-
-module.exports = getDefaultConfig(__dirname);
-=======
 const path = require('path');
 const {
   getSentryExpoConfig
@@ -48,4 +43,3 @@ config.transformer = {
 };
 
 module.exports = config;
->>>>>>> d19a5baf107f0f665a6402b3800f1d91f54121d5

@@ -134,6 +134,71 @@ async function uploadImageToSupabase(
 }
 
 /**
+ * プロフィール投稿用の写真を選択してアップロード（profile_posts バケット）
+ * 投稿ごとにユニークなパスに保存し、キャッシュバスターなしの公開URLを返す。
+ */
+export async function pickAndUploadProfilePostImage(
+  userId: string
+): Promise<string | null> {
+  try {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permissionResult.granted) {
+      Alert.alert('権限が必要です', 'カメラロールへのアクセス権限が必要です。');
+      return null;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled) return null;
+
+    const asset = result.assets[0];
+    const mimeType = asset.mimeType || 'image/jpeg';
+    const fileSize = asset.fileSize || 0;
+
+    const typeValidation = validateImageFileType(mimeType);
+    if (!typeValidation.isValid) {
+      Alert.alert('エラー', typeValidation.error);
+      return null;
+    }
+    const sizeValidation = validateFileSize(fileSize, 10);
+    if (!sizeValidation.isValid) {
+      Alert.alert('エラー', sizeValidation.error);
+      return null;
+    }
+
+    const ext = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
+    const filePath = `${userId}/${Date.now()}.${ext}`;
+
+    const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: 'base64' });
+    const arrayBuffer = decode(base64);
+
+    const { error } = await supabase.storage
+      .from('profile_posts')
+      .upload(filePath, arrayBuffer, {
+        contentType: `image/${ext}`,
+        upsert: false,
+      });
+
+    if (error) {
+      console.error('❌ profile_posts upload error:', error);
+      throw error;
+    }
+
+    const { data: urlData } = supabase.storage.from('profile_posts').getPublicUrl(filePath);
+    return urlData.publicUrl;
+  } catch (error) {
+    console.error('❌ Error uploading profile post image:', error);
+    Alert.alert('エラー', `画像のアップロードに失敗しました: ${error}`);
+    return null;
+  }
+}
+
+/**
  * カメラで撮影してアップロード
  */
 export async function takePhotoAndUpload(

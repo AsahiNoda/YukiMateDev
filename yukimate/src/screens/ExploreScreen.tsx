@@ -71,10 +71,15 @@ export default function ExploreScreen() {
   // ユーザープロフィールを取得してホームゲレンデを取得
   const profileState = useProfile();
 
-  // ホームリゾートを取得
+  // お気に入りスキー場の先頭をクイック選択用に取得
   const homeResort = React.useMemo(() => {
-    if (profileState.status === 'success' && profileState.data.homeResortId && resortsState.status === 'success') {
-      return resortsState.resorts.find(r => r.id === profileState.data.homeResortId);
+    if (
+      profileState.status === 'success' &&
+      profileState.data.favoriteResorts.length > 0 &&
+      resortsState.status === 'success'
+    ) {
+      const firstFavId = profileState.data.favoriteResorts[0].id;
+      return resortsState.resorts.find(r => r.id === firstFavId);
     }
     return null;
   }, [profileState, resortsState]);

@@ -3,10 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 
-<<<<<<< HEAD
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || 'https://rmdpetmotoafaddkvyrk.supabase.co';
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtZHBldG1vdG9hZmFkZGt2eXJrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkyNDc1NzEsImV4cCI6MjA3NDgyMzU3MX0.oaY0nv82XIG8OvHF7Z0q2cYdJFB74s1I-ys00Ab7lp8';
-=======
 // 環境変数から読み込み（app.config.ts経由）
 const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl || process.env.EXPO_PUBLIC_SUPABASE_URL || '';
 const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey || process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -36,7 +32,6 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
   throw new Error(errorMessage);
 }
->>>>>>> d19a5baf107f0f665a6402b3800f1d91f54121d5
 
 
 // カスタムfetch関数でタイムアウトを実装
@@ -65,13 +60,6 @@ const fetchWithTimeout = async (url: RequestInfo | URL, options: RequestInit = {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-<<<<<<< HEAD
-    autoRefreshToken: true,
-    persistSession: false,
-    detectSessionInUrl: false,
-  },
-});
-=======
     storage: AsyncStorage,
     autoRefreshToken: true,
     persistSession: true,
@@ -87,5 +75,3 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     schema: 'public',
   },
 });
-
->>>>>>> d19a5baf107f0f665a6402b3800f1d91f54121d5
