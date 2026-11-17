@@ -7,6 +7,24 @@ import { useEffect, useRef } from 'react';
 export const pendingRequestsKey = (userId?: string) => ['pendingRequests', userId] as const;
 
 async function fetchPendingCount(userId: string): Promise<number> {
+  const [events, channels] = await Promise.all([fetchEventCount(userId), fetchChannelCount(userId)]);
+  return events + channels;
+}
+
+/** 自分が管理するチャンネルに届いている参加リクエスト（RLS で自分の分と管理するチャンネルの分だけが見える） */
+async function fetchChannelCount(userId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('channel_join_requests')
+    .select('channel_id, channels!inner(archived_at)', { count: 'exact', head: true })
+    .eq('status', 'pending')
+    .neq('user_id', userId)
+    .is('channels.archived_at', null);
+  // チャンネルの migration（20261124000000_private_channels.sql）を当てる前はテーブルがないので 0 件扱い
+  if (error) return 0;
+  return count ?? 0;
+}
+
+async function fetchEventCount(userId: string): Promise<number> {
   const { count, error } = await supabase
     .from('event_applications')
     .select('id, posts_events!event_applications_event_id_fkey!inner(host_user_id, status)', {
@@ -22,7 +40,8 @@ async function fetchPendingCount(userId: string): Promise<number> {
 }
 
 /**
- * 自分がホストのイベントに届いている、未対応（pending）の参加申請の件数。
+ * 自分がホストのイベントに届いている、未対応（pending）の参加申請の件数
+ * ＋自分が管理するプライベートチャンネルへの参加リクエストの件数。
  * タブバーの「チャット」バッジとホームの「届いたリクエスト」に使う。
  *
  * React Query で共有するので、承認・却下（useEventApplications）や画面に戻ったときの
@@ -50,6 +69,9 @@ export function usePendingRequestCount(): number {
     const channel = supabase
       .channel(channelName)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_applications' }, () => {
+        queryClient.invalidateQueries({ queryKey: ['pendingRequests'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'channel_join_requests' }, () => {
         queryClient.invalidateQueries({ queryKey: ['pendingRequests'] });
       })
       .subscribe();

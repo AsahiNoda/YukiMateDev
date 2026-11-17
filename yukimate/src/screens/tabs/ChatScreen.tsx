@@ -1,8 +1,10 @@
+import { ChannelsPanel } from '@/components/channels/ChannelsPanel';
 import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
 import { useEventApplications, type EventApplicationWithDetails } from '@/hooks/useEventApplications';
 import { useEventChats } from '@/hooks/useEventChats';
+import { channelErrorKey, useChannelActions, useIncomingChannelRequests, type IncomingChannelRequest } from '@/hooks/useChannels';
 import { useTranslation } from '@/hooks/useTranslation';
 import { formatEventDate } from '@/utils/formatEventDate';
 import { supabase, getAuthUser } from '@/lib/supabase';
@@ -32,7 +34,12 @@ interface ChatSection {
   data: EventChat[];
 }
 
-type TabType = 'chats' | 'requests';
+type TabType = 'chats' | 'channels' | 'requests';
+
+/** リクエストタブの1行：イベントの参加申請か、プライベートチャンネルへの参加リクエスト */
+type RequestItem =
+  | { type: 'event'; key: string; createdAt: string; application: EventApplicationWithDetails }
+  | { type: 'channel'; key: string; createdAt: string; request: IncomingChannelRequest };
 
 export default function ChatScreen() {
   const insets = useSafeAreaInsets();
@@ -44,7 +51,9 @@ export default function ChatScreen() {
   // ほかの画面から「リクエスト」タブを開く：/(tabs)/chat?tab=requests&t=...
   const routeParams = useLocalSearchParams<{ tab?: string; t?: string }>();
   useEffect(() => {
-    if (routeParams.tab === 'requests' || routeParams.tab === 'chats') setActiveTab(routeParams.tab);
+    if (routeParams.tab === 'requests' || routeParams.tab === 'chats' || routeParams.tab === 'channels') {
+      setActiveTab(routeParams.tab);
+    }
   }, [routeParams.tab, routeParams.t]);
 
   const { chats, loading: chatsLoading, error: chatsError, refetch } = useEventChats();
@@ -56,6 +65,29 @@ export default function ChatScreen() {
     rejectApplication,
     refetch: refetchApplications,
   } = useEventApplications();
+
+  const channelRequests = useIncomingChannelRequests();
+  const channelActions = useChannelActions();
+  const [respondingKey, setRespondingKey] = useState<string | null>(null);
+
+  // イベントの申請とチャンネルのリクエストを新しい順に1つの一覧にする
+  const requestItems = useMemo<RequestItem[]>(() => {
+    const items: RequestItem[] = [
+      ...applications.map((application) => ({
+        type: 'event' as const,
+        key: `event_${application.id}`,
+        createdAt: application.created_at ?? '',
+        application,
+      })),
+      ...(channelRequests.data ?? []).map((request) => ({
+        type: 'channel' as const,
+        key: `channel_${request.channelId}_${request.userId}`,
+        createdAt: request.createdAt,
+        request,
+      })),
+    ];
+    return items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }, [applications, channelRequests.data]);
 
   const [refreshing, setRefreshing] = React.useState(false);
 
@@ -72,7 +104,7 @@ export default function ChatScreen() {
     getCurrentUser();
   }, []);
 
-  const loading = activeTab === 'chats' ? chatsLoading : applicationsLoading;
+  const loading = activeTab === 'chats' ? chatsLoading : activeTab === 'requests' ? applicationsLoading : false;
 
   // エラーがある場合は表示
   React.useEffect(() => {
@@ -90,7 +122,7 @@ export default function ChatScreen() {
       if (activeTab === 'chats') {
         await refetch();
       } else {
-        await refetchApplications();
+        await Promise.all([refetchApplications(), channelRequests.refetch()]);
       }
     } finally {
       setRefreshing(false);
@@ -246,6 +278,77 @@ export default function ChatScreen() {
     );
   }
 
+  function respondChannelRequest(request: IncomingChannelRequest, approve: boolean) {
+    const params = { name: request.name, channel: request.channelName };
+    Alert.alert(
+      approve ? t('chat.approveTitle') : t('chat.rejectTitle'),
+      t(approve ? 'channels.approveRequestConfirm' : 'channels.rejectRequestConfirm', params),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: approve ? t('chat.approveButton') : t('chat.rejectButton'),
+          style: approve ? 'default' : 'destructive',
+          onPress: async () => {
+            const key = `channel_${request.channelId}_${request.userId}`;
+            setRespondingKey(key);
+            try {
+              await channelActions.respondRequest(request.channelId, request.userId, approve);
+            } catch (error) {
+              Alert.alert(t('common.error'), t(channelErrorKey(error)));
+            } finally {
+              setRespondingKey(null);
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  function renderChannelRequestItem(request: IncomingChannelRequest) {
+    const busy = respondingKey === `channel_${request.channelId}_${request.userId}`;
+    return (
+      <View style={[styles.applicationItem, { backgroundColor: colors.card }]}>
+        <TouchableOpacity
+          style={styles.applicationHeader}
+          onPress={() => router.push(`/user/${request.userId}` as any)}
+          accessibilityRole="button"
+          accessibilityLabel={t('channels.requestA11y', { name: request.name, channel: request.channelName })}
+        >
+          <RoleBasedAvatar avatarUrl={request.avatarUrl} role="user" size={60} showBadge={false} />
+          <View style={styles.applicationUserInfo}>
+            <Text style={[styles.applicationName, { color: colors.text }]}>{request.name}</Text>
+            <Text style={[styles.applicationEventTitle, { color: colors.textSecondary }]} numberOfLines={1}>
+              {request.channelName}
+            </Text>
+            <Text style={[styles.applicationEventInfo, { color: colors.textSecondary }]}>{t('channels.requestKind')}</Text>
+          </View>
+        </TouchableOpacity>
+        <View style={styles.applicationActions}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.rejectButton, { borderColor: colors.border }]}
+            disabled={busy}
+            onPress={() => respondChannelRequest(request, false)}
+          >
+            <Text style={[styles.rejectButtonText, { color: colors.text }]}>{t('chat.rejectButton')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.approveButton, { backgroundColor: colors.tint }]}
+            disabled={busy}
+            onPress={() => respondChannelRequest(request, true)}
+          >
+            {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.approveButtonText}>{t('chat.approveButton')}</Text>}
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  function renderRequestItem({ item }: { item: RequestItem }) {
+    return item.type === 'channel'
+      ? renderChannelRequestItem(item.request)
+      : renderApplicationItem({ item: item.application });
+  }
+
   function renderApplicationItem({ item }: { item: EventApplicationWithDetails }) {
     const applicantName = item.applicant?.profiles?.display_name || 'Unknown';
     const eventTitle = item.event?.title || 'Unknown Event';
@@ -344,6 +447,23 @@ export default function ChatScreen() {
             <View style={[styles.tabIndicator, { backgroundColor: colors.tint }]} />
           )}
         </TouchableOpacity>
+        {/* テーマ別チャンネル（イベントのチャットとは別枠） */}
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'channels' && styles.activeTab]}
+          onPress={() => setActiveTab('channels')}
+          testID="chat-tab-channels">
+          <Text
+            style={[
+              styles.tabText,
+              { color: colors.textSecondary },
+              activeTab === 'channels' && { color: colors.tint, fontWeight: fontWeight.semibold },
+            ]}>
+            {t('chat.tabChannels')}
+          </Text>
+          {activeTab === 'channels' && (
+            <View style={[styles.tabIndicator, { backgroundColor: colors.tint }]} />
+          )}
+        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'requests' && styles.activeTab]}
           onPress={() => setActiveTab('requests')}>
@@ -356,9 +476,9 @@ export default function ChatScreen() {
               ]}>
               {t('chat.tabRequests')}
             </Text>
-            {applications.length > 0 && (
+            {requestItems.length > 0 && (
               <View style={[styles.tabBadge, { backgroundColor: colors.tint }]}>
-                <Text style={styles.tabBadgeText}>{applications.length}</Text>
+                <Text style={styles.tabBadgeText}>{requestItems.length}</Text>
               </View>
             )}
           </View>
@@ -369,7 +489,9 @@ export default function ChatScreen() {
       </View>
 
       {/* Content */}
-      {loading ? (
+      {activeTab === 'channels' ? (
+        <ChannelsPanel />
+      ) : loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.tint} />
         </View>
@@ -408,10 +530,10 @@ export default function ChatScreen() {
         />
       ) : (
         <FlatList
-          data={applications}
-          keyExtractor={(item) => item.id}
+          data={requestItems}
+          keyExtractor={(item) => item.key}
           contentContainerStyle={styles.chatList}
-          renderItem={renderApplicationItem}
+          renderItem={renderRequestItem}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}

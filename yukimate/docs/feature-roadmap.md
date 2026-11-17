@@ -11,6 +11,9 @@
 | `supabase/migrations/20261121000000_add_activities_to_posts_events.sql` | **必須** | `posts_events.activities text[]`。無いと「さがす」「イベント詳細」「イベント作成」が失敗する |
 | `supabase/migrations/20261120000000_event_host_manage_members.sql` | 主催者の強制退会に必要 | 主催者が他人の `event_participants` / `event_applications` を更新できるポリシー |
 | `supabase/migrations/20261118000000_feed_interactions_rls.sql` | 通報に必要（未適用なら） | `reports` の本人名義 insert など |
+| `supabase/migrations/20261123000000_channel_media_bucket.sql` | チャンネルの写真に必要（feature/theme-channels） | 写真用の公開バケット `channel_media`（10MB・画像のみ、自分のフォルダーにだけアップロード可） |
+| `supabase/migrations/20261124000000_private_channels.sql` | プライベートチャンネルに必要（feature/theme-channels） | オープン／プライベート、参加リクエスト `channel_join_requests`、申請・承認の関数 `request_channel_join` / `respond_channel_join_request` |
+| `supabase/migrations/20261122000000_theme_channels.sql` | チャンネルに必要（feature/theme-channels） | チャンネルの5テーブル・RLS・トリガー・`delete_channel_post` / `remove_channel_member`・通報の対象に `channel` / `channel_post`・Realtime |
 
 ---
 
@@ -60,6 +63,12 @@
 - 目安：3〜5日（ビルド・キー発行を除く）。
 
 ### 3-2. テーマ別チャンネル（誰でも開設）＋ チャンネルタイプ
+> **feature/theme-channels で実装済み（最初の版）**：チャットタブの3つ目「チャンネル」（参加中／見つける・検索・作る）、作成（名前・説明・種類、1人3つまで）、種類別の画面（チャット／写真のグリッド／リアクションのみのフィード）、写真は1投稿4枚まで、長押しでリアクション・通報・削除、チャンネル情報（メンバー一覧、オーナーによるモデレーター任命、オーナー・モデレーターによる追放＝再参加不可、退出、アーカイブ、チャンネルの通報）、ブロックした人の投稿は出さない、Realtime で新着とリアクションを反映。
+>
+> **追加**：オープン／プライベート。プライベートは「見つける」に出るが、投稿とメンバーはメンバーだけが見られる。参加はリクエスト → オーナー・モデレーターがチャットタブの「リクエスト」で承認・見送り（イベントの申請と同じ一覧、タブのバッジにも数える）。一覧にオーナー名を表示。
+>
+> **まだのもの**：招待リンク、リクエストのプッシュ通知、作成後のオープン／プライベートの切り替え画面、ゲレンデに紐づけたチャンネル（`resort_id` は列だけある）、未読数・バッジ、新着のプッシュ通知、ミュート（`muted_until` は列だけある）、古い投稿の読み込み（今は新しい100件）、チャンネル名・説明の編集画面、通報が多い投稿の自動非表示（3-4）。
+
 **重い理由**：新しいテーブル・RLS・リアルタイム・モデレーションが一式要る。
 
 1. **スキーマ（案）**

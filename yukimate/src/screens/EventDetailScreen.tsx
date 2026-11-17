@@ -1,6 +1,7 @@
 import { ImageViewer } from '@/components/ImageViewer';
 import { ReportSheet } from '@/components/ReportSheet';
 import { Chip } from '@/components/ui/Chip';
+import { PillButton } from '@/components/ui/PillButton';
 import { normalizeActivities, type ActivityType } from '@/constants/activities';
 import { ActionSheet } from '@/components/ui/ActionSheet';
 import { notifyEventMemberRemoved } from '@/services/notificationService';
@@ -166,19 +167,16 @@ function createStyles(colors: typeof Colors.light) {
     },
     imageIndicatorContainer: {
       position: 'absolute',
-      bottom: 16,
-      left: 0,
-      right: 0,
+      top: 12,
+      left: 16,
+      right: 16,
       flexDirection: 'row',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 8,
+      gap: 4,
     },
-    imageIndicatorDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    imageIndicatorBar: {
+      flex: 1,
+      height: 3,
+      borderRadius: 2,
     },
     backButtonIcon: {
       position: 'absolute',
@@ -214,18 +212,16 @@ function createStyles(colors: typeof Colors.light) {
       marginBottom: 16,
     },
     descriptionSection: {
-      marginBottom: 24,
+      marginBottom: 20,
     },
-    descriptionTitle: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.text,
-      marginBottom: 8,
+    sectionLabel: {
+      fontSize: 12,
+      fontWeight: '700',
+      marginBottom: 6,
     },
     descriptionText: {
       fontSize: 15,
-      color: colors.textSecondary,
-      lineHeight: 22,
+      lineHeight: 23,
     },
     detailsGrid: {
       flexDirection: 'row',
@@ -247,11 +243,6 @@ function createStyles(colors: typeof Colors.light) {
       paddingVertical: 12,
       paddingHorizontal: 6,
     },
-    hostAvatarPlaceholder: {
-      backgroundColor: colors.tint,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
     gridIconContainer: {
       width: 36,
       height: 36,
@@ -270,46 +261,25 @@ function createStyles(colors: typeof Colors.light) {
       fontWeight: '500',
     },
     tagsSection: {
-      marginTop: 8,
-    },
-    tagsSectionTitle: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.text,
-      marginBottom: 12,
+      marginBottom: 20,
     },
     tagsContainer: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 8,
     },
-    tag: {
-      backgroundColor: colors.backgroundSecondary,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: colors.tint,
-    },
     tagText: {
       fontSize: 13,
-      color: colors.tint,
       fontWeight: '500',
     },
     participantsSection: {
-      marginTop: 24,
-    },
-    participantsSectionTitle: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: colors.text,
-      marginBottom: 12,
+      marginTop: 4,
     },
     participantCard: {
       flexDirection: 'row',
       alignItems: 'center',
       paddingVertical: 12,
-      borderBottomWidth: 1,
+      borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: colors.border,
     },
     participantAvatar: {
@@ -372,10 +342,10 @@ function createStyles(colors: typeof Colors.light) {
       left: 0,
       right: 0,
       backgroundColor: colors.background,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.divider,
       paddingHorizontal: 20,
-      paddingTop: 16,
+      paddingTop: 12,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -419,22 +389,6 @@ function createStyles(colors: typeof Colors.light) {
     footerHostStar: {
       marginLeft: 2,
     },
-    actionButton: {
-      paddingVertical: 14,
-      paddingHorizontal: 32,
-      backgroundColor: colors.tint,
-      borderRadius: 24,
-      minWidth: 140,
-      alignItems: 'center',
-    },
-    actionButtonDisabled: {
-      backgroundColor: colors.backgroundTertiary,
-    },
-    actionButtonText: {
-      color: colors.text,
-      fontSize: 16,
-      fontWeight: '600',
-    },
   });
 }
 
@@ -451,6 +405,8 @@ export default function EventDetailScreen() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
+  // 写真が複数あるとき、今見ている写真の番号（上のバーで示す）
+  const [photoIndex, setPhotoIndex] = useState(0);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string>('');
   const [reportVisible, setReportVisible] = useState(false);
   // 主催者がメンバーを操作するメニュー（対象の参加者）
@@ -908,6 +864,11 @@ export default function EventDetailScreen() {
               pagingEnabled
               showsHorizontalScrollIndicator={false}
               style={styles.imageScrollView}
+              scrollEventThrottle={16}
+              onScroll={(e) => {
+                const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+                if (index !== photoIndex) setPhotoIndex(index);
+              }}
             >
               {event.photos.map((photo, index) => (
                 <TouchableOpacity
@@ -925,11 +886,22 @@ export default function EventDetailScreen() {
               ))}
             </ScrollView>
 
-            {/* 画像インジケーター */}
+            {/* 写真が複数あるとき：何枚中の何枚目かを示すバー（下は本文のカードが重なるので、写真の上側に出す） */}
             {event.photos.length > 1 && (
-              <View style={styles.imageIndicatorContainer}>
+              <View
+                style={styles.imageIndicatorContainer}
+                pointerEvents="none"
+                accessible
+                accessibilityLabel={`${photoIndex + 1} / ${event.photos.length}`}
+              >
                 {event.photos.map((_, index) => (
-                  <View key={index} style={styles.imageIndicatorDot} />
+                  <View
+                    key={index}
+                    style={[
+                      styles.imageIndicatorBar,
+                      { backgroundColor: colors.photoOverlayText, opacity: index === photoIndex ? 1 : 0.4 },
+                    ]}
+                  />
                 ))}
               </View>
             )}
@@ -958,8 +930,8 @@ export default function EventDetailScreen() {
           {/* 詳細説明 */}
           {event.description && (
             <View style={styles.descriptionSection}>
-              <Text style={[styles.descriptionTitle, { color: colors.text }]}>{t('eventDetail.details')}</Text>
-              <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>{event.description}</Text>
+              <Text style={[styles.sectionLabel, { color: colors.textLabel }]}>{t('eventDetail.details')}</Text>
+              <Text style={[styles.descriptionText, { color: colors.text }]}>{event.description}</Text>
             </View>
           )}
 
@@ -1049,10 +1021,10 @@ export default function EventDetailScreen() {
           {/* タグセクション */}
           {event.tags && event.tags.length > 0 && (
             <View style={styles.tagsSection}>
-              <Text style={[styles.tagsSectionTitle, { color: colors.text }]}>{t('eventDetail.tags')}</Text>
+              <Text style={[styles.sectionLabel, { color: colors.textLabel }]}>{t('eventDetail.tags')}</Text>
               <View style={styles.tagsContainer}>
                 {event.tags.map((tag, index) => (
-                  <Text style={[styles.tagText, { color: colors.tint }]} key={index}>#{tag}</Text>
+                  <Text style={[styles.tagText, { color: colors.tintText }]} key={index}>#{tag}</Text>
                 ))}
               </View>
             </View>
@@ -1061,13 +1033,13 @@ export default function EventDetailScreen() {
           {/* 参加者セクション */}
           {participants.length > 0 && (
             <View style={styles.participantsSection}>
-              <Text style={[styles.participantsSectionTitle, { color: colors.text }]}>
+              <Text style={[styles.sectionLabel, { color: colors.textLabel }]}>
                 {t('eventDetail.participants')} ({participants.length}{t('discover.peopleUnit')})
               </Text>
               {participants.map((participant) => (
                 <TouchableOpacity
                   key={participant.userId}
-                  style={[styles.participantCard, { borderBottomColor: colors.border }]}
+                  style={[styles.participantCard, { borderBottomColor: colors.divider }]}
                   onPress={() => router.push(`/user/${participant.userId}` as any)}
                 >
                   {/* アバター */}
@@ -1132,7 +1104,7 @@ export default function EventDetailScreen() {
       </ScrollView>
 
       {/* 固定フッター */}
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 16, backgroundColor: colors.background, borderTopColor: colors.border }]}>
+      <View style={[styles.footer, { paddingBottom: insets.bottom + 12, backgroundColor: colors.background, borderTopColor: colors.divider }]}>
         {/* ホスト情報 */}
         <TouchableOpacity
           style={styles.footerHostSection}
@@ -1157,36 +1129,14 @@ export default function EventDetailScreen() {
 
         {/* アクションボタン（中止したイベントは申請・編集できない） */}
         {event.isCancelled ? null : event.isHost ? (
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => {
-              router.push(`/create?eventId=${event.id}`);
-            }}
-          >
-            <Text style={[styles.actionButtonText, { color: colors.text }]}>{t('eventDetail.editPost')}</Text>
-          </TouchableOpacity>
+          <PillButton title={t('eventDetail.editPost')} onPress={() => router.push(`/create?eventId=${event.id}`)} />
+        ) : event.hasApplied ? (
+          // 退会は赤くしない（赤は削除の文字だけ）
+          <PillButton title={t('eventDetail.withdraw')} variant="secondary" onPress={handleWithdraw} loading={applying} />
+        ) : event.applicationStatus === 'pending' ? (
+          <PillButton title={t('eventDetail.applying')} variant="secondary" onPress={() => {}} disabled />
         ) : (
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              event.hasApplied
-                ? { backgroundColor: colors.error }
-                : event.applicationStatus === 'pending'
-                  ? { backgroundColor: colors.backgroundTertiary }
-                  : { backgroundColor: colors.tint },
-              (applying || event.applicationStatus === 'pending') && [styles.actionButtonDisabled, { backgroundColor: colors.backgroundTertiary }],
-            ]}
-            onPress={event.hasApplied ? handleWithdraw : handleApply}
-            disabled={applying || event.applicationStatus === 'pending'}
-          >
-            {applying ? (
-              <ActivityIndicator color={colors.text} />
-            ) : (
-              <Text style={[styles.actionButtonText, { color: colors.text }]}>
-                {event.hasApplied ? t('eventDetail.withdraw') : event.applicationStatus === 'pending' ? t('eventDetail.applying') : t('eventDetail.applyToJoin')}
-              </Text>
-            )}
-          </TouchableOpacity>
+          <PillButton title={t('eventDetail.applyToJoin')} onPress={handleApply} loading={applying} />
         )}
       </View>
 

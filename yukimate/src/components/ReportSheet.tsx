@@ -6,7 +6,8 @@ import React from 'react';
 import { Alert } from 'react-native';
 
 /** reports.target_type の値（DB の CHECK 制約と同じ） */
-export type ReportTargetType = 'user' | 'event' | 'post' | 'comment' | 'spot';
+// 'channel' / 'channel_post' は supabase/migrations/20261122000000_theme_channels.sql で追加
+export type ReportTargetType = 'user' | 'event' | 'post' | 'comment' | 'spot' | 'channel' | 'channel_post';
 
 export const REPORT_REASON_KEYS = [
   'resortPage.reasonInappropriate',
