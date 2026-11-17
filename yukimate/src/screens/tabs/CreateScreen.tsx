@@ -12,7 +12,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { DatePickerSheet } from '@/components/ui/DatePickerSheet';
 import { ResortSearch } from '@/components/snowfeed/ResortSearch';
 import { Chip } from '@/components/ui/Chip';
-import { ACTIVITY_ICONS, ACTIVITY_TYPES, MAX_ACTIVITIES, normalizeActivities, type ActivityType } from '@/constants/activities';
+import { ACTIVITY_TYPES, MAX_ACTIVITIES, normalizeActivities, type ActivityType } from '@/constants/activities';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { syncEventReminders } from '@/services/eventNotificationService';
@@ -965,7 +965,6 @@ export default function CreateEventScreen() {
                 <Chip
                   key={key}
                   label={t(`activities.${key}`)}
-                  icon={on ? 'checkmark' : ACTIVITY_ICONS[key]}
                   selected={on}
                   onPress={() => {
                     if (on) {

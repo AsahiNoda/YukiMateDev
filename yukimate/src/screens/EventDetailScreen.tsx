@@ -1,7 +1,7 @@
 import { ImageViewer } from '@/components/ImageViewer';
 import { ReportSheet } from '@/components/ReportSheet';
 import { Chip } from '@/components/ui/Chip';
-import { ACTIVITY_ICONS, normalizeActivities, type ActivityType } from '@/constants/activities';
+import { normalizeActivities, type ActivityType } from '@/constants/activities';
 import { ActionSheet } from '@/components/ui/ActionSheet';
 import { notifyEventMemberRemoved } from '@/services/notificationService';
 import { Ionicons } from '@expo/vector-icons';
@@ -931,7 +931,7 @@ export default function EventDetailScreen() {
           {event.activities.length > 0 && (
             <View style={styles.activityRow} accessibilityLabel={t('activities.label')}>
               {event.activities.map((a) => (
-                <Chip key={a} label={t(`activities.${a}`)} icon={ACTIVITY_ICONS[a]} tone="tint" />
+                <Chip key={a} label={t(`activities.${a}`)} tone="tint" />
               ))}
             </View>
           )}
