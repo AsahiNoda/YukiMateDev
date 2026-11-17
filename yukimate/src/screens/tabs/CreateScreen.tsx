@@ -19,6 +19,7 @@ import { syncEventReminders } from '@/services/eventNotificationService';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import React, { useEffect, useState } from 'react';
 import { Image } from 'expo-image';
 import {
@@ -91,6 +92,7 @@ export default function CreateEventScreen() {
   }>();
   const isEditMode = !!params.eventId;
   const { t, locale } = useTranslation();
+  const queryClient = useQueryClient();
 
   // Form states
   const [title, setTitle] = useState('');
@@ -361,7 +363,7 @@ export default function CreateEventScreen() {
             try {
               setLoading(true);
 
-              // イベント削除前に参加者に通知を送信
+              // 中止する前に参加者に通知を送信
               if (params.eventId && title) {
                 try {
                   const { notifyEventCancellation } = await import('@/services/eventNotificationService');
@@ -373,13 +375,23 @@ export default function CreateEventScreen() {
                 }
               }
 
-              // Delete event
-              const { error } = await supabase
+              // 物理削除はしない：status を cancelled にして記録は残す
+              // （参加・主催の実績、チャット・評価の履歴、通報があったときの確認のため）。
+              // 中止したイベントは、さがす・ホーム・ゲレンデページ・チャット・自分の投稿一覧に出ない
+              const { data: cancelled, error } = await supabase
                 .from('posts_events')
-                .delete()
-                .eq('id', params.eventId);
+                .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+                .eq('id', params.eventId)
+                .select('id');
 
               if (error) throw error;
+              // RLS で更新できないとエラーにならず 0 件になる
+              if (!cancelled || cancelled.length === 0) throw new Error('event not cancelled');
+
+              queryClient.invalidateQueries({ queryKey: ['resortPage', 'upcomingEvents'] });
+              queryClient.invalidateQueries({ queryKey: ['home'] });
+              const { data: { session: cancelSession } } = await supabase.auth.getSession();
+              if (cancelSession?.user) syncEventReminders(cancelSession.user.id, locale);
 
               Alert.alert(t('common.complete'), t('create.deletePostSuccess'), [
                 {
@@ -614,6 +626,9 @@ export default function CreateEventScreen() {
 
       // 主催するイベントの開始リマインダーを揃える（新規作成・日時の変更）
       syncEventReminders(session.user.id, locale);
+      // ゲレンデページ・ホームのイベント一覧に、作った（直した）イベントをすぐ出す
+      queryClient.invalidateQueries({ queryKey: ['resortPage', 'upcomingEvents'] });
+      queryClient.invalidateQueries({ queryKey: ['home'] });
 
       Alert.alert(t('common.complete'), isEditMode ? t('create.postUpdated') : t('create.postCreated'), [
         {

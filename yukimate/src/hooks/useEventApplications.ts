@@ -1,6 +1,7 @@
 import { supabase, getAuthUser } from '@/lib/supabase';
 import type { EventApplication } from '@types';
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { notifyEventApplicationApproved, notifyEventApplicationRejected } from '@/services/notificationService';
 
 export interface EventApplicationWithDetails extends EventApplication {
@@ -27,6 +28,30 @@ export function useEventApplications() {
   const [applications, setApplications] = useState<EventApplicationWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  /** 承認・却下のあと、タブのバッジとホームの「届いたリクエスト」「次の予定」などを取り直す */
+  const refreshCounts = () => {
+    queryClient.invalidateQueries({ queryKey: ['pendingRequests'] });
+    queryClient.invalidateQueries({ queryKey: ['home'] });
+  };
+
+  /**
+   * 申請の status を更新する。RLS で許可されていないとエラーにならず 0 件になるので、
+   * 0 件なら失敗として扱う（以前は承認できたように見えて、申請が pending のまま残っていた）。
+   * 主催者が他人の申請を更新するポリシー：supabase/migrations/20261120000000_event_host_manage_members.sql
+   */
+  const updateApplicationStatus = async (applicationId: string, status: 'approved' | 'rejected') => {
+    const { data, error: updateError } = await supabase
+      .from('event_applications')
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq('id', applicationId)
+      .select('id');
+    if (updateError) throw updateError;
+    if (!data || data.length === 0) {
+      throw new Error('申請を更新できませんでした（権限の設定を確認してください）');
+    }
+  };
 
   useEffect(() => {
     fetchApplications();
@@ -88,6 +113,7 @@ export function useEventApplications() {
         `
         )
         .eq('posts_events.host_user_id', user.id)
+        .neq('posts_events.status', 'cancelled') // 中止したイベントへの申請は出さない
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
@@ -146,32 +172,17 @@ export function useEventApplications() {
       if (existingParticipant) {
         console.log('⚠️ User already participant, updating status only');
         // 既に参加している場合は、申請のstatusだけ更新
-        const { error: updateError } = await supabase
-          .from('event_applications')
-          .update({ status: 'approved', updated_at: new Date().toISOString() })
-          .eq('id', applicationId);
-
-        if (updateError) {
-          console.error('❌ Update error (existing):', updateError);
-          throw updateError;
-        }
+        await updateApplicationStatus(applicationId, 'approved');
 
         console.log('✅ Status updated (already participant)');
         setApplications((prev) => prev.filter((app) => app.id !== applicationId));
+        refreshCounts();
         return { success: true };
       }
 
       // statusをapprovedに更新
       console.log('📝 Updating application status to approved');
-      const { error: updateError } = await supabase
-        .from('event_applications')
-        .update({ status: 'approved', updated_at: new Date().toISOString() })
-        .eq('id', applicationId);
-
-      if (updateError) {
-        console.error('❌ Update error:', updateError);
-        throw updateError;
-      }
+      await updateApplicationStatus(applicationId, 'approved');
 
       console.log('✅ Application status updated');
 
@@ -218,6 +229,7 @@ export function useEventApplications() {
         // （ここ＝ホストの端末で予約すると、ホストに入ってしまうため）
       }
 
+      refreshCounts();
       return { success: true };
     } catch (err: any) {
       console.error('❌ Approve application error:', err);
@@ -228,12 +240,8 @@ export function useEventApplications() {
   async function rejectApplication(applicationId: string) {
     try {
       // statusをrejectedに更新
-      const { error } = await supabase
-        .from('event_applications')
-        .update({ status: 'rejected', updated_at: new Date().toISOString() })
-        .eq('id', applicationId);
-
-      if (error) throw error;
+      await updateApplicationStatus(applicationId, 'rejected');
+      refreshCounts();
 
       // 一覧から削除（pending以外は表示しない）
       const application = applications.find(app => app.id === applicationId);

@@ -1,4 +1,5 @@
 import { HomeWeatherCard } from '@/components/home/HomeWeatherCard';
+import { RecommendedEventRow } from '@/components/home/RecommendedEventRow';
 import { ResortPostCard } from '@/components/resort/ResortPostCard';
 import { ActionSheet } from '@/components/ui/ActionSheet';
 import { Chip } from '@/components/ui/Chip';
@@ -232,6 +233,13 @@ export default function SnowfeedScreen({ resortId: routeResortId, initialTab }: 
     setRefreshing(false);
   };
 
+  // このゲレンデでイベントを作る（作成画面のゲレンデを選んだ状態で開く）
+  const openCreateEvent = () =>
+    router.navigate({
+      pathname: '/(tabs)/create',
+      params: { eventId: '', presetDate: '', presetStartTime: '', presetResortId: selected?.id ?? '', t: String(Date.now()) },
+    });
+
   const openEvents = () =>
     router.navigate({
       pathname: '/(tabs)/search',
@@ -295,17 +303,23 @@ export default function SnowfeedScreen({ resortId: routeResortId, initialTab }: 
           onPress={() => setSwitcherOpen(true)}
           style={styles.titleButton}
           accessibilityRole="button"
-          accessibilityLabel={`${selected.name}, ${t('resortPage.switchTitle')}`}
+          accessibilityLabel={`${isHome ? `${t('homeFeed.homeResort')} ` : ''}${selected.name}, ${t('resortPage.switchTitle')}`}
           testID="resort-switcher"
         >
-          <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
-            {selected.name}
-          </Text>
-          {isHome ? <Chip label={t('chips.home')} tone="tint" /> : null}
-          <Ionicons name="chevron-down" size={18} color={c.text} />
+          {/* ホームゲレンデのときは名前の上に小さく添える（名前の横のチップだと名前が短く切れるため） */}
+          {isHome ? (
+            <Text style={[styles.homeOverline, { color: c.tintText }]} numberOfLines={1}>
+              {t('homeFeed.homeResort')}
+            </Text>
+          ) : null}
+          <View style={styles.titleRow}>
+            <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
+              {selected.name}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color={c.text} />
+          </View>
         </Pressable>
-        {/* お気に入りの ♡ はゲレンデの一覧（切り替え）の名前の横に置く */}
-        <View style={styles.iconButton} />
+        {/* 右端まで名前に使う（お気に入りの ♡ はゲレンデの一覧の名前の横） */}
       </View>
 
       <ScrollView
@@ -350,28 +364,55 @@ export default function SnowfeedScreen({ resortId: routeResortId, initialTab }: 
             <View style={[styles.unavailable, { backgroundColor: c.card }]}>
               <Ionicons name="cloud-offline-outline" size={24} color={c.textLabel} />
               <Text style={[styles.emptyText, { color: c.chipText }]}>{t('homeFeed.weatherUnavailable')}</Text>
+              <PillButton title={t('common.retry')} icon="refresh" variant="secondary" onPress={handleRefresh} />
             </View>
           )}
         </View>
 
-        {/* このゲレンデのイベント */}
-        <Pressable
-          onPress={openEvents}
-          style={({ pressed }) => [styles.eventsBanner, { backgroundColor: c.card }, pressed && { opacity: 0.85 }]}
-          accessibilityRole="button"
-          testID="resort-events-banner"
-        >
-          <View style={[styles.eventsIcon, { backgroundColor: c.tintChipBackground }]}>
-            <Ionicons name="people" size={20} color={c.tintText} />
+        {/* このゲレンデのこれからのイベント（近い順に3件。続きは「さがす」で） */}
+        <View style={styles.eventsSection} testID="resort-events">
+          <View style={styles.eventsHeader}>
+            <View style={styles.flex}>
+              <Text style={[styles.bannerTitle, { color: c.text }]} accessibilityRole="header">
+                {t('resortPage.eventsBannerTitle')}
+              </Text>
+              {page.upcomingEvents.total > 0 ? (
+                <Text style={[styles.bannerSub, { color: c.chipText }]}>
+                  {t('resortPage.upcomingCounts', { total: page.upcomingEvents.total, solo: page.upcomingEvents.solo })}
+                </Text>
+              ) : null}
+            </View>
+            {page.upcomingEvents.total > 0 ? (
+              <Pressable onPress={openEvents} style={styles.seeAll} accessibilityRole="link" testID="resort-events-see-all">
+                <Text style={[styles.seeAllText, { color: c.tintText }]}>{t('resortPage.seeAllEvents')}</Text>
+                <Ionicons name="chevron-forward" size={14} color={c.tintText} />
+              </Pressable>
+            ) : null}
           </View>
-          <View style={styles.flex}>
-            <Text style={[styles.bannerTitle, { color: c.text }]}>{t('resortPage.eventsBannerTitle')}</Text>
-            <Text style={[styles.bannerSub, { color: c.chipText }]}>
-              {t('resortPage.eventsBannerCounts', { weekend: page.eventCounts.weekend, solo: page.eventCounts.solo })}
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={18} color={c.textLabel} />
-        </Pressable>
+
+          {page.upcomingLoading ? (
+            <ActivityIndicator color={c.tint} style={{ marginVertical: spacing.sm }} />
+          ) : page.upcomingEvents.events.length > 0 ? (
+            <View style={styles.eventsList}>
+              {page.upcomingEvents.events.map((ev) => (
+                <RecommendedEventRow
+                  key={ev.id}
+                  event={ev}
+                  matchedStyles={[]}
+                  onPress={() => router.push({ pathname: '/event-detail', params: { eventId: ev.id } })}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={[styles.eventsEmpty, { backgroundColor: c.card }]}>
+              <Text style={[styles.bannerSub, { color: c.chipText }]}>{t('resortPage.upcomingEmpty')}</Text>
+              <Pressable onPress={openCreateEvent} style={styles.seeAll} accessibilityRole="button" testID="resort-events-create">
+                <Text style={[styles.seeAllText, { color: c.tintText }]}>{t('resortPage.createEventHere')}</Text>
+                <Ionicons name="chevron-forward" size={14} color={c.tintText} />
+              </Pressable>
+            </View>
+          )}
+        </View>
 
         {/* ページ内タブ */}
         <View style={[styles.tabs, { borderBottomColor: c.divider }]} accessibilityRole="tablist">
@@ -578,7 +619,8 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.sm,
+    paddingLeft: spacing.sm,
+    paddingRight: spacing.md,
     paddingBottom: 6,
     gap: 4,
   },
@@ -591,9 +633,17 @@ const styles = StyleSheet.create({
   titleButton: {
     flex: 1,
     minHeight: touchTarget.min,
+    justifyContent: 'center',
+  },
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
+  },
+  homeOverline: {
+    fontSize: 11,
+    fontWeight: fontWeight.bold,
+    letterSpacing: 0.5,
   },
   title: {
     flexShrink: 1,
@@ -620,22 +670,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  eventsBanner: {
+  eventsSection: {
     marginHorizontal: spacing.md,
     marginBottom: spacing.md,
-    borderRadius: borderRadius.card,
-    padding: 12,
+    gap: spacing.sm,
+  },
+  eventsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.md - 4,
-    minHeight: touchTarget.min + 12,
+    gap: spacing.sm,
   },
-  eventsIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  eventsList: {
+    gap: spacing.sm,
+  },
+  eventsEmpty: {
+    borderRadius: borderRadius.card,
+    paddingHorizontal: 12,
+    paddingVertical: spacing.sm,
+    gap: 2,
+  },
+  seeAll: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    alignSelf: 'flex-start',
+    gap: 2,
+    minHeight: touchTarget.min,
+  },
+  seeAllText: {
+    fontSize: 13,
+    fontWeight: fontWeight.semibold,
   },
   bannerTitle: {
     fontSize: 14,

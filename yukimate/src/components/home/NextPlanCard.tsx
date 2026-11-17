@@ -1,10 +1,12 @@
 import { PillButton } from '@/components/ui/PillButton';
 import { borderRadius, fontWeight, spacing } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { NextPlan } from '@/hooks/useHomeFeed';
 import { useTranslation } from '@/hooks/useTranslation';
 import { daysUntil, formatEventDate } from '@/utils/formatEventDate';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -35,6 +37,7 @@ export function useDaysLabel() {
 export function NextPlanCard({ plan, onOpenChat, onOpenDetail, onOpenMyEvents }: NextPlanCardProps) {
   const c = useAppColors();
   const { t } = useTranslation();
+  const isDark = useColorScheme() === 'dark';
   const daysLabel = useDaysLabel()(plan.startAt);
 
   const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }[] = [
@@ -50,7 +53,10 @@ export function NextPlanCard({ plan, onOpenChat, onOpenDetail, onOpenMyEvents }:
   ];
 
   return (
-    <View style={[styles.card, { backgroundColor: c.card, borderColor: c.tintText }]}>
+    // 天気カード（HomeWeatherCard）と同じガラス調：後ろの山の背景が透けて見える
+    <View style={[styles.card, { borderColor: c.glassCardBorder }]}>
+      <BlurView intensity={isDark ? 40 : 60} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: c.glassCardBackground }]} />
       <View>
         <View style={styles.topRow}>
           <Text style={[styles.kicker, { color: c.tintText }]}>{t('homeFeed.slideNextPlan')}</Text>
@@ -64,9 +70,9 @@ export function NextPlanCard({ plan, onOpenChat, onOpenDetail, onOpenMyEvents }:
         <View style={styles.rows}>
           {rows.map((row) => (
             <View key={row.label} style={styles.row}>
-              <Ionicons name={row.icon} size={16} color={c.textLabel} />
-              <Text style={[styles.rowText, { color: c.chipText }]} numberOfLines={1}>
-                <Text style={{ color: c.textLabel }}>{row.label}</Text>
+              <Ionicons name={row.icon} size={16} color={c.textMuted} />
+              <Text style={[styles.rowText, { color: c.text }]} numberOfLines={1}>
+                <Text style={{ color: c.textMuted }}>{row.label}</Text>
                 {'　'}
                 {row.value}
               </Text>
@@ -122,6 +128,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 20,
     borderWidth: 1.5,
+    overflow: 'hidden',
     padding: spacing.md,
     justifyContent: 'space-between',
     gap: spacing.md - 2,

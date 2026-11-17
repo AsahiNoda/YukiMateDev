@@ -205,7 +205,9 @@ const styles = StyleSheet.create({
     gap: 3,
     minHeight: touchTarget.min + 4,
   },
+  // 幅を固定して、バッジをアイコンの右上の角に合わせる（幅が無いと % 指定の位置がずれる）
   iconWrap: {
+    minWidth: 32,
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
@@ -222,9 +224,8 @@ const styles = StyleSheet.create({
   },
   badge: {
     position: 'absolute',
-    top: 0,
-    left: '50%',
-    marginLeft: 8,
+    top: -1,
+    right: -6,
     minWidth: 16,
     height: 16,
     borderRadius: 8,

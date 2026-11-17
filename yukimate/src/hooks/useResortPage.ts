@@ -1,11 +1,11 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { fetch7DayForecast, fetchHourlyWeather } from '@/services/weatherApi';
-import { getDateRange } from '@/utils/dateRanges';
+import { fetch7DayForecast, fetchHourlyWeather, requireWeather } from '@/services/weatherApi';
 import { getResortName } from '@/utils/resort-helpers';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { useTranslation } from './useTranslation';
+import { EVENT_FIELDS, toSummary, type HomeEventSummary } from './useHomeFeed';
 
 /**
  * ゲレンデページ（旧 Snowfeed）で使うデータ。投稿・評価・現在の天気は useSnowfeed、
@@ -42,18 +42,40 @@ async function fetchResortMeta(resortId: string) {
   };
 }
 
-async function fetchEventCounts(resortId: string) {
-  const range = getDateRange('thisWeekend');
-  const base = () =>
+/** ゲレンデページに出すイベントの数（先頭から） */
+export const RESORT_EVENTS_PREVIEW = 3;
+
+/**
+ * このゲレンデのこれからのイベント（開始が今以降・募集中）。
+ * 以前は「今週末（土日）」だけを数えていたため、平日のイベントが出なかった。
+ */
+async function fetchUpcomingEvents(resortId: string, locale: string) {
+  const nowIso = new Date().toISOString();
+  const count = () =>
     supabase
       .from('posts_events')
       .select('id', { count: 'exact', head: true })
       .eq('resort_id', resortId)
       .eq('status', 'open')
-      .gte('start_at', range.start)
-      .lte('start_at', range.end);
-  const [weekend, solo] = await Promise.all([base(), base().eq('solo_ok', true)]);
-  return { weekend: weekend.count ?? 0, solo: solo.error ? 0 : solo.count ?? 0 };
+      .gte('start_at', nowIso);
+  const [listRes, totalRes, soloRes] = await Promise.all([
+    supabase
+      .from('posts_events')
+      .select(EVENT_FIELDS)
+      .eq('resort_id', resortId)
+      .eq('status', 'open')
+      .gte('start_at', nowIso)
+      .order('start_at', { ascending: true })
+      .limit(RESORT_EVENTS_PREVIEW),
+    count(),
+    count().eq('solo_ok', true),
+  ]);
+  if (listRes.error) throw listRes.error;
+  return {
+    events: (listRes.data || []).map((e) => toSummary(e, locale)) as HomeEventSummary[],
+    total: totalRes.count ?? 0,
+    solo: soloRes.error ? 0 : soloRes.count ?? 0,
+  };
 }
 
 async function fetchMyHelpful(userId: string, postIds: string[]): Promise<string[]> {
@@ -89,9 +111,11 @@ export function useResortPage(resortId: string | null, resortName: string | null
 
   const hourly = useQuery({
     queryKey: ['resortPage', 'hourly', resortId],
-    queryFn: () => fetchHourlyWeather(meta.data?.coords, meta.data?.area ?? undefined),
+    queryFn: async () =>
+      requireWeather(await fetchHourlyWeather(meta.data?.coords, meta.data?.area ?? undefined), 'hourly'),
     enabled: !!resortId && meta.isSuccess,
     staleTime: 1000 * 60 * 15,
+    retry: 2,
   });
 
   const forecast = useQuery({
@@ -101,9 +125,9 @@ export function useResortPage(resortId: string | null, resortName: string | null
     staleTime: 1000 * 60 * 30,
   });
 
-  const eventCounts = useQuery({
-    queryKey: ['resortPage', 'eventCounts', resortId],
-    queryFn: () => fetchEventCounts(resortId!),
+  const upcoming = useQuery({
+    queryKey: ['resortPage', 'upcomingEvents', resortId, locale],
+    queryFn: () => fetchUpcomingEvents(resortId!, locale),
     enabled: !!resortId,
     staleTime: 1000 * 60 * 2,
   });
@@ -152,7 +176,8 @@ export function useResortPage(resortId: string | null, resortName: string | null
     hourly: hourly.data ?? null,
     forecast: forecast.data ?? [],
     forecastLoading: forecast.isPending && !!resortId,
-    eventCounts: eventCounts.data ?? { weekend: 0, solo: 0 },
+    upcomingEvents: upcoming.data ?? { events: [], total: 0, solo: 0 },
+    upcomingLoading: upcoming.isPending && !!resortId,
     myHelpful: new Set(myHelpful.data ?? []),
     toggleHelpful,
   };

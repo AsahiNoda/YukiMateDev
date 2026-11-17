@@ -34,6 +34,7 @@ export async function checkPendingEventActions(
                 .from('posts_events')
                 .select('id, start_at, host_user_id')
                 .eq('host_user_id', userId)
+                .neq('status', 'cancelled') // 中止したイベントは「評価タイム」を出さない
                 .lte('start_at', sixHoursAgo),
             supabase
                 .from('event_participants')
@@ -49,6 +50,7 @@ export async function checkPendingEventActions(
                 )
                 .eq('user_id', userId)
                 .is('left_at', null)
+                .neq('posts_events.status', 'cancelled')
                 .lte('posts_events.start_at', sixHoursAgo),
         ]);
 

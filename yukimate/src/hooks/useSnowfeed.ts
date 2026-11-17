@@ -100,12 +100,14 @@ export function useSnowfeed(resortId: string | null, refreshKey?: number): Snowf
         // areaは常に使用（天気APIは日本語の県名が必要）
         const resortPrefecture = resortData?.area;
 
-        // 2.5. DBに天気データがない、または古い場合、APIから取得
+        // 2.5. 天気は毎回 API から取る（ホームと同じ URL なので、15分以内ならメモリのキャッシュを共有して通信しない）。
+        //      以前は「今日の行が DB にあれば API を呼ばない」だったため、DB の値（0℃ が null になる等）で
+        //      天気が出ないことがあった。DB は API に届かないときの予備（今日の行だけ）にする
         let apiWeatherData = null;
         const today = new Date().toISOString().split('T')[0];
-        const isDataStale = !weatherData || weatherData.date !== today;
+        const todaysCache = weatherData && weatherData.date === today ? weatherData : null;
 
-        if (isDataStale) {
+        {
           try {
             // リゾート名、座標、都道府県を使用して天気データを取得
             apiWeatherData = await fetchWeatherData(resortName, resortCoords, resortPrefecture ?? undefined);
@@ -186,15 +188,16 @@ export function useSnowfeed(resortId: string | null, refreshKey?: number): Snowf
               snowQuality: apiWeatherData.snowQuality,
               weatherCode: apiWeatherData.weatherCode,
             }
-          : weatherData
+          : todaysCache
           ? {
-              tempC: weatherData.temp_c ? Number(weatherData.temp_c) : null,
-              newSnowCm: weatherData.new_snow_cm ? Number(weatherData.new_snow_cm) : null,
-              baseDepthCm: weatherData.base_depth_cm ? Number(weatherData.base_depth_cm) : null,
-              windMs: weatherData.wind_ms ? Number(weatherData.wind_ms) : null,
-              visibility: weatherData.visibility as SnowfeedWeather['visibility'],
-              snowQuality: weatherData.snow_quality as SnowfeedWeather['snowQuality'],
-              weatherCode: weatherData.weather_code ? Number(weatherData.weather_code) : null,
+              // 0（0℃・無風・快晴のコード0）を「無い」にしないよう null だけを判定する
+              tempC: todaysCache.temp_c != null ? Number(todaysCache.temp_c) : null,
+              newSnowCm: todaysCache.new_snow_cm != null ? Number(todaysCache.new_snow_cm) : null,
+              baseDepthCm: todaysCache.base_depth_cm != null ? Number(todaysCache.base_depth_cm) : null,
+              windMs: todaysCache.wind_ms != null ? Number(todaysCache.wind_ms) : null,
+              visibility: todaysCache.visibility as SnowfeedWeather['visibility'],
+              snowQuality: todaysCache.snow_quality as SnowfeedWeather['snowQuality'],
+              weatherCode: todaysCache.weather_code != null ? Number(todaysCache.weather_code) : null,
             }
           : null;
 

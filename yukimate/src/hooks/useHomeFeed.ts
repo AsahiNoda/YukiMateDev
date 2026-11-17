@@ -1,7 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import type { FavoriteResortInfo } from '@/hooks/useHomeData';
 import { supabase } from '@/lib/supabase';
-import { fetchDailySnowfall, fetchHourlyWeather } from '@/services/weatherApi';
+import { fetchDailySnowfall, fetchHourlyWeather, requireWeather } from '@/services/weatherApi';
 import { getDateRange } from '@/utils/dateRanges';
 import { getResortName } from '@/utils/resort-helpers';
 import { useQuery } from '@tanstack/react-query';
@@ -53,7 +53,7 @@ export interface Recommended {
 const toPublicUrl = (bucket: string, path: string) =>
   path.startsWith('http') ? path : supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 
-const EVENT_FIELDS = `
+export const EVENT_FIELDS = `
   id,
   title,
   start_at,
@@ -69,7 +69,7 @@ const EVENT_FIELDS = `
   event_participants(user_id, left_at)
 `;
 
-function toSummary(e: any, locale: string): HomeEventSummary {
+export function toSummary(e: any, locale: string): HomeEventSummary {
   const resort = Array.isArray(e.resorts) ? e.resorts[0] : e.resorts;
   const profile = Array.isArray(e.profiles) ? e.profiles[0] : e.profiles;
   const users = Array.isArray(profile?.users) ? profile.users[0] : profile?.users;
@@ -261,16 +261,18 @@ export function useHomeFeed(resort: FavoriteResortInfo | null) {
 
   const hourly = useQuery({
     queryKey: ['home', 'hourly', resortId],
-    queryFn: () => fetchHourlyWeather(coords, resort?.area ?? undefined),
+    queryFn: async () => requireWeather(await fetchHourlyWeather(coords, resort?.area ?? undefined), 'hourly'),
     enabled: !!resortId,
     staleTime: 1000 * 60 * 15,
+    retry: 2,
   });
 
   const dailySnow = useQuery({
     queryKey: ['home', 'dailySnow', resortId],
-    queryFn: () => fetchDailySnowfall(coords, resort?.area ?? undefined),
+    queryFn: async () => requireWeather(await fetchDailySnowfall(coords, resort?.area ?? undefined), 'daily'),
     enabled: !!resortId,
     staleTime: 1000 * 60 * 30,
+    retry: 2,
   });
 
   const nextPlan = useQuery({

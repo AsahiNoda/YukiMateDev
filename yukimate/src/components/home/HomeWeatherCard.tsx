@@ -29,6 +29,11 @@ interface HomeWeatherCardProps {
   onPressMore?: () => void;
   /** 上の行の見出し。省略時はゲレンデ名（ゲレンデページでは「現在のコンディション」） */
   title?: string;
+  /**
+   * カードの後ろに山の絵を出す（ゲレンデページ）。
+   * ホームでは山の絵は画面の背景として HomeScreen 側で描く（横スライダーの中だと切れるため）ので false。
+   */
+  showMountain?: boolean;
 }
 
 const VISIBILITY_KEYS: Record<string, string> = {
@@ -44,7 +49,7 @@ const CARD_RADIUS = 20;
  * 山の背景＋ガラス調のカードは引き継ぎ、赤い「LIVE」は「● 8:00 更新」に置き換えた。
  * TODO(ui-redesign 8章)：リフト運行の行は、データソースが決まったら時間ごとの行の下に足す。
  */
-export function HomeWeatherCard({ weather, columns, onPressMore, title }: HomeWeatherCardProps) {
+export function HomeWeatherCard({ weather, columns, onPressMore, title, showMountain = true }: HomeWeatherCardProps) {
   const c = useAppColors();
   const scheme = useColorScheme();
   const { t } = useTranslation();
@@ -58,9 +63,11 @@ export function HomeWeatherCard({ weather, columns, onPressMore, title }: HomeWe
   return (
     <View style={styles.wrapper}>
       {/* 山の背景（カードからはみ出す） */}
-      <View style={styles.mountain} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        <HomeBgMountain width={Dimensions.get('window').width} height={300} preserveAspectRatio="xMidYMid meet" style={{ opacity: 0.6 }} />
-      </View>
+      {showMountain ? (
+        <View style={styles.mountain} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <HomeBgMountain width={Dimensions.get('window').width} height={300} preserveAspectRatio="xMidYMid meet" style={{ opacity: 0.6 }} />
+        </View>
+      ) : null}
 
       <View style={[styles.card, { borderColor: c.glassCardBorder }]}>
         <BlurView intensity={isDark ? 40 : 60} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />

@@ -40,6 +40,9 @@ const CATEGORIES = ['event', 'lesson', 'filming', 'group'] as const;
 const LEVELS = ['beginner', 'intermediate', 'advanced'] as const;
 type LevelFilter = (typeof LEVELS)[number];
 
+/** 検索欄・絞り込みの列・件数と並び替えの列の間隔（どこも同じにする） */
+const SECTION_GAP = 14;
+
 const SORT_OPTIONS = [
   { key: 'date', labelKey: 'explore.sortDateAsc' },
   { key: 'popular', labelKey: 'explore.sortPopular' },
@@ -518,7 +521,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     // backgroundColor is set dynamically in the component
     marginHorizontal: spacing.md,
-    marginBottom: 10,
+    marginBottom: SECTION_GAP,
     paddingHorizontal: 12,
     minHeight: 44,
     borderRadius: 12,
@@ -585,21 +588,25 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 150,
   },
+  // 検索欄・絞り込み・件数と並び替えの間は同じ間隔（SECTION_GAP）。
+  // 横スクロールの contentContainer に付けた margin は Android で高さに入らないので、外側に付ける
+  // ScrollView は既定で縮む（flexShrink: 1）ので、下のリストに押されてチップが潰れ・重ならないよう縮ませない
   filterScroll: {
     flexGrow: 0,
+    flexShrink: 0,
+    marginBottom: SECTION_GAP,
   },
   filterRow: {
     gap: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: 5,
-    marginBottom: 7,
+    alignItems: 'center',
   },
   countRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
-    marginBottom: 10,
+    marginBottom: SECTION_GAP,
   },
   countLeft: {
     flexDirection: 'row',

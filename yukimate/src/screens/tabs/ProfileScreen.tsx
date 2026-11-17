@@ -32,6 +32,9 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
+/** プロフィールのアイコンの直径（リングを含む） */
+const AVATAR_SIZE = 120;
+
 const { width } = Dimensions.get('window');
 
 const POST_GRID_SIZE = (width - 40 - 8) / 3; // padding 20*2, gaps
@@ -372,7 +375,7 @@ function ProfileScreen({ userId }: { userId?: string }) {
         {headerUrl ? (
           <>
             <Image source={{ uri: headerUrl }} style={styles.headerImage} />
-            {/* Gradient overlay for blur effect at bottom */}
+            {/* 下端を背景色へぼかす */}
             <LinearGradient
               colors={
                 colorScheme === 'dark'
@@ -407,15 +410,12 @@ function ProfileScreen({ userId }: { userId?: string }) {
               <TouchableOpacity
                 style={[styles.settingsPillButton, { backgroundColor: colors.photoOverlayBackground }]}
                 onPress={() => router.push('/settings')}
-                hitSlop={{ top: 2, bottom: 2 }}
+                hitSlop={{ top: 2, bottom: 2, left: 2, right: 2 }}
                 accessibilityRole="button"
                 accessibilityLabel={t('actions.settings')}
                 testID="profile-settings-button"
               >
-                <Ionicons name="settings-outline" size={18} color={colors.photoOverlayText} />
-                <Text style={[styles.settingsPillText, { color: colors.photoOverlayText }]}>
-                  {t('actions.settings')}
-                </Text>
+                <Ionicons name="settings-outline" size={20} color={colors.photoOverlayText} />
               </TouchableOpacity>
             </>
           ) : (
@@ -454,63 +454,61 @@ function ProfileScreen({ userId }: { userId?: string }) {
           )}
         </View>
 
-        {/* Profile Info Overlay */}
-        <View style={styles.profileInfoOverlay}>
-          {/* Avatar on the left with gradient ring */}
-          <View style={styles.avatarOuterContainer}>
-            <LinearGradient
-              colors={getAvatarGradientColors(profile.role)}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.avatarGradientRing}
-            >
-              <View style={[styles.avatarInnerContainer, { backgroundColor: colors.background }]}>
-                {avatarUrl ? (
-                  <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-                ) : (
-                  <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.backgroundSecondary }]}>
-                    <Ionicons name="person" size={40} color={colors.icon} />
-                  </View>
-                )}
-              </View>
-            </LinearGradient>
-            {/* Official Badge for developer and official roles */}
-            {(profile.role === 'developer' || profile.role === 'official') && (
-              <View style={[styles.badgeContainer, { backgroundColor: colors.background, borderColor: colors.background }]}>
-                <OfficialBadge color={getBadgeColor(profile.role)} size={24} />
-              </View>
-            )}
-          </View>
-
-          {/* User Info on the right */}
-          <View style={styles.userInfoContainer}>
-            {/* Username */}
-            <Text style={[styles.userName, { color: colors.text }]} numberOfLines={2}>
-              {profile.displayName || t('common.unknown')}
-            </Text>
-            {homeResortName ? (
-              <Text style={[styles.homeResortLine, { color: colors.textMuted }]} numberOfLines={1}>
-                {t('myPage.homeResortLabel', { resort: homeResortName })}
-              </Text>
-            ) : null}
-
-            {/* Country Flag */}
-            {profile.countryCode && (
-              <View style={styles.flagRow}>
-                <Image
-                  source={getFlagSource(profile.countryCode)}
-                  style={styles.flagImage}
-                  resizeMode="contain"
-                />
-              </View>
-            )}
-
-          </View>
-        </View>
       </View>
 
-      {/* オーバーレイを避けるためのスペーサー */}
-      <View style={{ height: 150 }} />
+      {/* アイコンと名前：ヘッダー画像の下端がアイコンを横切り、名前はその下端のすぐ下 */}
+      <View style={styles.profileInfoOverlay}>
+        {/* Avatar on the left with gradient ring */}
+        <View style={styles.avatarOuterContainer}>
+          <LinearGradient
+            colors={getAvatarGradientColors(profile.role)}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.avatarGradientRing}
+          >
+            <View style={[styles.avatarInnerContainer, { backgroundColor: colors.background }]}>
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatar, styles.avatarPlaceholder, { backgroundColor: colors.backgroundSecondary }]}>
+                  <Ionicons name="person" size={40} color={colors.icon} />
+                </View>
+              )}
+            </View>
+          </LinearGradient>
+          {/* Official Badge for developer and official roles */}
+          {(profile.role === 'developer' || profile.role === 'official') && (
+            <View style={[styles.badgeContainer, { backgroundColor: colors.background, borderColor: colors.background }]}>
+              <OfficialBadge color={getBadgeColor(profile.role)} size={24} />
+            </View>
+          )}
+        </View>
+
+        {/* User Info on the right */}
+        <View style={styles.userInfoContainer}>
+          {/* Username */}
+          <Text style={[styles.userName, { color: colors.text }]} numberOfLines={2}>
+            {profile.displayName || t('common.unknown')}
+          </Text>
+          {homeResortName ? (
+            <Text style={[styles.homeResortLine, { color: colors.textMuted }]} numberOfLines={1}>
+              {t('myPage.homeResortLabel', { resort: homeResortName })}
+            </Text>
+          ) : null}
+
+          {/* Country Flag */}
+          {profile.countryCode && (
+            <View style={styles.flagRow}>
+              <Image
+                source={getFlagSource(profile.countryCode)}
+                style={styles.flagImage}
+                resizeMode="contain"
+              />
+            </View>
+          )}
+
+        </View>
+      </View>
 
       {/* タグ：レベル・スタイル・言語（生の値の大文字化をやめ、日本語のチップに） */}
       {(profile.level || profile.styles.length > 0 || profile.languages.length > 0) && (
@@ -540,10 +538,25 @@ function ProfileScreen({ userId }: { userId?: string }) {
         {[
           { label: t('myPage.statsJoined'), value: String(profile.stats.eventsJoined) },
           { label: t('myPage.statsHosted'), value: String(profile.stats.eventsHosted) },
-          { label: t('myPage.statsWantAgain'), value: t('myPage.countUnit', { count: rating.high }) },
-        ].map((stat) => (
-          <View key={stat.label} style={styles.statItem} accessible accessibilityLabel={`${stat.label} ${stat.value}`}>
-            <Text style={[styles.statValue, { color: colors.text }]}>{stat.value}</Text>
+          // 評価：イベント後の評価タイムで付いた評価の平均と件数（★4.8（12件））
+          {
+            label: t('myPage.statsRating'),
+            value: rating.total > 0 ? rating.avgScore.toFixed(1) : '—',
+            count: rating.total > 0 ? t('myPage.ratingCount', { count: rating.total }) : undefined,
+            star: rating.total > 0,
+          },
+        ].map((stat: { label: string; value: string; count?: string; star?: boolean }) => (
+          <View
+            key={stat.label}
+            style={styles.statItem}
+            accessible
+            accessibilityLabel={`${stat.label} ${stat.value}${stat.count ?? ''}`}
+          >
+            <Text style={[styles.statValue, { color: colors.text }]}>
+              {stat.star ? <Text style={{ color: colors.gold }}>★</Text> : null}
+              {stat.value}
+              {stat.count ? <Text style={[styles.statCount, { color: colors.textLabel }]}>{stat.count}</Text> : null}
+            </Text>
             <Text style={[styles.statLabel, { color: colors.textLabel }]}>{stat.label}</Text>
           </View>
         ))}
@@ -732,17 +745,17 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  headerImagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    // backgroundColor is set dynamically in the component
-  },
   headerGradientOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     height: '50%',
+  },
+  headerImagePlaceholder: {
+    width: '100%',
+    height: '100%',
+    // backgroundColor is set dynamically in the component
   },
   headerActions: {
     position: 'absolute',
@@ -771,18 +784,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 10,
   },
+  // 設定は歯車だけの丸ボタン（文字なし。読み上げは accessibilityLabel）
   settingsPillButton: {
+    width: 40,
     height: 40,
-    paddingLeft: 10,
-    paddingRight: 14,
     borderRadius: borderRadius.pill,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-  },
-  settingsPillText: {
-    fontSize: 14,
-    fontWeight: '700',
+    justifyContent: 'center',
   },
   settingsButton: {
     position: 'absolute',
@@ -795,24 +803,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // アイコン（120）の上半分をヘッダー画像に重ねる（ヘッダーの下端がアイコンの真ん中を横切る）
   profileInfoOverlay: {
-    position: 'absolute',
-    bottom: -160,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
+    alignItems: 'flex-start',
     paddingHorizontal: 20,
-    paddingBottom: 20,
-    paddingTop: 40,
+    marginTop: -AVATAR_SIZE / 2,
+    marginBottom: 16,
   },
   avatarOuterContainer: {
     position: 'relative',
     marginRight: 16,
-    marginTop: -30,
   },
   avatarGradientRing: {
-    width: 120,
-    height: 120,
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
     borderRadius: 60,
     padding: 4,
     alignItems: 'center',
@@ -861,18 +866,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  // 名前はヘッダーの下端のすぐ下から
   userInfoContainer: {
     flex: 1,
-    justifyContent: 'flex-end',
+    paddingTop: AVATAR_SIZE / 2 + 8,
   },
   userName: {
     fontSize: 22,
     fontWeight: '700',
     // color is set dynamically in the component
     marginBottom: 2,
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
   },
   flagRow: {
     flexDirection: 'row',
@@ -944,6 +947,10 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
+  },
+  statCount: {
+    fontSize: 12,
+    fontWeight: '400',
   },
   rankBadge: {
     width: 26,

@@ -58,6 +58,7 @@ export function useMyEvents(): MyEventsHookReturn {
           event_participants(left_at)
         `)
                 .eq('host_user_id', user.id)
+                .neq('status', 'cancelled') // 中止したイベントは出さない
                 .order('start_at', { ascending: false });
 
             if (eventsError) throw eventsError;

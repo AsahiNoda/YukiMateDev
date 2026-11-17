@@ -20,7 +20,7 @@ import { getResortName } from '@/utils/resort-helpers';
 import { useHomeData } from '@hooks/useHomeData';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -33,6 +33,12 @@ import {
   Text,
   View,
 } from 'react-native';
+import HomeBgMountain from '../../../assets/images/home-bg-mountain.svg';
+
+/** ホーム背景の山の絵（viewBox 404x339）。画面幅より少し大きくして左右・上下にはみ出させる */
+const WINDOW_WIDTH = Dimensions.get('window').width;
+const MOUNTAIN_WIDTH = WINDOW_WIDTH * 1.2;
+const MOUNTAIN_HEIGHT = MOUNTAIN_WIDTH * (339.35 / 404.48);
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -51,6 +57,14 @@ export default function HomeScreen() {
   const c = useAppColors();
   const { t, locale } = useTranslation();
   const queryClient = useQueryClient();
+
+  // ホームに戻ってきたら、申請の件数（返事待ち・届いたリクエスト）を取り直す
+  useFocusEffect(
+    useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: ['pendingRequests'] });
+      queryClient.invalidateQueries({ queryKey: ['home', 'myPendingApplications'] });
+    }, [queryClient])
+  );
   const state = useHomeData();
   const resort = state.favorites.find((f) => f.id === state.selectedResortId) ?? null;
   const feed = useHomeFeed(resort);
@@ -58,7 +72,7 @@ export default function HomeScreen() {
   const daysLabel = useDaysLabel();
   const [refreshing, setRefreshing] = useState(false);
 
-  const sliderWidth = Dimensions.get('window').width - spacing.md * 2;
+  const sliderWidth = WINDOW_WIDTH - spacing.md * 2;
   const resortName = resort ? getResortName(resort, locale) : null;
 
   const columns = useMemo(() => (feed.hourly ? buildTodayColumns(feed.hourly, new Date()) : null), [feed.hourly]);
@@ -128,7 +142,19 @@ export default function HomeScreen() {
 
   // ---- 上部のスライド：1枚目＝天気、2枚目＝次の予定（参加が確定したイベントがあるときだけ） ----
   const slides: HomeSlide[] = [];
-  if (resort && !weather) {
+  if (resort && !weather && state.data.weatherLoading) {
+    // 天気を取得中（ホームの他の部分は先に表示する）
+    slides.push({
+      key: 'weather',
+      label: t('homeFeed.slideWeather'),
+      render: (height) => (
+        <View style={[styles.weatherUnavailable, { backgroundColor: c.card, minHeight: height ?? 180 }]}>
+          <ActivityIndicator color={c.tintText} />
+          <Text style={[styles.setupText, { color: c.chipText }]}>{t('home.loadingConditions')}</Text>
+        </View>
+      ),
+    });
+  } else if (resort && !weather) {
     // 天気を取得できなかったとき（オフライン・Open-Meteo の障害など）
     slides.push({
       key: 'weather',
@@ -149,6 +175,7 @@ export default function HomeScreen() {
       label: t('homeFeed.slideWeather'),
       render: () => (
         <HomeWeatherCard
+          showMountain={false}
           weather={{ ...weather, resortName: weather.resortName ?? resortName ?? '' }}
           columns={columns}
           onPressMore={() => openResortPage('forecast')}
@@ -234,6 +261,16 @@ export default function HomeScreen() {
       {/* 天気／次の予定 */}
       {slides.length > 0 ? (
         <View style={styles.sliderBlock}>
+          {/* ホーム画面の背景の山（天気カードより大きく、画面の端まで・上下にもはみ出す）。
+              横スライダーの中に置くと切れるので、スライダーの外の後ろに置く */}
+          <View style={styles.homeMountain} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <HomeBgMountain
+              width={MOUNTAIN_WIDTH}
+              height={MOUNTAIN_HEIGHT}
+              preserveAspectRatio="xMidYMid meet"
+              style={{ opacity: 0.6 }}
+            />
+          </View>
           <HomeTopSlider slides={slides} width={sliderWidth} />
         </View>
       ) : null}
@@ -468,6 +505,13 @@ const styles = StyleSheet.create({
   },
   sliderBlock: {
     marginBottom: 6,
+  },
+  homeMountain: {
+    position: 'absolute',
+    top: -MOUNTAIN_HEIGHT * 0.22,
+    left: -spacing.md - (MOUNTAIN_WIDTH - WINDOW_WIDTH) / 2,
+    width: MOUNTAIN_WIDTH,
+    height: MOUNTAIN_HEIGHT,
   },
   favWeatherLink: {
     flexDirection: 'row',

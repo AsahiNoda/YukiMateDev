@@ -1,6 +1,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { fetchWeatherData } from '@/services/weatherApi';
+import { fetchWeatherData, requireWeather } from '@/services/weatherApi';
 import { getResortName } from '@/utils/resort-helpers';
 import { mockHomeData, type HomeData } from '@data/mockHomeData';
 import { useFocusEffect } from '@react-navigation/native';
@@ -198,9 +198,12 @@ export function useHomeData(): HomeDataResult {
         resort!.latitude && resort!.longitude
           ? { latitude: resort!.latitude, longitude: resort!.longitude }
           : undefined;
-      return (await fetchWeatherData(resort!.id, coordinates, resort!.area ?? undefined)) ?? null;
+      // 取れなかったら例外にして取り直す（null を15分キャッシュして「取得できません」が続くのを防ぐ）
+      return requireWeather(await fetchWeatherData(resort!.id, coordinates, resort!.area ?? undefined), 'current');
     },
     enabled: !!resort,
+    retry: 2,
+    retryDelay: (n) => Math.min(1500 * 2 ** n, 6000),
     staleTime: 1000 * 60 * 15,
     gcTime: 1000 * 60 * 60,
     // リゾート切り替え中は前の天気を表示し続ける
@@ -222,8 +225,9 @@ export function useHomeData(): HomeDataResult {
   // 初回のみローディング表示（お気に入り → 天気 の確定まで待ち、
   // 天気未取得の状態で「お気に入り未設定」カードが一瞬出るのを防ぐ）
   const favoritesPending = userId ? favoritesQuery.isPending : authLoading;
-  const weatherPending = !!resort && weatherQuery.isPending;
-  if (!feedQuery.data || favoritesPending || weatherPending) {
+  // 天気の取得（取り直しを含む）でホーム全体を待たせない。天気のスライドだけ「読み込み中」にする
+  const weatherLoading = !!resort && weatherQuery.isPending;
+  if (!feedQuery.data || favoritesPending) {
     return { status: 'loading', data: null, ...base };
   }
 
@@ -250,6 +254,7 @@ export function useHomeData(): HomeDataResult {
     status: 'success',
     data: {
       weather: resort ? (weatherData as any) : null, // お気に入り未設定の場合はnull
+      weatherLoading,
       recommendedEvents: featuredEvents as any,
       suggestedEvents: [],
       trendingPosts: trendingPosts.length > 0 ? (trendingPosts as any) : mockHomeData.trendingPosts,

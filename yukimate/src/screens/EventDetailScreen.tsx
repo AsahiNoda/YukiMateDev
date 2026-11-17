@@ -66,6 +66,8 @@ interface EventDetail {
   hostLevel: string | null;
   hostRole: string;
   isHost: boolean;
+  /** 主催者が中止した（status = cancelled） */
+  isCancelled: boolean;
   hasApplied: boolean;
   applicationStatus: string | null;
   isHostStarred?: boolean;
@@ -86,6 +88,16 @@ function createStyles(colors: typeof Colors.light) {
       paddingBottom: 8,
       backgroundColor: colors.background,
       zIndex: 10,
+    },
+    cancelledNotice: {
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      marginBottom: 12,
+    },
+    cancelledText: {
+      fontSize: 14,
+      fontWeight: '700',
     },
     activityRow: {
       flexDirection: 'row',
@@ -478,6 +490,7 @@ export default function EventDetailScreen() {
           activities,
           photos,
           type,
+          status,
           host_user_id,
           resorts(id, name, name_en),
           profiles(
@@ -609,6 +622,7 @@ export default function EventDetailScreen() {
         hostLevel: eventData.profiles?.level || null,
         hostRole: eventData.profiles?.users?.role || 'user',
         isHost: eventData.host_user_id === session.user.id,
+        isCancelled: (eventData as any).status === 'cancelled',
         hasApplied: !!participation, // 参加中（left_atがnull）の場合にtrue
         applicationStatus: application?.status || null,
         isHostStarred: starredUserIds.includes(eventData.host_user_id),
@@ -925,6 +939,11 @@ export default function EventDetailScreen() {
         {/* コンテンツカード */}
         <View style={[styles.contentCard, { backgroundColor: colors.background }]}>
           {/* タイトル */}
+          {event.isCancelled ? (
+            <View style={[styles.cancelledNotice, { backgroundColor: colors.backgroundSecondary }]} accessibilityRole="alert">
+              <Text style={[styles.cancelledText, { color: colors.text }]}>{t('eventDetail.cancelledNotice')}</Text>
+            </View>
+          ) : null}
           <Text style={[styles.title, { color: colors.text }]}>{event.title}</Text>
 
           {/* アクティビティ */}
@@ -1136,8 +1155,8 @@ export default function EventDetailScreen() {
           </View>
         </TouchableOpacity>
 
-        {/* アクションボタン */}
-        {event.isHost ? (
+        {/* アクションボタン（中止したイベントは申請・編集できない） */}
+        {event.isCancelled ? null : event.isHost ? (
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => {

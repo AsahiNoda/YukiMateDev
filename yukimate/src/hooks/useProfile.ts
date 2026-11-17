@@ -22,7 +22,6 @@ async function fetchProfileData(targetUserId: string): Promise<ProfileData> {
     profileRes,
     favRes,
     gearRes,
-    eventsResult,
     postsResult,
     starsResult,
     hostedRes,
@@ -58,22 +57,23 @@ async function fetchProfileData(targetUserId: string): Promise<ProfileData> {
       .select('board_name, binding_name, boots_name, others')
       .eq('user_id', targetUserId)
       .maybeSingle(),
-    // 3. 統計情報
-    supabase
-      .from('event_participants')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', targetUserId)
-      .is('left_at', null),
+    // 3. 統計情報（参加数は下の参加イベントから数える）
     supabase.from('feed_posts').select('id', { count: 'exact', head: true }).eq('user_id', targetUserId),
     supabase.from('stars').select('id', { count: 'exact', head: true }).eq('target_user_id', targetUserId),
     // 3.5 主催イベント（よく行くゲレンデ集計用）
-    supabase.from('posts_events').select('id, resort_id, resorts(name)').eq('host_user_id', targetUserId),
+    // 中止（cancelled）したものは数えない
+    supabase
+      .from('posts_events')
+      .select('id, resort_id, resorts(name)')
+      .eq('host_user_id', targetUserId)
+      .neq('status', 'cancelled'),
     // 3.5 + 4. 参加イベント（よく行くゲレンデ集計 + 最近のイベント を1クエリで兼用）
     supabase
       .from('event_participants')
-      .select('joined_at, posts_events!inner(id, title, start_at, resort_id, resorts(name))')
+      // left_at では絞らない：イベント後の「評価タイム」で全員 left_at が入るため、
+      // left_at が null のものだけ数えると、終わったイベントが参加数から消えていた（下で絞る）
+      .select('joined_at, left_at, posts_events!inner(id, title, start_at, resort_id, status, resorts(name))')
       .eq('user_id', targetUserId)
-      .is('left_at', null)
       .order('joined_at', { ascending: false }),
     // 5. 最近の投稿
     supabase
@@ -117,7 +117,15 @@ async function fetchProfileData(targetUserId: string): Promise<ProfileData> {
     if (e?.id) eventResortById.set(e.id, e.resort_id ?? null);
     rememberResort(e?.resort_id, e?.resorts);
   });
-  const participatedRows = (participatedRes.data || []) as any[];
+  // 参加した（する）イベント：
+  //  - 今も参加中（left_at なし）、または開始後に抜けた（＝最後まで参加して評価タイムで抜けた）もの
+  //  - 開始前に退会した・主催者に外された（left_at が開始より前）ものと、中止になったものは除く
+  const participatedRows = ((participatedRes.data || []) as any[]).filter((row: any) => {
+    const e = Array.isArray(row.posts_events) ? row.posts_events[0] : row.posts_events;
+    if (!e || e.status === 'cancelled') return false;
+    if (!row.left_at) return true;
+    return new Date(row.left_at).getTime() >= new Date(e.start_at).getTime();
+  });
   participatedRows.forEach((row: any) => {
     const e = row.posts_events;
     if (e?.id) eventResortById.set(e.id, e.resort_id ?? null);
@@ -180,7 +188,7 @@ async function fetchProfileData(targetUserId: string): Promise<ProfileData> {
         }
       : null,
     stats: {
-      eventsJoined: eventsResult.count || 0,
+      eventsJoined: participatedRows.length,
       eventsHosted: (hostedRes.data || []).length,
       postsCount: postsResult.count || 0,
       starsReceived: starsResult.count || 0,

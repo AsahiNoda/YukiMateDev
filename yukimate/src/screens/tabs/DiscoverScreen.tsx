@@ -38,6 +38,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+/** これより横に長い写真は「横長」として全体を見せる（幅÷高さ） */
+const LANDSCAPE_ASPECT = 1.1;
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = 100;
 const SWIPE_VELOCITY = 800;
@@ -287,6 +290,9 @@ const SwipeableCard = forwardRef<SwipeableCardHandle, SwipeableCardProps>(functi
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const [imageIndex, setImageIndex] = useState(0);
+  // 写真の縦横比（幅÷高さ）。横長なら全体を見せる（後ろにぼかした同じ写真）、縦長・正方形はカードいっぱいに
+  const [photoAspect, setPhotoAspect] = useState<Record<number, number>>({});
+  const isLandscape = (photoAspect[imageIndex] ?? 0) > LANDSCAPE_ASPECT;
   const photos = event.photoUrls.length > 0 ? event.photoUrls : event.photoUrl ? [event.photoUrl] : [];
   const hasMultiplePhotos = photos.length > 1;
 
@@ -352,7 +358,32 @@ const SwipeableCard = forwardRef<SwipeableCardHandle, SwipeableCardProps>(functi
         {/* 写真（複数枚は左右タップで切り替え） */}
         <View style={styles.photo}>
           {photos.length > 0 ? (
-            <Image source={{ uri: photos[imageIndex] }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            <>
+              {isLandscape ? (
+                // 横長：ぼかした同じ写真で余白を埋め、写真そのものは切らずに全体を見せる
+                <Image
+                  source={{ uri: photos[imageIndex] }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  blurRadius={24}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
+              ) : null}
+              <Image
+                source={{ uri: photos[imageIndex] }}
+                style={StyleSheet.absoluteFill}
+                contentFit={isLandscape ? 'contain' : 'cover'}
+                contentPosition="center"
+                onLoad={(e) => {
+                  const { width, height } = e.source;
+                  if (width > 0 && height > 0) {
+                    const index = imageIndex;
+                    setPhotoAspect((prev) => (prev[index] ? prev : { ...prev, [index]: width / height }));
+                  }
+                }}
+              />
+            </>
           ) : (
             <View style={[StyleSheet.absoluteFill, styles.photoPlaceholder, { backgroundColor: c.chipBackground }]}>
               <IconSymbol name="photo" size={40} color={c.textLabel} />
@@ -517,10 +548,10 @@ const styles = StyleSheet.create({
     top: 10,
     opacity: 0.6,
   },
+  // 写真は本文の残りをすべて使う（縦長の写真が基本。上限を付けると余白が出る）
   photo: {
     flex: 1,
     minHeight: 160,
-    maxHeight: 300,
   },
   photoPlaceholder: {
     alignItems: 'center',

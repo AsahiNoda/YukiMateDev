@@ -2,6 +2,8 @@ import type { WeatherSummary, HomeEvent, SimplePost } from '@types';
 
 export type HomeData = {
   weather: WeatherSummary | null;
+  /** 天気を取得中（取り直しを含む）。ホームは先に表示し、天気のスライドだけ読み込み中にする */
+  weatherLoading?: boolean;
   recommendedEvents: HomeEvent[];
   suggestedEvents: HomeEvent[];
   trendingPosts: SimplePost[];

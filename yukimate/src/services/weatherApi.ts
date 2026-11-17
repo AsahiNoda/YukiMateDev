@@ -89,6 +89,43 @@ const DEFAULT_COORDINATES = {
 const WEATHER_CACHE_TTL_MS = 1000 * 60 * 15;
 const weatherResponseCache = new Map<string, { expiresAt: number; promise: Promise<any | null> }>();
 
+/** 1回の通信の待ち時間。届かないサーバーだと端末の既定では1分以上待たされるので短く切る */
+const WEATHER_TIMEOUT_MS = 10000;
+
+/** 時間切れつきの取得。サーバー側の 5xx・通信エラー（接続が切られた等）は1回だけ取り直す */
+async function fetchJsonOnce(url: string, attempt = 0): Promise<any | null> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), WEATHER_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) {
+      console.warn(`[Weather API] HTTP Error: ${response.status}`);
+      if (response.status >= 500 && attempt === 0) return fetchJsonOnce(url, 1);
+      return null;
+    }
+    return await response.json();
+  } catch (error) {
+    if (attempt === 0) {
+      await new Promise((r) => setTimeout(r, 800));
+      return fetchJsonOnce(url, 1);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * 取得できなかった（null）ときに例外にする。React Query の queryFn で使うと、
+ * 「取得できなかった」が成功（null）としてキャッシュされず、自動で取り直される。
+ */
+export function requireWeather<T>(value: T | null | undefined, what: string): T {
+  if (value === null || value === undefined) {
+    throw new Error(`Weather fetch failed: ${what}`);
+  }
+  return value;
+}
+
 async function fetchJsonCached(url: string): Promise<any | null> {
   const now = Date.now();
   const hit = weatherResponseCache.get(url);
@@ -96,13 +133,7 @@ async function fetchJsonCached(url: string): Promise<any | null> {
     return hit.promise;
   }
 
-  const promise = fetch(url).then(async (response) => {
-    if (!response.ok) {
-      console.warn(`[Weather API] HTTP Error: ${response.status}`);
-      return null;
-    }
-    return response.json();
-  });
+  const promise = fetchJsonOnce(url);
 
   weatherResponseCache.set(url, { expiresAt: now + WEATHER_CACHE_TTL_MS, promise });
   // 失敗した結果はキャッシュしない

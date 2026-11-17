@@ -279,6 +279,7 @@ export function useEventChats() {
             start_at,
             photos,
             host_user_id,
+            status,
             resorts(id, name),
             event_participants(
               user_id,
@@ -308,7 +309,11 @@ export function useEventChats() {
 
       if (chatRes.error) throw chatRes.error;
 
-      const allChats = (chatRes.data || []) as any[];
+      // 中止したイベントのチャットは一覧に出さない
+      const allChats = ((chatRes.data || []) as any[]).filter((chat) => {
+        const ev = Array.isArray(chat.posts_events) ? chat.posts_events[0] : chat.posts_events;
+        return ev?.status !== 'cancelled';
+      });
 
       const eventChats: EventChat[] = allChats.map((chat) => {
         const event = chat.posts_events;
