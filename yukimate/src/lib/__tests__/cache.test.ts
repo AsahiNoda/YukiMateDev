@@ -5,6 +5,7 @@ import {
   removeCache,
   clearAllCache,
   getCacheStats,
+  getCacheSize,
   fetchWithCache,
 } from '../cache';
 
@@ -135,7 +136,9 @@ describe('Cache Utilities', () => {
       expect(stats.count).toBe(2);
       expect(stats.keys).toContain('key1');
       expect(stats.keys).toContain('key2');
-      expect(stats.sizeMB).toBeGreaterThan(0);
+      // 数バイトの値は sizeMB（小数2桁に丸め）だと 0 になるため、バイト数で確認する
+      expect(stats.sizeMB).toBeGreaterThanOrEqual(0);
+      expect(await getCacheSize()).toBeGreaterThan(0);
     });
 
     it('should return zero stats when no cache exists', async () => {

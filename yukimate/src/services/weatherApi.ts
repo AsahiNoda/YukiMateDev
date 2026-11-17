@@ -12,6 +12,8 @@ export interface FetchedWeatherData {
   visibility: 'good' | 'moderate' | 'poor';
   snowQuality: 'powder' | 'packed' | 'slushy' | 'icy';
   weatherCode: number; // WMO Weather interpretation codes
+  /** 観測（取得）時刻。Open-Meteo の current.time（現地時刻 "YYYY-MM-DDTHH:mm"） */
+  observedAt?: string | null;
 }
 
 export interface DailyForecast {
@@ -21,6 +23,8 @@ export interface DailyForecast {
   tempLow: number;
   snowfallCm: number;
   condition: string;
+  /** WMO の天気コード（アイコン用） */
+  weatherCode?: number | null;
 }
 
 /**
@@ -76,6 +80,40 @@ const DEFAULT_COORDINATES = {
   lat: 36.7,
   lon: 137.85
 }; // 長野県白馬エリアの中心
+
+/**
+ * 天気APIレスポンスのメモリキャッシュ（15分）
+ * ホーム・Snowfeed・週間予報から同じ地点のデータを何度も取得するため、URL単位で共有する。
+ * 取得中のリクエストも共有するので、同時に呼ばれても通信は1回になる。
+ */
+const WEATHER_CACHE_TTL_MS = 1000 * 60 * 15;
+const weatherResponseCache = new Map<string, { expiresAt: number; promise: Promise<any | null> }>();
+
+async function fetchJsonCached(url: string): Promise<any | null> {
+  const now = Date.now();
+  const hit = weatherResponseCache.get(url);
+  if (hit && hit.expiresAt > now) {
+    return hit.promise;
+  }
+
+  const promise = fetch(url).then(async (response) => {
+    if (!response.ok) {
+      console.warn(`[Weather API] HTTP Error: ${response.status}`);
+      return null;
+    }
+    return response.json();
+  });
+
+  weatherResponseCache.set(url, { expiresAt: now + WEATHER_CACHE_TTL_MS, promise });
+  // 失敗した結果はキャッシュしない
+  promise
+    .then((data) => {
+      if (data === null) weatherResponseCache.delete(url);
+    })
+    .catch(() => weatherResponseCache.delete(url));
+
+  return promise;
+}
 
 /**
  * フォールバック座標を取得（データベースに座標がない場合のみ使用）
@@ -174,14 +212,10 @@ export async function fetchWeatherData(
     url.searchParams.append('timezone', 'Asia/Tokyo');
     url.searchParams.append('forecast_days', '1');
 
-    const response = await fetch(url.toString());
-
-    if (!response.ok) {
-      console.error(`[Weather API] HTTP Error: ${response.status}`);
+    const data: any = await fetchJsonCached(url.toString());
+    if (!data) {
       return null;
     }
-
-    const data: any = await response.json();
 
     console.log(`[Weather API] Raw API response for ${resortIdOrName}:`, JSON.stringify(data.current, null, 2));
 
@@ -228,9 +262,87 @@ export async function fetchWeatherData(
       visibility,
       snowQuality,
       weatherCode,
+      observedAt: data.current?.time ?? null,
     };
   } catch (error) {
-    console.error('[Weather API] Error:', error);
+    // 通信できないとき（オフライン・API の障害など）は警告だけにして、画面側で「取得できません」を出す
+    console.warn('[Weather API] Error:', error);
+    return null;
+  }
+}
+
+function resolveCoordinates(
+  coordinates?: { latitude: number; longitude: number } | null,
+  prefecture?: string
+): { lat: number; lon: number } {
+  if (coordinates && coordinates.latitude && coordinates.longitude) {
+    return { lat: coordinates.latitude, lon: coordinates.longitude };
+  }
+  return getFallbackCoordinates(prefecture);
+}
+
+/**
+ * 時間ごとの予報（前日0時〜明日24時）。ホームの天気カード（案D）の「今日の時間ごと」と
+ * パウダーアラートに使う。取得できなければ null（ダミーは返さない）。
+ */
+export async function fetchHourlyWeather(
+  coordinates?: { latitude: number; longitude: number } | null,
+  prefecture?: string
+): Promise<import('@/utils/hourlyWeather').HourlyWeather | null> {
+  try {
+    const { lat, lon } = resolveCoordinates(coordinates, prefecture);
+    const url = new URL('https://api.open-meteo.com/v1/forecast');
+    url.searchParams.append('latitude', lat.toString());
+    url.searchParams.append('longitude', lon.toString());
+    url.searchParams.append('hourly', 'temperature_2m,snowfall,weather_code');
+    url.searchParams.append('timezone', 'Asia/Tokyo');
+    url.searchParams.append('past_days', '1');
+    url.searchParams.append('forecast_days', '2');
+
+    const data: any = await fetchJsonCached(url.toString());
+    if (!data?.hourly?.time) return null;
+    return {
+      time: data.hourly.time,
+      temperature: data.hourly.temperature_2m ?? [],
+      snowfall: data.hourly.snowfall ?? [],
+      weatherCode: data.hourly.weather_code ?? [],
+    };
+  } catch (error) {
+    console.warn('[Open-Meteo] Error fetching hourly forecast:', error);
+    return null;
+  }
+}
+
+export interface DailySnowfall {
+  /** "YYYY-MM-DD"（現地日付） */
+  date: string;
+  snowfallCm: number;
+}
+
+/**
+ * 今日から7日分の日別降雪量（ホームの「週間の雪予報」）。取得できなければ null（ダミーは返さない）。
+ */
+export async function fetchDailySnowfall(
+  coordinates?: { latitude: number; longitude: number } | null,
+  prefecture?: string
+): Promise<DailySnowfall[] | null> {
+  try {
+    const { lat, lon } = resolveCoordinates(coordinates, prefecture);
+    const url = new URL('https://api.open-meteo.com/v1/forecast');
+    url.searchParams.append('latitude', lat.toString());
+    url.searchParams.append('longitude', lon.toString());
+    url.searchParams.append('daily', 'snowfall_sum');
+    url.searchParams.append('timezone', 'Asia/Tokyo');
+    url.searchParams.append('forecast_days', '7');
+
+    const data: any = await fetchJsonCached(url.toString());
+    if (!data?.daily?.time) return null;
+    return (data.daily.time as string[]).map((date, i) => ({
+      date,
+      snowfallCm: Math.round((data.daily.snowfall_sum?.[i] || 0) * 10) / 10,
+    }));
+  } catch (error) {
+    console.warn('[Open-Meteo] Error fetching daily snowfall:', error);
     return null;
   }
 }
@@ -265,10 +377,9 @@ export async function fetch7DayForecast(
     url.searchParams.append('timezone', 'Asia/Tokyo');
     url.searchParams.append('forecast_days', '7');
 
-    const response = await fetch(url.toString());
-    if (!response.ok) return generateDummyForecast();
-
-    const data: any = await response.json();
+    const data: any = await fetchJsonCached(url.toString());
+    // 取得できないときはダミーの予報を出さず、空にする（画面側で「取得できませんでした」を出す）
+    if (!data?.daily?.time) return [];
     const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土'];
     const forecast: DailyForecast[] = [];
 
@@ -283,13 +394,14 @@ export async function fetch7DayForecast(
         tempLow: Math.round(data.daily.temperature_2m_min[i]),
         snowfallCm: Math.round((data.daily.snowfall_sum[i] || 0) * 10) / 10,
         condition: getConditionFromWeatherCode(data.daily.weather_code[i]),
+        weatherCode: data.daily.weather_code?.[i] ?? null,
       });
     }
 
     return forecast;
   } catch (error) {
-    console.error('[Open-Meteo] Error fetching forecast:', error);
-    return generateDummyForecast();
+    console.warn('[Open-Meteo] Error fetching forecast:', error);
+    return [];
   }
 }
 
@@ -308,10 +420,8 @@ async function fetch7DaySnowDataFromOpenMeteo(
     url.searchParams.append('timezone', 'Asia/Tokyo');
     url.searchParams.append('forecast_days', '7');
 
-    const response = await fetch(url.toString());
-    if (!response.ok) return Array(7).fill(0);
-
-    const data: any = await response.json();
+    const data: any = await fetchJsonCached(url.toString());
+    if (!data) return Array(7).fill(0);
     return (data.daily?.snowfall_sum || []).map((v: number) => Math.round(v * 10) / 10);
   } catch (error) {
     return Array(7).fill(0);

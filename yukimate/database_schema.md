@@ -160,6 +160,7 @@ CREATE TABLE public.posts_events (
   photos ARRAY DEFAULT '{}'::text[],
   tags ARRAY DEFAULT '{}'::text[],
   status USER-DEFINED NOT NULL DEFAULT 'open'::event_status,
+  solo_ok boolean NOT NULL DEFAULT false,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT posts_events_pkey PRIMARY KEY (id),

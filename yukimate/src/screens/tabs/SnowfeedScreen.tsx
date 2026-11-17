@@ -1,548 +1,549 @@
-import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
-import { Colors } from '@/constants/theme';
-import { DailyForecast, fetch7DayForecast } from '@/services/weatherApi';
-import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
+import { HomeWeatherCard } from '@/components/home/HomeWeatherCard';
+import { ResortPostCard } from '@/components/resort/ResortPostCard';
+import { ActionSheet } from '@/components/ui/ActionSheet';
+import { Chip } from '@/components/ui/Chip';
+import { PillButton } from '@/components/ui/PillButton';
+import { borderRadius, fontWeight, spacing, touchTarget } from '@/constants/spacing';
+import { useAppColors } from '@/hooks/useAppColors';
+import { deleteOwnPost, reportPost, useResortPage, type ResortRef } from '@/hooks/useResortPage';
+import type { ResortPageOptions, ResortPageTab } from '@/navigation/resortPage';
+import { buildTodayColumns } from '@/utils/hourlyWeather';
+import { getResortName } from '@/utils/resort-helpers';
 import { PostCreateModal } from '@components/snowfeed/PostCreateModal';
 import { ResortSearch } from '@components/snowfeed/ResortSearch';
-import { WeatherCard } from '@components/snowfeed/WeatherCard';
 import { WeatherForecast } from '@components/snowfeed/WeatherForecast';
-import { IconSymbol } from '@components/ui/icon-symbol';
-import { useColorScheme } from '@hooks/use-color-scheme';
+import { Ionicons } from '@expo/vector-icons';
 import { useSnowfeed } from '@hooks/useSnowfeed';
 import { useTranslation } from '@hooks/useTranslation';
-import { supabase } from '@lib/supabase';
-import { getResortName } from '@/utils/resort-helpers';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
-import {
-  Image,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View
-} from 'react-native';
+import { getAuthUser, supabase } from '@lib/supabase';
+import { useQueryClient } from '@tanstack/react-query';
+import type { SnowfeedPost } from '@types';
+import { router } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import RefreshDoubleIcon from '../../../assets/images/icons/refresh-double.svg';
-import PostIcon from '../../../assets/images/icons/post.svg';
 
-const HOME_RESORT_KEY = '@snowfeed_home_resort';
-const CURRENT_RESORT_KEY = '@snowfeed_current_resort';
+interface SnowfeedScreenProps extends ResortPageOptions {
+  /** 表示するゲレンデ。省略時はホームゲレンデ（未設定なら設定から始める） */
+  resortId?: string;
+}
 
-// 投稿日時をフォーマット
-const formatPostDate = (dateString: string, t: (key: string) => string): string => {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return t('snowfeed.justNow');
-  if (diffMins < 60) return t('snowfeed.minutesAgo').replace('${minutes}', diffMins.toString());
-  if (diffHours < 24) return t('snowfeed.hoursAgo').replace('${hours}', diffHours.toString());
-  if (diffDays < 7) return t('snowfeed.daysAgo').replace('${days}', diffDays.toString());
-
-  // 1週間以上前は日付を表示
-  const month = date.getMonth() + 1;
-  const day = date.getDate();
-  return `${month}/${day}`;
+const TABS: ResortPageTab[] = ['posts', 'forecast', 'ratings'];
+const TAB_LABEL_KEYS: Record<ResortPageTab, string> = {
+  posts: 'resortPage.tabPosts',
+  forecast: 'resortPage.tabForecast',
+  ratings: 'resortPage.tabRatings',
 };
+const REPORT_REASON_KEYS = [
+  'resortPage.reasonInappropriate',
+  'resortPage.reasonSpam',
+  'resortPage.reasonDangerous',
+  'resortPage.reasonOther',
+];
 
-export default function SnowfeedScreen() {
+/**
+ * ゲレンデページ（旧 Snowfeed タブ）。app/resort から開くスタック画面。
+ * 見た目の仕様：docs/ui-redesign/mockups/New-Snowfeed.html（天気カードはホームの案Dと同じ）
+ * - ヘッダー：戻る／ゲレンデ名▾（ゲレンデの一覧を開く。名前の横の ♡ でお気に入り、家のボタンでホームゲレンデにする）
+ * - ホームゲレンデとお気に入りのチップ
+ * - 天気（案D）→ このゲレンデのイベント → 投稿／予報／評価 → 下部の「ゲレンデの今を投稿」
+ * TODO(ui-redesign)：投稿の場所タグとフィルター（雪質／混雑・リフト）は、feed_posts に項目ができたら追加する。
+ */
+export default function SnowfeedScreen({ resortId: routeResortId, initialTab }: SnowfeedScreenProps = {}) {
   const insets = useSafeAreaInsets();
+  const c = useAppColors();
   const { t, locale } = useTranslation();
-  const [homeResortId, setHomeResortId] = useState<string | null>(null);
-  const [homeResortName, setHomeResortName] = useState<string>('');
-  const [selectedResortId, setSelectedResortId] = useState<string | null>(null);
-  const [selectedResortName, setSelectedResortName] = useState<string>('');
-  const [showSearch, setShowSearch] = useState(false);
-  const [isFirstTime, setIsFirstTime] = useState(false);
-  const [isChangingHome, setIsChangingHome] = useState(false);
+  const queryClient = useQueryClient();
+
+  const [home, setHome] = useState<ResortRef | null>(null);
+  const [selected, setSelected] = useState<ResortRef | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [forecast, setForecast] = useState<DailyForecast[]>([]);
-  const [forecastLoading, setForecastLoading] = useState(false);
-  const [showPostCreate, setShowPostCreate] = useState(false);
+  const [isFirstTime, setIsFirstTime] = useState(false);
+  const [showFirstTimeSearch, setShowFirstTimeSearch] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [tab, setTab] = useState<ResortPageTab>(initialTab ?? 'posts');
   const [refreshKey, setRefreshKey] = useState(0);
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const snowfeedState = useSnowfeed(selectedResortId, refreshKey);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showPostCreate, setShowPostCreate] = useState(false);
+  const [menuPost, setMenuPost] = useState<SnowfeedPost | null>(null);
+  const [reportTarget, setReportTarget] = useState<SnowfeedPost | null>(null);
+  // 「参考になった」を押したあとの表示（投稿ID → 押した状態と件数）。
+  // 件数は投稿を読み込んだ時点の値なので、押した直後はここで持ち、投稿を読み直したら消す
+  // （以前は「押したかどうか」だけ先に読み直され、件数との差が打ち消されて 0 に戻っていた）
+  const [helpfulOverrides, setHelpfulOverrides] = useState<Record<string, { on: boolean; count: number }>>({});
 
-  // Load home resort and current resort on mount
   useEffect(() => {
-    const loadResortData = async () => {
-      try {
-        // First, try to get home resort from database profile (primary source)
-        const { data: { user } } = await supabase.auth.getUser();
-        let dbHomeResortId: string | null = null;
-        let dbHomeResortName: string | null = null;
+    if (initialTab) setTab(initialTab);
+  }, [initialTab]);
 
+  // ホームゲレンデと、表示するゲレンデを決める
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const {
+          data: { user },
+        } = await getAuthUser();
+        let homeRef: ResortRef | null = null;
         if (user) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('home_resort_id')
+            .select('home_resort:resorts!profiles_home_resort_id_fkey(id, name, name_en)')
             .eq('user_id', user.id)
+            .maybeSingle();
+          const r = (profile as any)?.home_resort;
+          const resort = Array.isArray(r) ? r[0] : r;
+          if (resort?.id) homeRef = { id: resort.id, name: getResortName(resort, locale) };
+        }
+        if (cancelled) return;
+        setHome(homeRef);
+
+        if (routeResortId) {
+          const { data: routeResort } = await supabase
+            .from('resorts')
+            .select('id, name, name_en')
+            .eq('id', routeResortId)
             .single();
-
-          if (profile?.home_resort_id) {
-            const { data: resort } = await supabase
-              .from('resorts')
-              .select('id, name, name_en')
-              .eq('id', profile.home_resort_id)
-              .single();
-
-            if (resort) {
-              dbHomeResortId = resort.id;
-              dbHomeResortName = getResortName(resort, locale);
-            }
+          if (cancelled) return;
+          if (routeResort) {
+            setSelected({ id: routeResort.id, name: getResortName(routeResort, locale) });
+            return;
           }
         }
-
-        // If we found a home resort in database, use it and sync to AsyncStorage
-        if (dbHomeResortId && dbHomeResortName) {
-          setHomeResortId(dbHomeResortId);
-          setHomeResortName(dbHomeResortName);
-
-          // Sync to AsyncStorage for consistency
-          await AsyncStorage.setItem(
-            HOME_RESORT_KEY,
-            JSON.stringify({ id: dbHomeResortId, name: dbHomeResortName })
-          );
-
-          // Check if there's a currently viewed resort
-          const currentResort = await AsyncStorage.getItem(CURRENT_RESORT_KEY);
-          if (currentResort) {
-            const { id: currentId, name: currentName } = JSON.parse(currentResort);
-            setSelectedResortId(currentId);
-            setSelectedResortName(currentName);
-          } else {
-            // Default to home resort
-            setSelectedResortId(dbHomeResortId);
-            setSelectedResortName(dbHomeResortName);
-          }
+        if (homeRef) {
+          setSelected(homeRef);
         } else {
-          // No home resort in database - clear AsyncStorage and show first-time setup
-          await AsyncStorage.removeItem(HOME_RESORT_KEY);
-          await AsyncStorage.removeItem(CURRENT_RESORT_KEY);
-
           setIsFirstTime(true);
-          setShowSearch(true);
+          setShowFirstTimeSearch(true);
         }
       } catch (error) {
         console.error('Error loading resort data:', error);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
+    })();
+    return () => {
+      cancelled = true;
     };
-    loadResortData();
-  }, []);
+  }, [routeResortId, locale]);
 
-  // Load 7-day forecast when resort changes
+  const snowfeedState = useSnowfeed(selected?.id ?? null, refreshKey);
+  const posts = snowfeedState.status === 'success' ? snowfeedState.data.posts : [];
+  // 投稿を読み直したら、件数は新しい値を使う
   useEffect(() => {
-    if (selectedResortId && selectedResortName) {
-      const loadForecast = async () => {
-        setForecastLoading(true);
-        try {
-          // Fetch resort coordinates from database for accurate forecast
-          const { data: resortData, error: resortError } = await supabase
-            .from('resorts')
-            .select('latitude, longitude, area')
-            .eq('id', selectedResortId)
-            .single();
+    if (snowfeedState.status === 'success') setHelpfulOverrides({});
+  }, [snowfeedState]);
+  const page = useResortPage(selected?.id ?? null, selected?.name ?? null, posts.map((p) => p.id));
+  const columns = useMemo(() => (page.hourly ? buildTodayColumns(page.hourly, new Date()) : null), [page.hourly]);
 
-          if (resortError) {
-            console.warn('Error fetching resort data for forecast:', resortError);
-          }
+  const isHome = !!home && selected?.id === home.id;
 
-          const resortCoords = resortData?.latitude && resortData?.longitude
-            ? { latitude: resortData.latitude, longitude: resortData.longitude }
-            : undefined;
-          const resortPrefecture = resortData?.area;
+  // ホームゲレンデ → お気に入りの順にチップで出す（＋ボタンは作らない。お気に入りは ♡ で登録）
+  const quickResorts: (ResortRef & { isHome?: boolean })[] = [
+    ...(home ? [{ ...home, isHome: true }] : []),
+    ...page.favorites.filter((f) => f.id !== home?.id),
+  ];
 
-          // Fetch 7-day forecast with resort-specific coordinates
-          const forecastData = await fetch7DayForecast(
-            selectedResortName,
-            resortCoords,
-            resortPrefecture
-          );
-          setForecast(forecastData);
-          console.log(`Loaded forecast for: ${selectedResortName}`, {
-            coords: resortCoords || 'using fallback',
-            prefecture: resortPrefecture,
-            data: forecastData
-          });
-        } catch (error) {
-          console.error('Error loading forecast:', error);
-        } finally {
-          setForecastLoading(false);
-        }
-      };
-      loadForecast();
+  // ---- 操作 ----
+  const handleBack = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)/home');
+  };
+
+  const showResort = (resort: ResortRef) => {
+    setSelected(resort);
+    setHelpfulOverrides({});
+    setSwitcherOpen(false);
+  };
+
+  const saveHomeResort = async (resort: ResortRef) => {
+    const {
+      data: { user },
+    } = await getAuthUser();
+    if (!user) return false;
+    const { error } = await supabase.from('profiles').update({ home_resort_id: resort.id }).eq('user_id', user.id);
+    if (error) return false;
+    setHome(resort);
+    // ホームの天気・特集などを新しいホームゲレンデで取り直す
+    queryClient.invalidateQueries({ queryKey: ['home'] });
+    return true;
+  };
+
+  const handleFirstTimeSelect = async (id: string, name: string) => {
+    const resort = { id, name };
+    setShowFirstTimeSearch(false);
+    setIsFirstTime(false);
+    setSelected(resort);
+    const ok = await saveHomeResort(resort);
+    if (!ok) Alert.alert(t('resortPage.homeChangeFailed'));
+  };
+
+  const helpfulOn = (post: SnowfeedPost) => helpfulOverrides[post.id]?.on ?? page.myHelpful.has(post.id);
+  const displayCount = (post: SnowfeedPost) => helpfulOverrides[post.id]?.count ?? post.likeCount;
+
+  const handleToggleHelpful = async (post: SnowfeedPost) => {
+    const on = helpfulOn(post);
+    const count = displayCount(post);
+    const previous = helpfulOverrides[post.id];
+    setHelpfulOverrides((o) => ({ ...o, [post.id]: { on: !on, count: Math.max(0, count + (on ? -1 : 1)) } }));
+    const ok = await page.toggleHelpful(post.id, on);
+    if (!ok) {
+      setHelpfulOverrides((o) => {
+        const next = { ...o };
+        if (previous) next[post.id] = previous;
+        else delete next[post.id];
+        return next;
+      });
+      Alert.alert(t('resortPage.helpfulFailed'));
     }
-  }, [selectedResortId, selectedResortName, refreshKey]);
+  };
 
-  // Handle resort selection from search
-  const handleSelectResort = async (resortId: string, resortName: string, setAsHome: boolean = false) => {
-    setSelectedResortId(resortId);
-    setSelectedResortName(resortName);
-    setShowSearch(false); // Close modal after selection
-
-    try {
-      // Save as current resort
-      await AsyncStorage.setItem(
-        CURRENT_RESORT_KEY,
-        JSON.stringify({ id: resortId, name: resortName })
-      );
-
-      // If first-time user or explicitly setting as home
-      if (isFirstTime || setAsHome) {
-        await AsyncStorage.setItem(
-          HOME_RESORT_KEY,
-          JSON.stringify({ id: resortId, name: resortName })
-        );
-        setHomeResortId(resortId);
-        setHomeResortName(resortName);
-        setIsFirstTime(false);
-
-        // Update database profile with new home resort
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { error: updateError } = await supabase
-            .from('profiles')
-            .update({ home_resort_id: resortId })
-            .eq('user_id', user.id);
-
-          if (updateError) {
-            console.error('Error updating home resort in database:', updateError);
+  const handleDelete = (post: SnowfeedPost) => {
+    setMenuPost(null);
+    Alert.alert(t('resortPage.deleteConfirmTitle'), t('resortPage.deleteConfirmMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.delete'),
+        style: 'destructive',
+        onPress: async () => {
+          if (!page.userId) return;
+          const result = await deleteOwnPost(post.id, page.userId);
+          if (result.success) {
+            setRefreshKey((k) => k + 1);
+            queryClient.invalidateQueries({ queryKey: ['home', 'resortPosts'] });
           } else {
-            console.log('✅ Home resort updated in database:', resortName);
+            Alert.alert(t('resortPage.deleteFailed'));
           }
-        }
-      }
-    } catch (error) {
-      console.error('Error saving resort preference:', error);
+        },
+      },
+    ]);
+  };
+
+  const handleReport = async (post: SnowfeedPost, reasonKey: string) => {
+    setReportTarget(null);
+    if (!page.userId) return;
+    const result = await reportPost(post.id, page.userId, t(reasonKey));
+    if (result.success) {
+      Alert.alert(t('resortPage.reportThanks'), t('resortPage.reportThanksMessage'));
+    } else {
+      Alert.alert(t('resortPage.reportFailed'));
     }
   };
 
-  // Return to home resort
-  const handleReturnToHome = async () => {
-    if (homeResortId && homeResortName) {
-      setSelectedResortId(homeResortId);
-      setSelectedResortName(homeResortName);
-      try {
-        await AsyncStorage.setItem(
-          CURRENT_RESORT_KEY,
-          JSON.stringify({ id: homeResortId, name: homeResortName })
-        );
-      } catch (error) {
-        console.error('Error saving current resort:', error);
-      }
-    }
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setRefreshKey((k) => k + 1);
+    await queryClient.invalidateQueries({ queryKey: ['resortPage'] });
+    setRefreshing(false);
   };
 
-  // Show empty state if no resort selected - require home resort to be set
-  if (!selectedResortId && !isLoading) {
+  const openEvents = () =>
+    router.navigate({
+      pathname: '/(tabs)/search',
+      params: { view: 'list', resortId: selected?.id ?? '', date: '', solo: '', t: String(Date.now()) },
+    });
+
+  // ---- 初回（ホームゲレンデ未設定） ----
+  if (!selected && !isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.emptyStateContainer, styles.centered]}>
-          <IconSymbol name="mountain.2" size={80} color={colors.icon} />
-          <Text style={[styles.emptyStateTitle, { color: colors.text }]}>
+      <View style={[styles.container, { backgroundColor: c.background }]}>
+        <Pressable
+          style={[styles.floatingBack, { top: Math.max(insets.top, 16) }]}
+          onPress={handleBack}
+          accessibilityRole="button"
+          accessibilityLabel={t('common.back')}
+        >
+          <Ionicons name="chevron-back" size={24} color={c.text} />
+        </Pressable>
+        <View style={styles.centered}>
+          <Ionicons name="location-outline" size={56} color={c.textLabel} />
+          <Text style={[styles.emptyTitle, { color: c.text }]}>
             {isFirstTime ? t('snowfeed.setHomeResort') : t('snowfeed.selectResort')}
           </Text>
-          <Text style={[styles.emptyStateSubtitle, { color: colors.textSecondary }]}>
+          <Text style={[styles.emptyText, { color: c.chipText }]}>
             {isFirstTime ? t('snowfeed.setHomeResortSubtitle') : t('snowfeed.selectResortSubtitle')}
           </Text>
-          <TouchableOpacity
-            style={[styles.searchButton, { backgroundColor: colors.tint }]}
-            onPress={() => {
-              setIsChangingHome(isFirstTime);
-              setShowSearch(true);
-            }}>
-            <IconSymbol name="magnifyingglass" size={20} color="#FFFFFF" />
-            <Text style={styles.searchButtonText}>
-              {isFirstTime ? t('snowfeed.setHomeResortButton') : t('snowfeed.searchResort')}
-            </Text>
-          </TouchableOpacity>
+          <PillButton title={t('snowfeed.setHomeResortButton')} icon="search" onPress={() => setShowFirstTimeSearch(true)} />
         </View>
-
-        {/* Search Modal - Cannot be closed without selecting when first time */}
-        <Modal visible={showSearch} animationType="slide" presentationStyle="pageSheet">
+        <Modal visible={showFirstTimeSearch} animationType="slide" presentationStyle="pageSheet">
           <ResortSearch
-            onSelectResort={handleSelectResort}
-            onClose={() => {
-              // Only allow closing if not first time (has home resort already)
-              if (!isFirstTime) {
-                setShowSearch(false);
-                setIsChangingHome(false);
-              }
-            }}
+            onSelectResort={handleFirstTimeSelect}
+            onClose={() => setShowFirstTimeSearch(false)}
             isFirstTime={isFirstTime}
-            hasHomeResort={!!homeResortId}
-            isChangingHome={isChangingHome}
+            hasHomeResort={!!home}
           />
         </Modal>
       </View>
     );
   }
 
-  if (snowfeedState.status === 'loading') {
+  if (!selected) {
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.loadingText, { color: colors.text }]}>
-          {t('snowfeed.loading')}
-        </Text>
+      <View style={[styles.container, styles.centered, { backgroundColor: c.background }]}>
+        <ActivityIndicator color={c.tintText} />
       </View>
     );
   }
 
-  if (snowfeedState.status === 'error') {
-    return (
-      <View style={[styles.container, styles.centered, { backgroundColor: colors.background }]}>
-        <Text style={[styles.errorText, { color: colors.error }]}>
-          {t('snowfeed.loadError')}
-        </Text>
-        <Text style={[styles.errorSubtext, { color: colors.textSecondary }]}>
-          {snowfeedState.error}
-        </Text>
-      </View>
-    );
-  }
-
-  const { rating, weather, posts } = snowfeedState.data;
-
-  // Debug: データの状態を確認
-  console.log('Selected Resort ID:', selectedResortId);
-  console.log('Selected Resort Name:', selectedResortName);
-  console.log('Weather data:', weather);
-  console.log('Rating data:', rating);
-  console.log('Posts count:', posts.length);
-
-  const renderRatingBar = (label: string, value: number | null, max: number = 5) => {
-    if (!value) return null;
-    const percentage = (value / max) * 100;
-    return (
-      <View style={styles.ratingRow} key={label}>
-        <Text style={[styles.ratingLabel, { color: colors.textSecondary }]}>{label}</Text>
-        <View style={styles.ratingBarContainer}>
-          <View
-            style={[
-              styles.ratingBar,
-              { width: `${percentage}%`, backgroundColor: colors.tint },
-            ]}
-          />
-        </View>
-        <Text style={[styles.ratingValue, { color: colors.text }]}>{value.toFixed(1)}</Text>
-      </View>
-    );
-  };
-
-  const isViewingHome = homeResortId && selectedResortId === homeResortId;
+  const weather = snowfeedState.status === 'success' ? snowfeedState.data.weather : null;
+  const rating = snowfeedState.status === 'success' ? snowfeedState.data.rating : null;
+  const bottomBarHeight = touchTarget.min + spacing.md + Math.max(insets.bottom, spacing.sm);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header with Home Button and Search */}
-      <View style={[styles.header, {
-        backgroundColor: isViewingHome ? colors.tint + '15' : colors.background,
-        paddingTop: Math.max(insets.top, 16) + spacing.md
-      }]}>
-        {/* Home Button - Always visible */}
-        <TouchableOpacity
-          style={[styles.homeButton]}
-          onPress={handleReturnToHome}
-          disabled={!homeResortId}>
-          <IconSymbol
-            name="house.fill"
-            size={24}
-            color={isViewingHome ? colors.tint : colors.textSecondary}
-          />
-        </TouchableOpacity>
-
-        {/* Search Box */}
-        <TouchableOpacity
-          style={[styles.searchBox, {
-            backgroundColor: isViewingHome ? colors.background : colors.backgroundSecondary,
-            borderWidth: isViewingHome ? 1 : 0,
-            borderColor: isViewingHome ? colors.tint + '40' : 'transparent'
-          }]}
-          onPress={() => {
-            setIsChangingHome(false);
-            setShowSearch(true);
-          }}
-          activeOpacity={0.7}>
-          <IconSymbol name="magnifyingglass" size={20} color={colors.textSecondary} />
-          <Text style={[styles.searchBoxText, { color: isViewingHome ? colors.text : colors.textSecondary }]}>
-            {selectedResortName || t('snowfeed.searchPlaceholder')}
+    <View style={[styles.container, { backgroundColor: c.background }]}>
+      {/* ヘッダー：戻る／ゲレンデ名▾／♡ */}
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 16) }]}>
+        <Pressable onPress={handleBack} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={t('common.back')}>
+          <Ionicons name="chevron-back" size={24} color={c.text} />
+        </Pressable>
+        <Pressable
+          onPress={() => setSwitcherOpen(true)}
+          style={styles.titleButton}
+          accessibilityRole="button"
+          accessibilityLabel={`${selected.name}, ${t('resortPage.switchTitle')}`}
+          testID="resort-switcher"
+        >
+          <Text style={[styles.title, { color: c.text }]} numberOfLines={1}>
+            {selected.name}
           </Text>
-        </TouchableOpacity>
-
-        {/* Change Home Button - Only show when on home resort */}
-        {isViewingHome && (
-          <TouchableOpacity
-            style={[styles.changeHomeButton, { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.tint + '40' }]}
-            onPress={() => {
-              setIsChangingHome(true);
-              setShowSearch(true);
-            }}>
-            <RefreshDoubleIcon width={20} height={20} color={colors.textSecondary} />
-
-          </TouchableOpacity>
-        )}
+          {isHome ? <Chip label={t('chips.home')} tone="tint" /> : null}
+          <Ionicons name="chevron-down" size={18} color={c.text} />
+        </Pressable>
+        {/* お気に入りの ♡ はゲレンデの一覧（切り替え）の名前の横に置く */}
+        <View style={styles.iconButton} />
       </View>
 
       <ScrollView
-        style={styles.content}
-        contentContainerStyle={{
-          paddingTop: spacing.md,
-          paddingBottom: 120
-        }}
+        contentContainerStyle={{ paddingBottom: bottomBarHeight + spacing.md }}
+        // 下に引っ張って更新（天気・予報・投稿などを取れなかったときに手動で取り直す）
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={c.tintText} />}
       >
-        {/* Weather Card */}
-        {weather && (
-          <WeatherCard
-            resortName={selectedResortName}
-            weather={weather}
-            isHomeResort={!!isViewingHome}
-          />
-        )}
+        {/* ホームゲレンデとお気に入り */}
+        {quickResorts.length > 1 || (quickResorts.length === 1 && !quickResorts.some((r) => r.id === selected.id)) ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} style={styles.chipsScroll}>
+            {quickResorts.map((r) => (
+              <Chip
+                key={r.id}
+                label={r.name}
+                icon={r.isHome ? 'home' : 'heart'}
+                accessibilityLabel={r.isHome ? `${r.name}（${t('chips.home')}）` : r.name}
+                selected={r.id === selected.id}
+                onPress={() => showResort(r)}
+              />
+            ))}
+          </ScrollView>
+        ) : null}
 
-        {/* 7-Day Weather Forecast */}
-        {!forecastLoading && forecast.length > 0 && (
-          <WeatherForecast forecast={forecast} />
-        )}
-
-        {/* Resort Rating */}
-        {rating && (
-          <View style={[styles.ratingCard, { backgroundColor: colors.card }]}>
-            <Text style={[styles.cardTitle, { color: colors.text }]}>Resort Ratings</Text>
-            <Text style={[styles.voteCount, { color: colors.textSecondary }]}>
-              Based on {rating.votesCount} votes
-            </Text>
-            {renderRatingBar('Powder', rating.powder)}
-            {renderRatingBar('Carving', rating.carving)}
-            {renderRatingBar('Family', rating.family)}
-            {renderRatingBar('Park', rating.park)}
-            {renderRatingBar('Night', rating.night)}
-            <View style={styles.overallRating}>
-              <Text style={[styles.overallLabel, { color: colors.text }]}>Overall</Text>
-              <Text style={[styles.overallValue, { color: colors.tint }]}>
-                {rating.overall?.toFixed(1) || 'N/A'} / 5.0
-              </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Posts Feed */}
-        <View style={styles.postsSection}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>
-            {t('snowfeed.communityPosts')}
-          </Text>
-          {posts.map((post) => (
-            <View key={post.id} style={[styles.postCard, { backgroundColor: colors.card }]}>
-              {/* Post Header with Avatar */}
-              <View style={styles.postHeader}>
-                <RoleBasedAvatar
-                  avatarUrl={post.userAvatar}
-                  role={post.userRole}
-                  size={40}
-                  showBadge={true}
-                />
-                <View style={styles.postAuthorInfo}>
-                  <Text style={[styles.authorName, { color: colors.text }]}>
-                    {post.userName}
-                  </Text>
-                  <Text style={[styles.postMeta, { color: colors.textSecondary }]}>
-                    {formatPostDate(post.createdAt, t)}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Post Images */}
-              {post.photos && post.photos.length > 0 && (
-                <View style={styles.postImagesContainer}>
-                  {post.photos.map((photo, index) => (
-                    <Image
-                      key={index}
-                      source={{ uri: photo }}
-                      style={styles.postImage}
-                      resizeMode="cover"
-                    />
-                  ))}
-                </View>
-              )}
-
-              {/* Post Text */}
-              {post.text && (
-                <Text style={[styles.postText, { color: colors.text }]}>{post.text}</Text>
-              )}
-
-              {/* Post Tags */}
-              {post.tags && post.tags.length > 0 && (
-                <View style={styles.tagContainer}>
-                  {post.tags.map((tag, index) => (
-                    <View key={index} style={[styles.tag, { backgroundColor: colors.backgroundSecondary }]}>
-                      <Text style={[styles.tagText, { color: colors.textSecondary }]}>#{tag}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
-          ))}
-
-          {posts.length === 0 && (
-            <View style={styles.emptyState}>
-              <IconSymbol name="snow" size={48} color={colors.icon} />
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                {t('snowfeed.noPosts')}
-              </Text>
+        {/* 天気（ホームと同じ案D） */}
+        <View style={styles.weatherBlock}>
+          {snowfeedState.status === 'loading' ? (
+            <ActivityIndicator color={c.tintText} />
+          ) : weather && weather.tempC !== null ? (
+            <HomeWeatherCard
+              title={t('resortPage.currentConditions')}
+              weather={{
+                resortName: selected.name,
+                temperatureC: weather.tempC,
+                newSnowCm: weather.newSnowCm ?? 0,
+                windSpeedMs: weather.windMs ?? 0,
+                visibility: weather.visibility,
+                weatherCode: weather.weatherCode,
+              }}
+              columns={columns}
+            />
+          ) : (
+            <View style={[styles.unavailable, { backgroundColor: c.card }]}>
+              <Ionicons name="cloud-offline-outline" size={24} color={c.textLabel} />
+              <Text style={[styles.emptyText, { color: c.chipText }]}>{t('homeFeed.weatherUnavailable')}</Text>
             </View>
           )}
         </View>
+
+        {/* このゲレンデのイベント */}
+        <Pressable
+          onPress={openEvents}
+          style={({ pressed }) => [styles.eventsBanner, { backgroundColor: c.card }, pressed && { opacity: 0.85 }]}
+          accessibilityRole="button"
+          testID="resort-events-banner"
+        >
+          <View style={[styles.eventsIcon, { backgroundColor: c.tintChipBackground }]}>
+            <Ionicons name="people" size={20} color={c.tintText} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={[styles.bannerTitle, { color: c.text }]}>{t('resortPage.eventsBannerTitle')}</Text>
+            <Text style={[styles.bannerSub, { color: c.chipText }]}>
+              {t('resortPage.eventsBannerCounts', { weekend: page.eventCounts.weekend, solo: page.eventCounts.solo })}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={c.textLabel} />
+        </Pressable>
+
+        {/* ページ内タブ */}
+        <View style={[styles.tabs, { borderBottomColor: c.divider }]} accessibilityRole="tablist">
+          {TABS.map((key) => {
+            const active = tab === key;
+            return (
+              <Pressable
+                key={key}
+                onPress={() => setTab(key)}
+                style={[styles.tab, { borderBottomColor: active ? c.tintText : 'transparent' }]}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: active }}
+              >
+                <Text style={[styles.tabText, { color: active ? c.text : c.textLabel, fontWeight: active ? fontWeight.bold : fontWeight.medium }]}>
+                  {t(TAB_LABEL_KEYS[key])}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {/* 投稿 */}
+        {tab === 'posts' ? (
+          snowfeedState.status === 'loading' ? (
+            <ActivityIndicator color={c.tintText} style={styles.tabLoading} />
+          ) : snowfeedState.status === 'error' ? (
+            <Text style={[styles.tabEmpty, { color: c.danger }]}>{t('snowfeed.loadError')}</Text>
+          ) : posts.length === 0 ? (
+            <Text style={[styles.tabEmpty, { color: c.textLabel }]}>{t('snowfeed.noPosts')}</Text>
+          ) : (
+            posts.map((post) => (
+              <ResortPostCard
+                key={post.id}
+                post={{ ...post, likeCount: displayCount(post) }}
+                helpfulOn={helpfulOn(post)}
+                onToggleHelpful={() => handleToggleHelpful(post)}
+                onOpenMenu={() => setMenuPost(post)}
+              />
+            ))
+          )
+        ) : null}
+
+        {/* 予報 */}
+        {tab === 'forecast' ? (
+          <View style={styles.tabBody}>
+            {page.forecastLoading ? (
+              <ActivityIndicator color={c.tintText} style={styles.tabLoading} />
+            ) : (
+              <WeatherForecast forecast={page.forecast} />
+            )}
+          </View>
+        ) : null}
+
+        {/* 評価 */}
+        {tab === 'ratings' ? (
+          <View style={styles.tabBody}>
+            {rating && rating.votesCount > 0 ? (
+              <View style={[styles.ratingCard, { backgroundColor: c.card }]}>
+                <View style={styles.ratingHeader}>
+                  <Text style={[styles.bannerTitle, { color: c.text }]}>{t('resortPage.ratingsTitle')}</Text>
+                  <Text style={[styles.bannerSub, { color: c.textLabel }]}>{t('resortPage.votes', { count: rating.votesCount })}</Text>
+                </View>
+                {([
+                  ['resortPage.ratingPowder', rating.powder],
+                  ['resortPage.ratingCarving', rating.carving],
+                  ['resortPage.ratingFamily', rating.family],
+                  ['resortPage.ratingPark', rating.park],
+                  ['resortPage.ratingNight', rating.night],
+                ] as [string, number | null][])
+                  .filter(([, v]) => v !== null)
+                  .map(([key, value]) => (
+                    <View key={key} style={styles.ratingRow} accessible accessibilityLabel={`${t(key)} ${value!.toFixed(1)} / 5`}>
+                      <Text style={[styles.ratingLabel, { color: c.chipText }]}>{t(key)}</Text>
+                      <View style={[styles.ratingTrack, { backgroundColor: c.chipBackground }]}>
+                        <View style={[styles.ratingBar, { width: `${(value! / 5) * 100}%`, backgroundColor: c.tintText }]} />
+                      </View>
+                      <Text style={[styles.ratingValue, { color: c.text }]}>{value!.toFixed(1)}</Text>
+                    </View>
+                  ))}
+                {rating.overall !== null ? (
+                  <View style={[styles.overallRow, { borderTopColor: c.divider }]}>
+                    <Text style={[styles.bannerTitle, { color: c.text }]}>{t('resortPage.ratingOverall')}</Text>
+                    <Text style={[styles.overallValue, { color: c.tintText }]}>{rating.overall.toFixed(1)} / 5.0</Text>
+                  </View>
+                ) : null}
+              </View>
+            ) : (
+              <Text style={[styles.tabEmpty, { color: c.textLabel }]}>{t('resortPage.noRatings')}</Text>
+            )}
+          </View>
+        ) : null}
       </ScrollView>
 
-      {/* Search Modal */}
-      <Modal visible={showSearch} animationType="slide" presentationStyle="pageSheet">
+      {/* 下部に固定：ゲレンデの今を投稿（右下の丸いボタンは廃止） */}
+      <View
+        style={[
+          styles.bottomBar,
+          { backgroundColor: c.background, borderTopColor: c.divider, paddingBottom: Math.max(insets.bottom, spacing.sm) },
+        ]}
+      >
+        <PillButton title={t('resortPage.postResortNow')} icon="camera" onPress={() => setShowPostCreate(true)} fill testID="resort-post" />
+      </View>
+
+      {/* ゲレンデの切り替え（♡ でお気に入り、家のボタンでホームゲレンデにする） */}
+      <Modal
+        visible={switcherOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setSwitcherOpen(false)}
+      >
         <ResortSearch
-          onSelectResort={handleSelectResort}
-          onClose={() => {
-            setShowSearch(false);
-            setIsChangingHome(false);
-          }}
-          isFirstTime={isFirstTime}
-          hasHomeResort={!!homeResortId}
-          isChangingHome={isChangingHome}
+          title={t('resortPage.switchTitle')}
+          selectedId={selected.id}
+          showHomeAction
+          hasHomeResort={!!home}
+          onSelectResort={(id, name) => showResort({ id, name })}
+          onHomeChanged={(id, name) => setHome({ id, name })}
+          onClose={() => setSwitcherOpen(false)}
         />
       </Modal>
 
-      {/* Post Create Modal */}
-      {selectedResortId && selectedResortName && (
-        <PostCreateModal
-          visible={showPostCreate}
-          resortId={selectedResortId}
-          resortName={selectedResortName}
-          onClose={() => setShowPostCreate(false)}
-          onPostCreated={() => {
-            // Refresh feed data after post creation
-            setRefreshKey((prev) => prev + 1);
-          }}
-        />
-      )}
+      {/* 投稿の「…」：自分の投稿は削除、ほかの人の投稿は通報 */}
+      <ActionSheet
+        visible={!!menuPost}
+        onClose={() => setMenuPost(null)}
+        cancelLabel={t('common.cancel')}
+        actions={
+          menuPost && menuPost.userId === page.userId
+            ? [{ label: t('resortPage.deletePost'), icon: 'trash-outline', destructive: true, onPress: () => handleDelete(menuPost) }]
+            : menuPost
+              ? [
+                  {
+                    label: t('resortPage.reportPost'),
+                    icon: 'flag-outline',
+                    onPress: () => {
+                      const target = menuPost;
+                      setMenuPost(null);
+                      setTimeout(() => setReportTarget(target), 350);
+                    },
+                  },
+                ]
+              : []
+        }
+      />
+      <ActionSheet
+        visible={!!reportTarget}
+        title={t('resortPage.reportTitle')}
+        onClose={() => setReportTarget(null)}
+        cancelLabel={t('common.cancel')}
+        actions={REPORT_REASON_KEYS.map((key) => ({
+          label: t(key),
+          onPress: () => reportTarget && handleReport(reportTarget, key),
+        }))}
+      />
 
-      {/* Floating Action Button */}
-      {selectedResortId && (
-        <TouchableOpacity
-          style={[
-            styles.fab,
-            {
-              backgroundColor: colors.tint,
-              bottom: insets.bottom + 80,
-            },
-          ]}
-          onPress={() => setShowPostCreate(true)}
-          activeOpacity={0.8}>
-          <PostIcon width={28} height={28} color="#FFFFFF" />
-        </TouchableOpacity>
-      )}
+      <PostCreateModal
+        visible={showPostCreate}
+        resortId={selected.id}
+        resortName={selected.name}
+        onClose={() => setShowPostCreate(false)}
+        onPostCreated={() => {
+          setShowPostCreate(false);
+          setTab('posts');
+          setRefreshKey((k) => k + 1);
+          queryClient.invalidateQueries({ queryKey: ['home', 'resortPosts'] });
+        }}
+      />
     </View>
   );
 }
@@ -551,335 +552,229 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  // Empty state styles
-  emptyStateContainer: {
+  flex: {
     flex: 1,
-    padding: spacing.xl,
   },
-  emptyStateTitle: {
-    fontSize: fontSize.xxl,
-    fontWeight: fontWeight.bold,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  emptyStateSubtitle: {
-    fontSize: fontSize.md,
-    marginBottom: spacing.xl,
-    textAlign: 'center',
-  },
-  searchButton: {
-    flexDirection: 'row',
+  centered: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: borderRadius.lg,
-    gap: spacing.sm,
+    padding: spacing.xl,
+    gap: spacing.sm + 4,
   },
-  searchButtonText: {
-    color: '#FFFFFF',
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
+  floatingBack: {
+    position: 'absolute',
+    left: spacing.sm,
+    width: touchTarget.min,
+    height: touchTarget.min,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
   },
-  // Header styles
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: fontWeight.bold,
+    textAlign: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  homeButton: {
-    padding: spacing.sm,
-    borderRadius: borderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchBox: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.md,
-    gap: spacing.sm,
-  },
-  searchBoxText: {
-    fontSize: fontSize.md,
-    flex: 1,
-    fontWeight: fontWeight.medium,
-  },
-  changeHomeButton: {
-    padding: spacing.sm,
-    borderRadius: borderRadius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  changeHomeIcon: {
-    width: 20,
-    height: 20,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: spacing.md,
-  },
-  headerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  headerTitle: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-  },
-  changeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.md,
+    paddingBottom: 6,
+    gap: 4,
   },
-  changeButtonText: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
+  iconButton: {
+    width: touchTarget.min,
+    height: touchTarget.min,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  loadingText: {
-    fontSize: fontSize.md,
-  },
-  errorText: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-    marginBottom: spacing.sm,
-  },
-  errorSubtext: {
-    fontSize: fontSize.sm,
-  },
-  // Old tab styles (commented out - using header with search now)
-  // tabsContainer: {
-  //   maxHeight: 60,
-  // },
-  // tabsContent: {
-  //   paddingHorizontal: spacing.md,
-  //   paddingVertical: spacing.sm,
-  //   gap: spacing.sm,
-  // },
-  // tab: {
-  //   paddingHorizontal: spacing.md,
-  //   paddingVertical: spacing.sm,
-  //   borderRadius: borderRadius.lg,
-  // },
-  // tabActive: {
-  //   //backgroundColor will be set dynamically
-  // },
-  // tabText: {
-  //   fontSize: fontSize.sm,
-  // },
-  // tabTextActive: {
-  //   fontWeight: fontWeight.semibold,
-  // },
-  content: {
+  titleButton: {
     flex: 1,
+    minHeight: touchTarget.min,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  // Old weather card styles (commented out - using WeatherCard component now)
-  // weatherCard: {
-  //   margin: spacing.md,
-  //   padding: spacing.md,
-  //   borderRadius: borderRadius.lg,
-  // },
-  cardTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
+  title: {
+    flexShrink: 1,
+    fontSize: 19,
+    fontWeight: '900',
+  },
+  chipsScroll: {
+    flexGrow: 0,
     marginBottom: spacing.md,
   },
-  // weatherGrid: {
-  //   flexDirection: 'row',
-  //   justifyContent: 'space-around',
-  // },
-  // weatherItem: {
-  //   alignItems: 'center',
-  //   gap: spacing.xs,
-  // },
-  // weatherValue: {
-  //   fontSize: fontSize.lg,
-  //   fontWeight: fontWeight.bold,
-  // },
-  // weatherLabel: {
-  //   fontSize: fontSize.xs,
-  // },
-  ratingCard: {
+  chips: {
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+  },
+  weatherBlock: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: 18,
+  },
+  unavailable: {
+    borderRadius: 20,
+    padding: spacing.lg,
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  eventsBanner: {
     marginHorizontal: spacing.md,
     marginBottom: spacing.md,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderRadius: borderRadius.card,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md - 4,
+    minHeight: touchTarget.min + 12,
   },
-  voteCount: {
-    fontSize: fontSize.sm,
-    marginBottom: spacing.md,
+  eventsIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerTitle: {
+    fontSize: 14,
+    fontWeight: fontWeight.bold,
+  },
+  bannerSub: {
+    fontSize: 12,
+  },
+  tabs: {
+    flexDirection: 'row',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: spacing.md,
+  },
+  tab: {
+    flex: 1,
+    height: touchTarget.min,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 2,
+  },
+  tabText: {
+    fontSize: 15,
+  },
+  tabBody: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+  },
+  tabLoading: {
+    marginTop: spacing.lg,
+  },
+  tabEmpty: {
+    textAlign: 'center',
+    fontSize: 14,
+    marginTop: spacing.lg,
+    paddingHorizontal: spacing.md,
+  },
+  ratingCard: {
+    borderRadius: borderRadius.card,
+    padding: spacing.md,
+    gap: 10,
+  },
+  ratingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: 4,
   },
   ratingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
-    gap: spacing.sm,
+    gap: 10,
   },
   ratingLabel: {
-    fontSize: fontSize.sm,
-    width: 60,
+    width: 84,
+    fontSize: 13,
   },
-  ratingBarContainer: {
+  ratingTrack: {
     flex: 1,
     height: 8,
-    backgroundColor: '#E5E7EB',
-    borderRadius: borderRadius.sm,
+    borderRadius: borderRadius.pill,
     overflow: 'hidden',
   },
   ratingBar: {
     height: '100%',
+    borderRadius: borderRadius.pill,
   },
   ratingValue: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
-    width: 30,
+    width: 32,
     textAlign: 'right',
+    fontSize: 13,
+    fontWeight: fontWeight.bold,
   },
-  overallRating: {
+  overallRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  overallLabel: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.bold,
+    alignItems: 'center',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 10,
+    marginTop: 4,
   },
   overallValue: {
-    fontSize: fontSize.md,
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  bottomBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  switcher: {
+    flex: 1,
+    paddingHorizontal: spacing.md,
+  },
+  switcherHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  switcherTitle: {
+    fontSize: 18,
     fontWeight: fontWeight.bold,
   },
-  postsSection: {
-    marginHorizontal: spacing.md,
+  setHomeButton: {
+    marginBottom: spacing.md,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: fontWeight.bold,
+    marginTop: spacing.md,
+    marginBottom: 4,
+  },
+  switcherRow: {
+    minHeight: touchTarget.min + 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md - 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  switcherRowText: {
+    flex: 1,
+    fontSize: 16,
+  },
+  hint: {
+    fontSize: 13,
+    marginTop: spacing.md,
+  },
+  searchOther: {
+    marginTop: spacing.lg,
     marginBottom: spacing.xl,
   },
-  postCard: {
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    marginTop: spacing.md,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  postHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  postAuthor: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  postAuthorInfo: {
-    flex: 1,
-  },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.round,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.bold,
-  },
-  authorName: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
-  },
-  postMeta: {
-    fontSize: fontSize.xs,
-  },
-  postImagesContainer: {
-    marginBottom: spacing.md,
-    borderRadius: borderRadius.md,
-    overflow: 'hidden',
-  },
-  postImage: {
-    width: '100%',
-    height: 300,
-    borderRadius: borderRadius.md,
-    marginBottom: spacing.xs,
-  },
-  postText: {
-    fontSize: fontSize.md,
-    lineHeight: 20,
-    marginBottom: spacing.md,
-  },
-  tagContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-  },
-  tag: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-  },
-  tagText: {
-    fontSize: fontSize.xs,
-  },
-  postActions: {
-    flexDirection: 'row',
-    gap: spacing.lg,
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  actionText: {
-    fontSize: fontSize.sm,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: spacing.xxl,
-    gap: spacing.md,
-  },
-  emptyText: {
-    fontSize: fontSize.md,
-  },
-  fab: {
-    position: 'absolute',
-    right: spacing.md,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
 });
-

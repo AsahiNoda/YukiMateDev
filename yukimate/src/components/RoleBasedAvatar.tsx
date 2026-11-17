@@ -2,7 +2,8 @@ import { getAvatarGradientColors, getBadgeColor } from '@/utils/avatar-utils';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image } from 'expo-image';
+import { StyleSheet, View } from 'react-native';
 import { OfficialBadge } from './OfficialBadge';
 
 interface RoleBasedAvatarProps {

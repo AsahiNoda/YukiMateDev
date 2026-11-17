@@ -1,4 +1,5 @@
 import { ExpoConfig, ConfigContext } from 'expo/config';
+import { existsSync } from 'fs';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
@@ -30,7 +31,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     package: 'com.slopelink.app',
-    googleServicesFile: process.env.GOOGLE_SERVICES_JSON || './google-services.json',
+    // EAS Build では GOOGLE_SERVICES_JSON (file secret) が渡される。
+    // ローカルにファイルが無い場合は指定を外してビルドを通す（FCMプッシュ通知のみ無効）
+    ...(process.env.GOOGLE_SERVICES_JSON || existsSync('./google-services.json')
+      ? { googleServicesFile: process.env.GOOGLE_SERVICES_JSON || './google-services.json' }
+      : {}),
     permissions: [
       'CAMERA',
       'READ_EXTERNAL_STORAGE',

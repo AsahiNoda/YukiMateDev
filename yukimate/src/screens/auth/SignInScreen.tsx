@@ -1,7 +1,7 @@
 import { useState } from 'react';
+import { Image } from 'expo-image';
 import {
   Alert,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -322,7 +322,7 @@ export default function SignInScreen() {
           {/* ロゴ */}
           <View style={styles.logoContainer}>
             <Image
-              source={require('../../../assets/images/app_icon.png')}
+              source={require('../../../assets/images/app_logo.png')}
               style={styles.logoImage}
               resizeMode="contain"
             />

@@ -36,36 +36,19 @@ export function useProfilePosts(targetUserId?: string) {
         return;
       }
 
+      // リゾート名は埋め込み取得（以前は別クエリで1往復追加していた）
       const { data: rows, error } = await supabase
         .from('profile_posts')
-        .select('*')
+        .select('*, resorts(name)')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      const posts = (rows || []) as ProfilePost[];
-
-      // リゾート名を解決
-      const resortIds = [...new Set(posts.map((p) => p.resort_id).filter(Boolean))] as string[];
-      let resortMap: Record<string, string> = {};
-      if (resortIds.length > 0) {
-        const { data: resorts } = await supabase
-          .from('resorts')
-          .select('id, name')
-          .in('id', resortIds);
-        if (resorts) {
-          resortMap = resorts.reduce((acc, r) => {
-            acc[r.id] = r.name;
-            return acc;
-          }, {} as Record<string, string>);
-        }
-      }
-
       setState({
-        posts: posts.map((p) => ({
-          ...p,
-          resortName: p.resort_id ? resortMap[p.resort_id] || null : null,
+        posts: ((rows || []) as any[]).map(({ resorts, ...p }) => ({
+          ...(p as ProfilePost),
+          resortName: p.resort_id ? resorts?.name || null : null,
         })),
         loading: false,
         error: null,

@@ -1,295 +1,184 @@
 import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
+import { Chip } from '@/components/ui/Chip';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
+import { borderRadius, fontWeight, spacing } from '@/constants/spacing';
+import { useAppColors } from '@/hooks/useAppColors';
 import { useBookmark } from '@/hooks/useBookmark';
-import { useColorScheme } from '@hooks/use-color-scheme';
-import type { DiscoverEvent } from '@types';
-import { BlurView } from 'expo-blur';
-import React from 'react';
+import { useTranslation } from '@/hooks/useTranslation';
 import {
-  Alert,
-  Image,
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+  categoryLabel,
+  isSoloFriendly,
+  levelLabel,
+  priceLabel,
+  spotsLeftChip,
+} from '@/utils/eventDisplay';
+import { formatEventDate } from '@/utils/formatEventDate';
+import { Ionicons } from '@expo/vector-icons';
+import type { DiscoverEvent } from '@types';
+import { Image } from 'expo-image';
+import React from 'react';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
-// カテゴリアイコンのインポート
-import CalendarIcon from '../../assets/images/icons/calendar.svg';
+// カテゴリアイコン
 import CameraIcon from '../../assets/images/icons/camera.svg';
 import EventFlagIcon from '../../assets/images/icons/event-flag.svg';
 import GroupIcon from '../../assets/images/icons/group.svg';
 import LessonIcon from '../../assets/images/icons/lesson.svg';
 import MountainIcon from '../../assets/images/icons/mountain.svg';
 
+const CATEGORY_ICONS = {
+  event: EventFlagIcon,
+  lesson: LessonIcon,
+  filming: CameraIcon,
+  group: GroupIcon,
+} as const;
+
+const PHOTO_HEIGHT = 176;
+
 interface EventListCardProps {
   event: DiscoverEvent;
   onPress: () => void;
 }
 
+/**
+ * 「さがす」リストのイベントカード。写真が主役（上に写真176px、下に情報）。
+ * 見た目の仕様：docs/ui-redesign/mockups/New-Explore.html
+ * - 写真の上：左上カテゴリ／右上保存（ブックマーク）／左下日付／右下レベル
+ * - 本文：タイトル（主役）→ スキー場・集合場所 → チップ → ホストと価格
+ */
 export function EventListCard({ event, onPress }: EventListCardProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-
-  // useBookmarkフックを使用
+  const c = useAppColors();
+  const { t } = useTranslation();
   const { isBookmarked, loading: isSaving, toggleBookmark } = useBookmark(event.id);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const month = date.getMonth() + 1;
-    const day = date.getDate();
-    return `${month}月${day}日`;
-  };
+  const CategoryIcon = CATEGORY_ICONS[event.category] ?? EventFlagIcon;
+  const level = levelLabel(event.levelRequired, t);
+  const spots = spotsLeftChip(event.capacityTotal, event.spotsTaken, t);
+  const hasStarredParticipant = (event.starredParticipants?.length ?? 0) > 0;
+  const place = [event.resortName, event.meetingPlace].filter(Boolean).join(' ・ ');
 
-  const getCategoryLabel = (category: string) => {
-    switch (category) {
-      case 'event': return 'イベント';
-      case 'lesson': return 'レッスン';
-      case 'filming': return '撮影';
-      case 'group': return '仲間';
-      default: return category;
-    }
-  };
-
-  const getCategoryIcon = (category: string) => {
-    switch (category) {
-      case 'event': return EventFlagIcon;
-      case 'lesson': return LessonIcon;
-      case 'filming': return CameraIcon;
-      case 'group': return GroupIcon;
-      default: return EventFlagIcon;
-    }
-  };
-
-  const getLevelLabel = (level: string | null) => {
-    if (!level) return null;
-    switch (level) {
-      case 'beginner': return '初級';
-      case 'intermediate': return '中級';
-      case 'advanced': return '上級';
-      default: return level;
-    }
-  };
-
-  const getLevelColor = (level: string | null) => {
-    if (!level) return colors.textSecondary;
-    switch (level) {
-      case 'beginner': return colors.success;
-      case 'intermediate': return colors.tint;
-      case 'advanced': return colors.error;
-      default: return colors.textSecondary;
-    }
-  };
-
-  const spotsAvailable = event.capacityTotal - event.spotsTaken;
-  const isAlmostFull = spotsAvailable <= 2 && spotsAvailable > 0;
-  const isFull = spotsAvailable <= 0;
-
-  const handleSave = async (e: any) => {
-    e.stopPropagation(); // カードのonPressを発火させない
-
+  const handleSave = async () => {
     if (isSaving) return;
-
     const success = await toggleBookmark();
-
     if (!success) {
-      Alert.alert('エラー', 'ブックマークの更新に失敗しました');
+      Alert.alert(t('common.error'), t('eventDetail.bookmarkFailed'));
     }
   };
 
   return (
-    <TouchableOpacity
-      style={styles.cardContainer}
+    <Pressable
+      style={({ pressed }) => [styles.card, { backgroundColor: c.card }, pressed && styles.pressed]}
       onPress={onPress}
-      activeOpacity={0.8}
+      accessibilityRole="button"
+      accessibilityLabel={[event.title, formatEventDate(event.startAt, t), event.resortName].join(', ')}
     >
-      <BlurView intensity={95} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.blurContainer}>
-        <View style={[styles.gradientOverlay, { backgroundColor: colors.card }]}>
-          {/* イベント画像 */}
-          <View style={styles.imageContainer}>
-            {event.photoUrl ? (
-              <Image
-                source={{ uri: event.photoUrl }}
-                style={styles.image}
-                resizeMode="cover"
-              />
-            ) : (
-              <View style={[styles.image, styles.imagePlaceholder, { backgroundColor: colors.backgroundSecondary }]}>
-                <IconSymbol name="photo" size={32} color={colors.icon} />
-              </View>
-            )}
-
-            {/* カテゴリバッジ（左上） */}
-            <View style={[styles.categoryBadge, { backgroundColor: `${colors.backgroundSecondary}CC` }]}>
-              {(() => {
-                const IconComponent = getCategoryIcon(event.category);
-                return <IconComponent width={14} height={14} color={colors.text} />;
-              })()}
-              <Text style={[styles.categoryBadgeText, { color: colors.text }]}>
-                {getCategoryLabel(event.category)}
-              </Text>
-            </View>
-
-            {/* 空き状況バッジ（右上） */}
-            <View style={[styles.spotsBadge, { backgroundColor: `${colors.backgroundSecondary}CC` }]}>
-              <Text style={[styles.spotsText, { color: colors.text }]}>
-                {event.spotsTaken}/{event.capacityTotal}
-              </Text>
-            </View>
-
-            {/* ★登録ユーザー参加中バッジ（右上、空き状況バッジの下） */}
-            {event.starredParticipants && event.starredParticipants.length > 0 && (
-              <View style={[styles.starredParticipantBadge, { backgroundColor: `${colors.accent}DD` }]}>
-                <IconSymbol name="star.fill" size={10} color={colors.text} />
-                <Text style={[styles.starredParticipantText, { color: colors.text }]}>
-                  ユーザーが参加中
-                </Text>
-              </View>
-            )}
-
-            {/* レベルバッジ（右下） */}
-            {event.levelRequired && (
-              <View style={[
-                styles.levelBadgeImage,
-                { backgroundColor: `${getLevelColor(event.levelRequired)}DD` }
-              ]}>
-                <IconSymbol name="cube.fill" size={12} color={colors.text} />
-                <Text style={[styles.levelText, { color: colors.text }]}>
-                  {getLevelLabel(event.levelRequired)}
-                </Text>
-              </View>
-            )}
+      {/* 写真 */}
+      <View style={styles.photo}>
+        {event.photoUrl ? (
+          <Image source={{ uri: event.photoUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+        ) : (
+          <View style={[StyleSheet.absoluteFill, styles.photoPlaceholder, { backgroundColor: c.chipBackground }]}>
+            <IconSymbol name="photo" size={32} color={c.textLabel} />
           </View>
+        )}
 
-          {/* イベント情報 */}
-          <View style={styles.content}>
-            {/* タイトル */}
-            <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
-              {event.title}
-            </Text>
-
-            {/* スキー場と日時 */}
-            <View style={styles.infoRow}>
-              <MountainIcon width={14} height={14} color={colors.icon} />
-              <Text style={[styles.infoText, { color: colors.textSecondary }]}>{event.resortName}</Text>
-              <CalendarIcon width={14} height={14} color={colors.icon} />
-              <Text style={[styles.infoText, { color: colors.textSecondary }]}>{formatDate(event.startAt)}</Text>
-            </View>
-
-            {/* タグ（10個まで） */}
-            {event.tags && event.tags.length > 0 && (
-              <View style={styles.tagsRow}>
-                {event.tags.slice(0, 10).map((tag, index) => (
-                  <Text key={index} style={[styles.tag, { color: colors.tint }]}>
-                    #{tag}
-                  </Text>
-                ))}
-              </View>
-            )}
-
-            {/* 仕切り線 */}
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-            {/* ホスト情報 */}
-            <View style={styles.footer}>
-              <View style={styles.hostRow}>
-                <RoleBasedAvatar
-                  avatarUrl={event.hostAvatar}
-                  role={event.hostRole}
-                  size={45}
-                  showBadge={true}
-                />
-                <View style={styles.hostNameContainer}>
-                  <Text style={[styles.hostName, { color: colors.textSecondary }]} numberOfLines={1}>
-                    {event.hostName}
-                  </Text>
-                  {event.isHostStarred && (
-                    <IconSymbol name="star.fill" size={14} color={colors.accent} style={styles.hostStarIcon} />
-                  )}
-                </View>
-              </View>
-            </View>
-
-            {/* 価格と保存ボタン */}
-            <View style={styles.bottomRow}>
-              <View style={styles.priceRow}>
-                <Text style={[styles.price, { color: colors.accent }]}>
-                  {event.pricePerPersonJpy !== null
-                    ? `¥${event.pricePerPersonJpy.toLocaleString()}`
-                    : '無料'}
-                </Text>
-                <Text style={[styles.priceLabel, { color: colors.textSecondary }]}> / 1人</Text>
-              </View>
-
-              {/* 保存ボタン */}
-              <TouchableOpacity
-                style={[
-                  styles.saveButton,
-                  { backgroundColor: `${colors.backgroundSecondary}1A`, borderColor: `${colors.border}1A` },
-                  isBookmarked && { backgroundColor: `${colors.tint}99`, borderColor: colors.accent },
-                ]}
-                onPress={handleSave}
-                disabled={isSaving}
-                activeOpacity={0.7}
-              >
-                <IconSymbol
-                  name={isBookmarked ? 'star.fill' : 'star'}
-                  size={18}
-                  color={isBookmarked ? colors.accent : colors.textSecondary}
-                />
-                <Text style={[
-                  styles.saveButtonText,
-                  { color: colors.textSecondary },
-                  isBookmarked && { color: colors.accent },
-                ]}>
-                  {isBookmarked ? '保存済み' : '保存'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+        {/* 左上：カテゴリ */}
+        <View style={[styles.categoryBadge, { backgroundColor: c.photoOverlayBackground }]}>
+          <CategoryIcon width={14} height={14} color={c.photoOverlayText} />
+          <Text style={[styles.overlaySmallText, { color: c.photoOverlayText }]}>
+            {categoryLabel(event.category, t)}
+          </Text>
         </View>
-      </BlurView>
-    </TouchableOpacity>
+
+        {/* 右上：保存（ブックマーク） */}
+        <Pressable
+          onPress={handleSave}
+          disabled={isSaving}
+          hitSlop={4}
+          style={[styles.saveButton, { backgroundColor: c.photoOverlayBackground }]}
+          accessibilityRole="button"
+          accessibilityLabel={isBookmarked ? t('actions.unsave') : t('actions.save')}
+          accessibilityState={{ selected: isBookmarked, busy: isSaving }}
+          testID={`event-card-save-${event.id}`}
+        >
+          <Ionicons
+            name={isBookmarked ? 'bookmark' : 'bookmark-outline'}
+            size={20}
+            color={c.photoOverlayText}
+          />
+        </Pressable>
+
+        {/* 左下：日付 */}
+        <View style={[styles.datePill, { backgroundColor: c.photoOverlayBackground }]}>
+          <Ionicons name="calendar-outline" size={14} color={c.photoOverlayText} />
+          <Text style={[styles.dateText, { color: c.photoOverlayText }]}>{formatEventDate(event.startAt, t)}</Text>
+        </View>
+
+        {/* 右下：レベル（上級を赤で示さない＝中立） */}
+        {level ? (
+          <View style={[styles.levelPill, { backgroundColor: c.photoOverlayBackground }]}>
+            <Ionicons name="stats-chart-outline" size={12} color={c.photoOverlayText} />
+            <Text style={[styles.overlaySmallText, { color: c.photoOverlayText }]}>{level}</Text>
+          </View>
+        ) : null}
+      </View>
+
+      {/* 本文 */}
+      <View style={styles.body}>
+        <Text style={[styles.title, { color: c.text }]} numberOfLines={2}>
+          {event.title}
+        </Text>
+
+        <View style={styles.placeRow}>
+          <MountainIcon width={14} height={14} color={c.chipText} />
+          <Text style={[styles.placeText, { color: c.chipText }]} numberOfLines={1}>
+            {place}
+          </Text>
+        </View>
+
+        {isSoloFriendly(event) || spots || hasStarredParticipant ? (
+          <View style={styles.chips}>
+            {isSoloFriendly(event) ? <Chip label={t('chips.soloOk')} tone="tint" /> : null}
+            {spots ? <Chip label={spots.label} tone={spots.tone} /> : null}
+            {hasStarredParticipant ? <Chip label={t('chips.starredJoining')} tone="neutral" /> : null}
+          </View>
+        ) : null}
+
+        <View style={styles.footer}>
+          <View style={styles.hostRow}>
+            <RoleBasedAvatar avatarUrl={event.hostAvatar} role={event.hostRole} size={26} showBadge={false} />
+            <Text style={[styles.hostName, { color: c.chipText }]} numberOfLines={1}>
+              {event.hostName}
+            </Text>
+            {event.isHostStarred ? (
+              <Ionicons name="star" size={12} color={c.gold} accessibilityLabel={t('settings.starredUsers')} />
+            ) : null}
+          </View>
+          <Text style={[styles.price, { color: c.gold }]}>
+            {priceLabel(event.pricePerPersonJpy, t)}
+            <Text style={[styles.perPerson, { color: c.chipText }]}>{t('chips.perPerson')}</Text>
+          </Text>
+        </View>
+      </View>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  cardContainer: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 10,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#161618ff',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  blurContainer: {
-    borderRadius: 16,
+  card: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md - 4,
+    borderRadius: borderRadius.photoCard,
     overflow: 'hidden',
   },
-  gradientOverlay: {
-    borderRadius: 16,
+  pressed: {
+    opacity: 0.9,
   },
-  imageContainer: {
+  photo: {
+    height: PHOTO_HEIGHT,
     width: '100%',
-    height: 200,
-    position: 'relative',
   },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
-  imagePlaceholder: {
-    // backgroundColor is set dynamically in the component
+  photoPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -299,195 +188,102 @@ const styles = StyleSheet.create({
     left: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    // backgroundColor is set dynamically in the component
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
     gap: 4,
-  },
-  categoryBadgeText: {
-    // color is set dynamically in the component
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  spotsBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    // backgroundColor is set dynamically in the component
+    borderRadius: borderRadius.card,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 12,
   },
-  spotsText: {
-    // color is set dynamically in the component
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  starredParticipantBadge: {
+  saveButton: {
     position: 'absolute',
-    top: 48,
-    right: 12,
+    top: 6,
+    right: 6,
+    width: 40,
+    height: 40,
+    borderRadius: borderRadius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  datePill: {
+    position: 'absolute',
+    left: 12,
+    bottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    // backgroundColor is set dynamically in the component
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
+    gap: 6,
+    borderRadius: borderRadius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  dateText: {
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  levelPill: {
+    position: 'absolute',
+    right: 12,
+    bottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 4,
+    borderRadius: borderRadius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
-  starredParticipantText: {
-    // color is set dynamically in the component
-    fontSize: 10,
-    fontWeight: '600',
+  overlaySmallText: {
+    fontSize: 11,
+    fontWeight: fontWeight.bold,
   },
-  content: {
-    padding: 16,
+  body: {
+    paddingTop: 12,
+    paddingHorizontal: spacing.md,
+    paddingBottom: 14,
+    gap: 7,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '600',
-    // color is set dynamically in the component
-    marginBottom: 8,
+    fontSize: 18,
+    fontWeight: fontWeight.bold,
     lineHeight: 24,
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
-  infoRow: {
+  placeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    gap: 6,
+    gap: 4,
   },
-  infoText: {
+  placeText: {
+    flex: 1,
     fontSize: 13,
-    // color is set dynamically in the component
   },
-  tagsRow: {
+  chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 12,
-  },
-  tag: {
-    fontSize: 11,
-    // color is set dynamically in the component
-    fontWeight: '500',
-  },
-  divider: {
-    height: 1,
-    // backgroundColor is set dynamically in the component
-    marginVertical: 12,
+    gap: 4,
   },
   footer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    marginTop: 2,
+    gap: spacing.sm,
   },
   hostRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
     flex: 1,
-    gap: 8,
-  },
-  hostNameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  hostAvatar: {
-    width: 45,
-    height: 45,
-    borderRadius: 22,
-    borderWidth: 1,
-    // borderColor is set dynamically in the component
-  },
-  hostAvatarPlaceholder: {
-    // backgroundColor is set dynamically in the component
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    // borderColor is set dynamically in the component
-  },
-  hostAvatarText: {
-    fontSize: 12,
-    fontWeight: '600',
-    // color is set dynamically in the component
   },
   hostName: {
-    fontSize: 18,
-    // color is set dynamically in the component
-    fontWeight: '700',
-  },
-  hostStarIcon: {
-    marginLeft: 0,
-  },
-  levelBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-  },
-  levelBadgeImage: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 12,
-    gap: 4,
-  },
-  levelText: {
-    fontSize: 11,
-    fontWeight: '600',
-    // color is set dynamically in the component
-  },
-  bottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  priceRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+    fontSize: 13,
+    fontWeight: fontWeight.bold,
+    flexShrink: 1,
   },
   price: {
-    fontSize: 20,
-    fontWeight: '700',
-    // color is set dynamically in the component
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    fontSize: 16,
+    fontWeight: fontWeight.bold,
   },
-  priceLabel: {
-    fontSize: 13,
-    // color is set dynamically in the component
-    marginLeft: 2,
-  },
-  saveButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    // backgroundColor is set dynamically in the component
-    borderWidth: 1,
-    // borderColor is set dynamically in the component
-    gap: 6,
-  },
-  saveButtonActive: {
-    // backgroundColor is set dynamically in the component
-  },
-  saveButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    // color is set dynamically in the component
-  },
-  saveButtonTextActive: {
-    // color is set dynamically in the component
+  perPerson: {
+    fontSize: 12,
+    fontWeight: fontWeight.normal,
   },
 });
 
+export default EventListCard;

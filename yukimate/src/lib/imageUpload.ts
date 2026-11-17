@@ -4,6 +4,7 @@ import { supabase } from './supabase';
 import { Alert } from 'react-native';
 import { decode } from 'base64-arraybuffer';
 import { validateFileSize, validateImageFileType } from '@/utils/validation';
+import { IMAGE_MAX_SIZE, resizeImageForUpload } from './imageResize';
 
 export type ImageType = 'avatar' | 'header';
 
@@ -61,7 +62,7 @@ export async function pickAndUploadImage(
 
     // 画像をアップロード
     console.log('⬆️  Starting upload...');
-    const url = await uploadImageToSupabase(userId, imageUri, imageType);
+    const url = await uploadImageToSupabase(userId, imageUri, imageType, result.assets[0]);
     console.log('✅ Upload complete:', url);
     return url;
   } catch (error) {
@@ -77,13 +78,21 @@ export async function pickAndUploadImage(
 async function uploadImageToSupabase(
   userId: string,
   imageUri: string,
-  imageType: ImageType
+  imageType: ImageType,
+  size?: { width?: number; height?: number }
 ): Promise<string | null> {
   try {
     console.log('🔧 Preparing upload...');
 
-    // ファイル拡張子を取得
-    const ext = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
+    // アップロード前に縮小（アバター 512px / ヘッダー 1600px、JPEG）
+    const resized = await resizeImageForUpload(
+      imageUri,
+      imageType === 'avatar' ? IMAGE_MAX_SIZE.avatar : IMAGE_MAX_SIZE.header,
+      { width: size?.width, height: size?.height }
+    );
+    imageUri = resized.uri;
+
+    const ext = resized.ext;
     const fileName = `${imageType}.${ext}`;
     const bucketName = imageType === 'avatar' ? 'profile_avatar' : 'profile_header';
     const filePath = `${userId}/${fileName}`;
@@ -107,7 +116,7 @@ async function uploadImageToSupabase(
     const { data, error } = await supabase.storage
       .from(bucketName)
       .upload(filePath, arrayBuffer, {
-        contentType: `image/${ext}`,
+        contentType: resized.mimeType,
         upsert: true,
       });
 
@@ -171,16 +180,20 @@ export async function pickAndUploadProfilePostImage(
       return null;
     }
 
-    const ext = asset.uri.split('.').pop()?.toLowerCase() || 'jpg';
-    const filePath = `${userId}/${Date.now()}.${ext}`;
+    // アップロード前に縮小（長辺 1600px、JPEG）
+    const resized = await resizeImageForUpload(asset.uri, IMAGE_MAX_SIZE.post, {
+      width: asset.width,
+      height: asset.height,
+    });
+    const filePath = `${userId}/${Date.now()}.${resized.ext}`;
 
-    const base64 = await FileSystem.readAsStringAsync(asset.uri, { encoding: 'base64' });
+    const base64 = await FileSystem.readAsStringAsync(resized.uri, { encoding: 'base64' });
     const arrayBuffer = decode(base64);
 
     const { error } = await supabase.storage
       .from('profile_posts')
       .upload(filePath, arrayBuffer, {
-        contentType: `image/${ext}`,
+        contentType: resized.mimeType,
         upsert: false,
       });
 
@@ -244,7 +257,7 @@ export async function takePhotoAndUpload(
     }
 
     // 画像をアップロード
-    const url = await uploadImageToSupabase(userId, imageUri, imageType);
+    const url = await uploadImageToSupabase(userId, imageUri, imageType, result.assets[0]);
     return url;
   } catch (error) {
     console.error('Error taking/uploading photo:', error);

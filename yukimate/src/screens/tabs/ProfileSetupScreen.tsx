@@ -1,8 +1,24 @@
+import {
+  CountryField,
+  CountryPickerModal,
+  FormInput,
+  FormLabel,
+  FormSection,
+  GearFields,
+  LevelSelector,
+  PhotoFields,
+  SocialFields,
+  StyleSelector,
+  type SocialKey,
+} from '@/components/profile/ProfileFormParts';
+import { Chip } from '@/components/ui/Chip';
+import { PillButton } from '@/components/ui/PillButton';
 import { COUNTRIES, getFlagSource } from '@/constants/countries';
+import { useAppColors } from '@/hooks/useAppColors';
+import { updateGear } from '@/hooks/useProfile';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { updateFavoriteResorts } from '@/hooks/useProfile';
 import { useResorts } from '@/hooks/useResorts';
 import { useTranslation } from '@/hooks/useTranslation';
 import { pickAndUploadImage } from '@/lib/imageUpload';
@@ -11,11 +27,11 @@ import type { SkillLevel } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState, useEffect } from 'react';
+import { Image } from 'expo-image';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   Modal,
   ScrollView,
   StyleSheet,
@@ -299,6 +315,7 @@ export default function ProfileSetupScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const { t, locale } = useTranslation();
   const insets = useSafeAreaInsets();
+  const c = useAppColors();
   const styles = React.useMemo(() => createStyles(colors), [colors]);
   const [loading, setLoading] = useState(false);
 
@@ -309,6 +326,10 @@ export default function ProfileSetupScreen() {
   const [skillLevel, setSkillLevel] = useState<SkillLevel>('beginner');
   const [ridingStyle, setRidingStyle] = useState<RidingStyle[]>([]);
   const [bio, setBio] = useState('');
+
+  // ギア（名前だけ）・SNS（任意）
+  const [gear, setGear] = useState({ board: '', binding: '', boots: '' });
+  const [socials, setSocials] = useState<Record<SocialKey, string>>({ instagram: '', x: '', youtube: '', tiktok: '' });
 
   // お気に入りスキー場（複数）
   const [favoriteResortIds, setFavoriteResortIds] = useState<string[]>([]);
@@ -420,6 +441,15 @@ export default function ProfileSetupScreen() {
         styles: ridingStyle,
         bio: bio.trim() || null,
         home_resort_id: null,
+        social_links: (() => {
+          const clean = (v: string) => v.trim().replace(/^@/, '').replace(/\/+$/, '');
+          const links: Record<string, string> = {};
+          if (clean(socials.instagram)) links.instagram = clean(socials.instagram);
+          if (clean(socials.x)) links.x = clean(socials.x);
+          if (socials.youtube.trim()) links.youtube = socials.youtube.trim();
+          if (clean(socials.tiktok)) links.tiktok = clean(socials.tiktok);
+          return links;
+        })(),
       });
 
       if (error) {
@@ -434,9 +464,14 @@ export default function ProfileSetupScreen() {
       // プロフィール作成成功
       console.log('✅ Profile created successfully');
 
-      // お気に入りスキー場を保存
-      if (favoriteResortIds.length > 0) {
-        await updateFavoriteResorts(favoriteResortIds);
+      // ギア（入力があれば。失敗してもプロフィール作成は続ける）
+      if (gear.board.trim() || gear.binding.trim() || gear.boots.trim()) {
+        const gearResult = await updateGear({
+          board: gear.board.trim(),
+          binding: gear.binding.trim(),
+          boots: gear.boots.trim(),
+        });
+        if (!gearResult.success) console.warn('Gear save failed:', gearResult.error);
       }
 
       // AuthContextを更新してプロフィール情報を取得
@@ -456,341 +491,84 @@ export default function ProfileSetupScreen() {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{t('profileSetup.title')}</Text>
-          <Text style={styles.subtitle}>{t('profileSetup.subtitle')}</Text>
-        </View>
+    <View style={[styles.container, { backgroundColor: c.background }]}>
+      <ScrollView
+        contentContainerStyle={{ padding: 16, paddingTop: Math.max(insets.top, 16) + 8, paddingBottom: insets.bottom + 40 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">
+          {t('profileSetup.title')}
+        </Text>
+        <Text style={[styles.subtitle, { color: c.chipText, marginBottom: 20 }]}>{t('profileSetup.subtitle')}</Text>
 
-        {/* ヘッダー画像 */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('profileSetup.header')}</Text>
-          <TouchableOpacity
-            style={styles.headerImageContainer}
-            onPress={handleHeaderUpload}
-            disabled={uploadingHeader}
-          >
-            {headerUrl ? (
-              <Image source={{ uri: headerUrl }} style={styles.headerImage} />
-            ) : (
-              <View style={styles.headerImagePlaceholder}>
-                {uploadingHeader ? (
-                  <ActivityIndicator color={colors.tint} />
-                ) : (
-                  <>
-                    <Ionicons name="image-outline" size={32} color={colors.icon} />
-                    <Text style={styles.placeholderText}>{t('profileSetup.headerPlaceholder')}</Text>
-                  </>
-                )}
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
+        <PhotoFields
+          headerUrl={headerUrl}
+          avatarUrl={avatarUrl}
+          uploadingHeader={uploadingHeader}
+          uploadingAvatar={uploadingAvatar}
+          onPickHeader={handleHeaderUpload}
+          onPickAvatar={handleAvatarUpload}
+        />
 
-        {/* アバター画像 */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('profileSetup.avatar')}</Text>
-          <TouchableOpacity
-            style={styles.avatarContainer}
-            onPress={handleAvatarUpload}
-            disabled={uploadingAvatar}
-          >
-            {avatarUrl ? (
-              <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                {uploadingAvatar ? (
-                  <ActivityIndicator color={colors.tint} />
-                ) : (
-                  <Ionicons name="person-outline" size={40} color={colors.icon} />
-                )}
-              </View>
-            )}
-          </TouchableOpacity>
-          <Text style={styles.avatarHint}>{t('profileSetup.avatarHint')}</Text>
-        </View>
-
-        {/* 表示名 */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('profileSetup.displayName')}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={t('profileSetup.displayNamePlaceholder')}
-            placeholderTextColor={colors.textSecondary}
+        <FormSection title={t('profileForm.basic')}>
+          <FormInput
+            label={t('profileSetup.displayName')}
+            required
             value={displayName}
             onChangeText={setDisplayName}
+            placeholder={t('profileSetup.displayNamePlaceholder')}
+            maxLength={50}
           />
-        </View>
-
-        {/* 国籍 */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('profileSetup.nationality')}</Text>
-          <TouchableOpacity
-            style={styles.countrySelector}
-            onPress={() => setShowCountryPicker(true)}
-          >
-            <Image source={getFlagSource(countryCode)} style={styles.selectedFlag} />
-            <Text style={styles.selectedCountryText}>
-              {(() => {
-                const country = COUNTRIES.find(c => c.code === countryCode);
-                if (!country) return t('profileSetup.selectCountry');
-                return locale === 'en' ? country.nameEn : country.nameJa;
-              })()}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color={colors.icon} />
-          </TouchableOpacity>
-
-          {/* Country Picker Modal */}
-          <Modal
-            visible={showCountryPicker}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setShowCountryPicker(false)}
-          >
-            <TouchableOpacity
-              style={styles.modalOverlay}
-              activeOpacity={1}
-              onPress={() => setShowCountryPicker(false)}
-            >
-              <View style={[styles.pickerModal, { paddingBottom: insets.bottom }]}>
-                <View style={styles.pickerHeader}>
-                  <Text style={styles.pickerTitle}>{t('profileSetup.selectNationality')}</Text>
-                  <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
-                    <Ionicons name="close" size={24} color={colors.text} />
-                  </TouchableOpacity>
-                </View>
-                <FlatList
-                  data={COUNTRIES}
-                  style={{ flex: 1 }}
-                  keyExtractor={(item) => item.code}
-                  initialNumToRender={20}
-                  getItemLayout={(data, index) => ({ length: 55, offset: 55 * index, index })}
-                  renderItem={({ item: country }) => (
-                    <TouchableOpacity
-                      style={[
-                        styles.pickerItem,
-                        countryCode === country.code && styles.pickerItemActive,
-                      ]}
-                      onPress={() => {
-                        setCountryCode(country.code);
-                        setShowCountryPicker(false);
-                      }}
-                    >
-                      <Image source={getFlagSource(country.code)} style={styles.pickerFlag} />
-                      <Text
-                        style={[
-                          styles.pickerItemText,
-                          countryCode === country.code && styles.pickerItemTextActive,
-                        ]}
-                      >
-                        {locale === 'en' ? country.nameEn : country.nameJa}
-                      </Text>
-                      {countryCode === country.code && (
-                        <Ionicons name="checkmark" size={20} color={colors.tint} />
-                      )}
-                    </TouchableOpacity>
-                  )}
-                />
-              </View>
-            </TouchableOpacity>
-          </Modal>
-        </View>
-
-        {/* 言語 */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('profileSetup.language')}</Text>
-          <View style={styles.buttonGroup}>
-            <TouchableOpacity
-              style={[
-                styles.languageButton,
-                language === 'ja' && styles.languageButtonActive,
-              ]}
-              onPress={() => setLanguage('ja')}
-            >
-              <Text
-                style={[
-                  styles.languageText,
-                  language === 'ja' && styles.languageTextActive,
-                ]}
-              >
-                {t('profileSetup.japanese')}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.languageButton,
-                language === 'en' && styles.languageButtonActive,
-              ]}
-              onPress={() => setLanguage('en')}
-            >
-              <Text
-                style={[
-                  styles.languageText,
-                  language === 'en' && styles.languageTextActive,
-                ]}
-              >
-                {t('profileSetup.english')}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* スキルレベル */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('profileSetup.skillLevel')}</Text>
-          <View style={styles.buttonGroup}>
-            {SKILL_LEVELS.map((level) => (
-              <TouchableOpacity
-                key={level}
-                style={[
-                  styles.skillButton,
-                  skillLevel === level && styles.skillButtonActive,
-                ]}
-                onPress={() => setSkillLevel(level)}
-              >
-                <Text
-                  style={[
-                    styles.skillText,
-                    skillLevel === level && styles.skillTextActive,
-                  ]}
-                >
-                  {level === 'beginner' ? t('profileSetup.beginner') : level === 'intermediate' ? t('profileSetup.intermediate') : t('profileSetup.advanced')}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* ライディングスタイル */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('profileSetup.ridingStyle')}</Text>
-          <View style={styles.styleGrid}>
-            {RIDING_STYLES.map((style) => (
-              <TouchableOpacity
-                key={style}
-                style={[
-                  styles.styleButton,
-                  ridingStyle.includes(style) && styles.styleButtonActive,
-                ]}
-                onPress={() => toggleRidingStyle(style)}
-              >
-                <Text
-                  style={[
-                    styles.styleText,
-                    ridingStyle.includes(style) && styles.styleTextActive,
-                  ]}
-                >
-                  {style}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* お気に入りスキー場（複数選択） */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('editProfileScreen.favoriteResortsLabel')}</Text>
-          <TouchableOpacity style={styles.countrySelector} onPress={() => setShowResortPicker(true)}>
-            <Ionicons name="snow-outline" size={20} color={colors.icon} />
-            <Text style={styles.selectedCountryText}>
-              {favoriteResortIds.length > 0
-                ? `${favoriteResortIds.length} ${t('editProfileScreen.favoriteResortsSelected')}`
-                : t('editProfileScreen.favoriteResortsPlaceholder')}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color={colors.icon} />
-          </TouchableOpacity>
-
-          {resortsState.status === 'success' && favoriteResortIds.length > 0 && (
-            <View style={[styles.styleGrid, { marginTop: 12 }]}>
-              {favoriteResortIds.map((id) => {
-                const resort = resortsState.resorts.find((r) => r.id === id);
-                if (!resort) return null;
-                return (
-                  <TouchableOpacity
-                    key={id}
-                    style={[styles.styleButton, styles.styleButtonActive]}
-                    onPress={() => toggleFavoriteResort(id)}
-                  >
-                    <Text style={[styles.styleText, styles.styleTextActive]}>{resort.name}  ✕</Text>
-                  </TouchableOpacity>
-                );
-              })}
+          <CountryField code={countryCode} onPress={() => setShowCountryPicker(true)} label={t('profileSetup.nationality')} />
+          <View style={{ gap: 6 }}>
+            <FormLabel label={t('profileSetup.language')} required />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Chip label={t('profileSetup.japanese')} selected={language === 'ja'} onPress={() => setLanguage('ja')} />
+              <Chip label={t('profileSetup.english')} selected={language === 'en'} onPress={() => setLanguage('en')} />
             </View>
-          )}
-
-          <Modal
-            visible={showResortPicker}
-            transparent
-            animationType="slide"
-            onRequestClose={() => setShowResortPicker(false)}
-          >
-            <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowResortPicker(false)}>
-              <View style={[styles.pickerModal, { paddingBottom: insets.bottom }]}>
-                <View style={styles.pickerHeader}>
-                  <Text style={styles.pickerTitle}>{t('editProfileScreen.favoriteResortsLabel')}</Text>
-                  <TouchableOpacity onPress={() => setShowResortPicker(false)}>
-                    <Ionicons name="close" size={24} color={colors.text} />
-                  </TouchableOpacity>
-                </View>
-                {resortsState.status === 'success' ? (
-                  <FlatList
-                    data={resortsState.resorts}
-                    style={{ flex: 1 }}
-                    keyExtractor={(item) => item.id}
-                    initialNumToRender={20}
-                    renderItem={({ item: resort }) => {
-                      const selected = favoriteResortIds.includes(resort.id);
-                      return (
-                        <TouchableOpacity
-                          style={[styles.pickerItem, selected && styles.pickerItemActive]}
-                          onPress={() => toggleFavoriteResort(resort.id)}
-                        >
-                          <Text style={[styles.pickerItemText, selected && styles.pickerItemTextActive]}>
-                            {resort.name}
-                          </Text>
-                          {selected && <Ionicons name="checkmark" size={20} color={colors.tint} />}
-                        </TouchableOpacity>
-                      );
-                    }}
-                  />
-                ) : (
-                  <ActivityIndicator color={colors.tint} style={{ marginTop: 24 }} />
-                )}
-              </View>
-            </TouchableOpacity>
-          </Modal>
-        </View>
-
-        {/* Bio */}
-        <View style={styles.section}>
-          <Text style={styles.label}>{t('profileSetup.bio')}</Text>
-          <TextInput
-            style={[styles.input, styles.bioInput]}
-            placeholder={t('profileSetup.bioPlaceholder')}
-            placeholderTextColor={colors.textSecondary}
+          </View>
+          <FormInput
+            label={t('profileSetup.bio')}
             value={bio}
             onChangeText={setBio}
+            placeholder={t('profileSetup.bioPlaceholder')}
             multiline
-            numberOfLines={4}
-            textAlignVertical="top"
+            maxLength={500}
+            showCounter
           />
-        </View>
+        </FormSection>
 
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.text} />
-          ) : (
-            <Text style={styles.submitButtonText}>{t('profileSetup.createProfile')}</Text>
-          )}
-        </TouchableOpacity>
+        <FormSection title={t('profileForm.riding')}>
+          <LevelSelector value={skillLevel} onChange={setSkillLevel} label={t('profileSetup.skillLevel')} />
+          <StyleSelector options={RIDING_STYLES} values={ridingStyle} onToggle={toggleRidingStyle} label={t('profileSetup.ridingStyle')} />
+        </FormSection>
 
-        <View style={{ height: 120 }} />
-      </View>
-    </ScrollView>
+        {/* ギアは名前だけ（任意） */}
+        <FormSection title={t('profileForm.gear')}>
+          <GearFields
+            board={gear.board}
+            binding={gear.binding}
+            boots={gear.boots}
+            onChange={(key, value) => setGear((g) => ({ ...g, [key]: value }))}
+          />
+        </FormSection>
+
+        <FormSection title={t('profileForm.social')}>
+          <SocialFields values={socials} onChange={(key, value) => setSocials((v) => ({ ...v, [key]: value }))} />
+        </FormSection>
+
+        <PillButton title={t('profileSetup.createProfile')} onPress={handleSubmit} loading={loading} fill />
+      </ScrollView>
+
+      <CountryPickerModal
+        visible={showCountryPicker}
+        selected={countryCode}
+        onSelect={(code) => {
+          setCountryCode(code);
+          setShowCountryPicker(false);
+        }}
+        onClose={() => setShowCountryPicker(false)}
+      />
+    </View>
   );
 }

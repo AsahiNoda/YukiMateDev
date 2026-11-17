@@ -1,16 +1,16 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
+import { Image } from 'expo-image';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-    Image,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 import { Colors } from '@/constants/theme';
@@ -140,7 +140,7 @@ export default function SetPasswordScreen() {
                 >
                     <View style={styles.logoContainer}>
                         <Image
-                            source={require('../../../assets/images/app_icon.png')}
+                            source={require('../../../assets/images/app_logo.png')}
                             style={styles.logoImage}
                             resizeMode="contain"
                         />

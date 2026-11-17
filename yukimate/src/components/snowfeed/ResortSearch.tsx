@@ -1,22 +1,14 @@
+import { Chip } from '@/components/ui/Chip';
 import { getAreaOrder } from '@/constants/areas';
-import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
-import { Colors } from '@/constants/theme';
+import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
+import { useAppColors } from '@/hooks/useAppColors';
+import { useResortPreferences } from '@/hooks/useResortPreferences';
 import { getResortName, getResortPrefecture } from '@/utils/resort-helpers';
-import { IconSymbol } from '@components/ui/icon-symbol';
-import { useColorScheme } from '@hooks/use-color-scheme';
+import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '@hooks/useTranslation';
 import { supabase } from '@lib/supabase';
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Resort {
@@ -30,226 +22,290 @@ interface Resort {
 interface ResortSearchProps {
   onSelectResort: (resortId: string, resortName: string, setAsHome?: boolean) => void;
   onClose: () => void;
+  /** 初めてホームゲレンデを決めるとき（閉じられない・選ぶとホームになる） */
   isFirstTime?: boolean;
   hasHomeResort?: boolean;
+  /** 選ぶとホームゲレンデにする（確認あり） */
   isChangingHome?: boolean;
+  /** 見出し（省略時は「ゲレンデを選択」） */
+  title?: string;
+  /** 今選んでいるゲレンデ（チェックを付ける） */
+  selectedId?: string | null;
+  /** 一覧の先頭に「すべてのゲレンデ」などを出す（さがすのゲレンデ絞り込み） */
+  allOption?: { label: string; selected: boolean; onSelect: () => void };
+  /** 各行に「ホームゲレンデにする」ボタンを出す（ゲレンデページの切り替え） */
+  showHomeAction?: boolean;
+  /** ホームゲレンデを変えたとき */
+  onHomeChanged?: (resortId: string, resortName: string) => void;
 }
 
-export function ResortSearch({ onSelectResort, onClose, isFirstTime = false, hasHomeResort = false, isChangingHome = false }: ResortSearchProps) {
+/**
+ * ゲレンデの一覧（選択画面）。
+ * - 上に検索欄、その下に「ホームゲレンデ」「お気に入り」、続いてエリアごとの一覧（開閉）
+ * - 名前の横の ♡ でお気に入りに登録・解除（お気に入り専用の画面は作らない）
+ * - showHomeAction のときは、家のボタンでホームゲレンデにできる
+ * - Android の pageSheet は全画面なので、ステータスバーの分を空ける
+ */
+export function ResortSearch({
+  onSelectResort,
+  onClose,
+  isFirstTime = false,
+  isChangingHome = false,
+  title,
+  selectedId = null,
+  allOption,
+  showHomeAction = false,
+  onHomeChanged,
+}: ResortSearchProps) {
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const { locale } = useTranslation();
+  const c = useAppColors();
+  const { t, locale } = useTranslation();
+  const prefs = useResortPreferences();
   const [searchQuery, setSearchQuery] = useState('');
   const [resorts, setResorts] = useState<Resort[]>([]);
-  const [filteredResorts, setFilteredResorts] = useState<Resort[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedArea, setExpandedArea] = useState<string | null>(null);
 
   const AREA_ORDER = getAreaOrder(locale);
 
-  // リゾートデータを取得
   useEffect(() => {
-    const fetchResorts = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('resorts')
-          .select('id, name, name_en, area, region')
-          .order('name', { ascending: true });
-
-        if (error) throw error;
-
-        setResorts(data || []);
-        setFilteredResorts(data || []);
-      } catch (error) {
-        console.error('Error fetching resorts:', error);
-      } finally {
+    supabase
+      .from('resorts')
+      .select('id, name, name_en, area, region')
+      .order('name', { ascending: true })
+      .then(({ data, error }) => {
+        if (error) console.error('Error fetching resorts:', error);
+        setResorts((data as Resort[]) || []);
         setLoading(false);
-      }
-    };
-
-    fetchResorts();
+      });
   }, []);
 
-  // 検索フィルタリング
-  useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredResorts(resorts);
-    } else {
-      const filtered = resorts.filter((resort) => {
-        const nameJP = resort.name.toLowerCase();
-        const nameEN = resort.name_en?.toLowerCase() || '';
-        const query = searchQuery.toLowerCase();
-        return nameJP.includes(query) || nameEN.includes(query);
-      });
-      setFilteredResorts(filtered);
-    }
-  }, [searchQuery, resorts]);
+  const query = searchQuery.trim().toLowerCase();
+  const searchResults = useMemo(
+    () =>
+      query
+        ? resorts.filter((r) => r.name.toLowerCase().includes(query) || (r.name_en ?? '').toLowerCase().includes(query))
+        : [],
+    [resorts, query]
+  );
 
-  // エリアごとにグループ化
+  const homeResort = resorts.find((r) => r.id === prefs.homeId) ?? null;
+  const favoriteResorts = resorts.filter((r) => prefs.favoriteIds.has(r.id) && r.id !== prefs.homeId);
+
   const resortsByArea = useMemo(() => {
-    if (filteredResorts.length === 0) return {};
-
     const grouped: Record<string, Resort[]> = {};
-    filteredResorts.forEach((resort) => {
-      // 英語の場合はregion、日本語の場合はareaを使用
-      const areaKey = getResortPrefecture(resort, locale);
-      const area = areaKey || 'その他';
-      if (!grouped[area]) {
-        grouped[area] = [];
-      }
-      grouped[area].push(resort);
+    resorts.forEach((resort) => {
+      const area = getResortPrefecture(resort, locale) || t('resortPicker.otherArea');
+      (grouped[area] ??= []).push(resort);
     });
-
-    // Sort areas by AREA_ORDER
-    const sortedGrouped: Record<string, Resort[]> = {};
-    AREA_ORDER.forEach((area) => {
-      if (grouped[area]) {
-        sortedGrouped[area] = grouped[area];
-      }
-    });
-    // Add any areas not in AREA_ORDER at the end
+    const ordered: [string, Resort[]][] = [];
+    AREA_ORDER.forEach((area) => grouped[area] && ordered.push([area, grouped[area]]));
     Object.keys(grouped)
-      .filter((area) => !AREA_ORDER.includes(area))
+      .filter((a) => !AREA_ORDER.includes(a))
       .sort()
-      .forEach((area) => {
-        sortedGrouped[area] = grouped[area];
-      });
+      .forEach((a) => ordered.push([a, grouped[a]]));
+    return ordered;
+  }, [resorts, AREA_ORDER, locale, t]);
 
-    return sortedGrouped;
-  }, [filteredResorts, AREA_ORDER, locale]);
-
-  const handleSelectResort = (resort: Resort) => {
-    const resortName = getResortName(resort, locale);
-
-    // If first time, directly set as home without confirmation
+  const select = (resort: Resort) => {
+    const name = getResortName(resort, locale);
     if (isFirstTime) {
-      onSelectResort(resort.id, resortName, true);
+      onSelectResort(resort.id, name, true);
       return;
     }
-
-    // If changing home from button, show confirmation dialog
     if (isChangingHome) {
-      Alert.alert(
-        'ホームゲレンデに設定',
-        `${resortName}をホームゲレンデに設定しますか？`,
-        [
-          {
-            text: 'キャンセル',
-            style: 'cancel',
-          },
-          {
-            text: 'はい',
-            onPress: () => {
-              onSelectResort(resort.id, resortName, true);
-            },
-          },
-        ],
-        { cancelable: true }
-      );
-    } else {
-      // Normal search - just view the resort
-      onSelectResort(resort.id, resortName, false);
+      Alert.alert(t('resortPage.setAsHomeConfirmTitle'), t('resortPage.setAsHomeConfirmMessage', { resort: name }), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.ok'), onPress: () => onSelectResort(resort.id, name, true) },
+      ]);
+      return;
     }
+    onSelectResort(resort.id, name, false);
+  };
+
+  const toggleFavorite = async (resort: Resort) => {
+    const ok = await prefs.toggleFavorite(resort.id);
+    if (!ok) Alert.alert(t('resortPage.favoriteFailed'));
+  };
+
+  const makeHome = (resort: Resort) => {
+    const name = getResortName(resort, locale);
+    Alert.alert(t('resortPage.setAsHomeConfirmTitle'), t('resortPage.setAsHomeConfirmMessage', { resort: name }), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('common.ok'),
+        onPress: async () => {
+          const ok = await prefs.setHome(resort.id);
+          if (ok) {
+            onHomeChanged?.(resort.id, name);
+            Alert.alert(t('resortPage.homeChanged', { resort: name }));
+          } else {
+            Alert.alert(t('resortPage.homeChangeFailed'));
+          }
+        },
+      },
+    ]);
+  };
+
+  const renderRow = (resort: Resort, opts: { showArea?: boolean } = {}) => {
+    const name = getResortName(resort, locale);
+    const isHome = resort.id === prefs.homeId;
+    const isFav = prefs.favoriteIds.has(resort.id);
+    const isSelected = resort.id === selectedId;
+    return (
+      <View key={resort.id} style={[styles.row, { borderBottomColor: c.divider }]}>
+        <Pressable
+          onPress={() => select(resort)}
+          style={({ pressed }) => [styles.rowMain, pressed && { opacity: 0.6 }]}
+          accessibilityRole="button"
+          accessibilityState={{ selected: isSelected }}
+          accessibilityLabel={isHome ? `${name}（${t('chips.home')}）` : name}
+        >
+          <View style={styles.rowText}>
+            <View style={styles.rowTitleLine}>
+              <Text style={[styles.rowName, { color: c.text, fontWeight: isSelected ? fontWeight.bold : fontWeight.normal }]} numberOfLines={1}>
+                {name}
+              </Text>
+              {isHome ? <Chip label={t('chips.home')} tone="tint" icon="home" /> : null}
+            </View>
+            {opts.showArea ? (
+              <Text style={[styles.rowArea, { color: c.textLabel }]}>{getResortPrefecture(resort, locale)}</Text>
+            ) : null}
+          </View>
+          {isSelected ? <Ionicons name="checkmark" size={20} color={c.tintText} /> : null}
+        </Pressable>
+        {showHomeAction && !isHome && !isFirstTime ? (
+          <Pressable
+            onPress={() => makeHome(resort)}
+            style={styles.iconButton}
+            accessibilityRole="button"
+            accessibilityLabel={t('resortPage.setAsHome', { resort: name })}
+          >
+            <Ionicons name="home-outline" size={20} color={c.textLabel} />
+          </Pressable>
+        ) : null}
+        {!isFirstTime ? (
+          <Pressable
+            onPress={() => toggleFavorite(resort)}
+            style={styles.iconButton}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isFav }}
+            accessibilityLabel={isFav ? t('resortPage.removeFavorite') : t('resortPage.addFavorite')}
+            testID={`resort-fav-${resort.id}`}
+          >
+            <Ionicons name={isFav ? 'heart' : 'heart-outline'} size={22} color={isFav ? c.tintText : c.textLabel} />
+          </Pressable>
+        ) : null}
+      </View>
+    );
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: Math.max(insets.top, 16) }]}>
-        {!isFirstTime && (
-          <TouchableOpacity onPress={onClose} style={styles.backButton}>
-            <IconSymbol name="chevron.left" size={24} color={colors.accent} />
-            <Text style={[styles.backButtonText, { color: colors.accent }]}>戻る</Text>
-          </TouchableOpacity>
+    <View style={[styles.container, { backgroundColor: c.background, paddingTop: Platform.OS === 'android' ? insets.top : 0 }]}>
+      {/* ヘッダー */}
+      <View style={[styles.header, { borderBottomColor: c.divider }]}>
+        {!isFirstTime ? (
+          <Pressable onPress={onClose} style={styles.iconButton} accessibilityRole="button" accessibilityLabel={t('common.back')}>
+            <Ionicons name="chevron-back" size={24} color={c.text} />
+          </Pressable>
+        ) : (
+          <View style={styles.iconButton} />
         )}
-        {isFirstTime && <View style={styles.headerSpacer} />}
-        <Text style={[styles.title, { color: colors.text }]}>
-          {isFirstTime ? 'ホームゲレンデを設定' : 'リゾートを選択'}
+        <Text style={[styles.title, { color: c.text }]} accessibilityRole="header" numberOfLines={1}>
+          {isFirstTime ? t('snowfeed.setHomeResortButton') : title ?? t('resortPicker.title')}
         </Text>
-        <View style={styles.headerSpacer} />
+        <View style={styles.iconButton} />
       </View>
 
-      {/* Info Message for First-Time Users */}
-      {isFirstTime && (
-        <View style={[styles.infoBox, { backgroundColor: colors.accent + '20', borderColor: colors.accent }]}>
-          <IconSymbol name="info.circle.fill" size={24} color={colors.accent} />
-          <Text style={[styles.infoText, { color: colors.text }]}>
-            よく行くゲレンデをホームゲレンデとして設定しましょう。{'\n'}
-            後で設定画面から変更できます。
-          </Text>
+      {isFirstTime ? (
+        <View style={[styles.info, { backgroundColor: c.tintChipBackground }]}>
+          <Ionicons name="information-circle" size={20} color={c.tintText} />
+          <Text style={[styles.infoText, { color: c.text }]}>{t('resortPicker.firstTimeInfo')}</Text>
         </View>
-      )}
+      ) : null}
 
-      {/* Search Input */}
-      <View style={[styles.searchContainer, { backgroundColor: colors.backgroundSecondary }]}>
-        <IconSymbol name="magnifyingglass" size={20} color={colors.icon} />
+      {/* 検索 */}
+      <View style={[styles.search, { backgroundColor: c.chipBackground }]}>
+        <Ionicons name="search" size={18} color={c.textLabel} />
         <TextInput
-          style={[styles.searchInput, { color: colors.text }]}
-          placeholder="リゾート名で検索..."
-          placeholderTextColor={colors.textSecondary}
+          style={[styles.searchInput, { color: c.text }]}
+          placeholder={t('resortPicker.searchPlaceholder')}
+          placeholderTextColor={c.textLabel}
           value={searchQuery}
           onChangeText={setSearchQuery}
-          autoFocus
+          returnKeyType="search"
         />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <IconSymbol name="xmark.circle.fill" size={20} color={colors.icon} />
-          </TouchableOpacity>
-        )}
+        {searchQuery.length > 0 ? (
+          <Pressable onPress={() => setSearchQuery('')} hitSlop={10} accessibilityRole="button" accessibilityLabel={t('common.cancel')}>
+            <Ionicons name="close-circle" size={18} color={c.textLabel} />
+          </Pressable>
+        ) : null}
       </View>
 
-      {/* Resort List */}
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accent} />
-        </View>
+        <ActivityIndicator color={c.tintText} style={styles.loading} />
       ) : (
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {Object.keys(resortsByArea).length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <IconSymbol name="magnifyingglass" size={48} color={colors.icon} />
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                リゾートが見つかりませんでした
-              </Text>
-            </View>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.list}>
+          {query ? (
+            searchResults.length > 0 ? (
+              searchResults.map((r) => renderRow(r, { showArea: true }))
+            ) : (
+              <Text style={[styles.empty, { color: c.textLabel }]}>{t('resortPicker.noResults')}</Text>
+            )
           ) : (
-            Object.entries(resortsByArea).map(([area, areaResorts]) => (
-              <View key={area} style={styles.areaSection}>
-                {/* Area Header (Toggle) */}
-                <TouchableOpacity
-                  style={styles.areaHeader}
-                  onPress={() => setExpandedArea(expandedArea === area ? null : area)}
+            <>
+              {allOption ? (
+                <Pressable
+                  onPress={allOption.onSelect}
+                  style={[styles.row, styles.rowMain, { borderBottomColor: c.divider }]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: allOption.selected }}
                 >
-                  <Text style={[styles.areaHeaderText, { color: colors.text }]}>
-                    {area} ({areaResorts.length})
+                  <Text style={[styles.rowName, styles.rowText, { color: c.text, fontWeight: allOption.selected ? fontWeight.bold : fontWeight.normal }]}>
+                    {allOption.label}
                   </Text>
-                  <IconSymbol
-                    name={expandedArea === area ? 'chevron.up' : 'chevron.down'}
-                    size={20}
-                    color={colors.icon}
-                  />
-                </TouchableOpacity>
+                  {allOption.selected ? <Ionicons name="checkmark" size={20} color={c.tintText} /> : null}
+                </Pressable>
+              ) : null}
 
-                {/* Resort List (Collapsible) */}
-                {expandedArea === area && (
-                  <View style={styles.resortListContainer}>
-                    {areaResorts.map((resort) => (
-                      <TouchableOpacity
-                        key={resort.id}
-                        style={[styles.resortItem, { backgroundColor: colors.background }]}
-                        onPress={() => handleSelectResort(resort)}
-                      >
-                        <Text style={[styles.resortName, { color: colors.text }]}>
-                          {getResortName(resort, locale)}
-                        </Text>
-                        <IconSymbol name="chevron.right" size={18} color={colors.icon} />
-                      </TouchableOpacity>
-                    ))}
+              {homeResort && !isFirstTime ? (
+                <>
+                  <Text style={[styles.section, { color: c.textLabel }]}>{t('resortPage.homeSection')}</Text>
+                  {renderRow(homeResort)}
+                </>
+              ) : null}
+
+              {!isFirstTime ? (
+                <>
+                  <Text style={[styles.section, { color: c.textLabel }]}>{t('resortPage.favoritesSection')}</Text>
+                  {favoriteResorts.length > 0 ? (
+                    favoriteResorts.map((r) => renderRow(r, { showArea: true }))
+                  ) : (
+                    <Text style={[styles.hint, { color: c.textLabel }]}>{t('resortPicker.favoritesHint')}</Text>
+                  )}
+                </>
+              ) : null}
+
+              <Text style={[styles.section, { color: c.textLabel }]}>{t('resortPicker.byArea')}</Text>
+              {resortsByArea.map(([area, list]) => {
+                const open = expandedArea === area;
+                return (
+                  <View key={area}>
+                    <Pressable
+                      onPress={() => setExpandedArea(open ? null : area)}
+                      style={[styles.areaHeader, { borderBottomColor: c.divider }]}
+                      accessibilityRole="button"
+                      accessibilityState={{ expanded: open }}
+                    >
+                      <Text style={[styles.areaName, { color: c.text }]}>{area}</Text>
+                      <Text style={[styles.areaCount, { color: c.textLabel }]}>{list.length}</Text>
+                      <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={c.textLabel} />
+                    </Pressable>
+                    {open ? <View style={styles.areaList}>{list.map((r) => renderRow(r))}</View> : null}
                   </View>
-                )}
-              </View>
-            ))
+                );
+              })}
+            </>
           )}
         </ScrollView>
       )}
@@ -263,110 +319,119 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.md,
-    paddingBottom: spacing.md,
-    zIndex: 10,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    padding: spacing.xs,
-    zIndex: 20,
-  },
-  backButtonText: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   title: {
-    fontSize: fontSize.xl,
-    fontWeight: fontWeight.bold,
-    position: 'absolute',
-    left: 0,
-    right: 0,
+    flex: 1,
     textAlign: 'center',
+    fontSize: 17,
+    fontWeight: fontWeight.bold,
   },
-  headerSpacer: {
-    width: 80, // Same width as back button to center title
-  },
-  infoBox: {
-    flexDirection: 'row',
+  iconButton: {
+    width: touchTarget.min,
+    height: touchTarget.min,
     alignItems: 'center',
-    margin: spacing.md,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
+    justifyContent: 'center',
+  },
+  info: {
+    flexDirection: 'row',
     gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.md,
+    padding: spacing.md - 4,
+    borderRadius: borderRadius.card,
   },
   infoText: {
     flex: 1,
-    fontSize: fontSize.sm,
-    lineHeight: 20,
+    fontSize: 13,
+    lineHeight: 19,
   },
-  searchContainer: {
+  search: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-    padding: spacing.sm,
-    borderRadius: borderRadius.md,
     gap: spacing.sm,
+    marginHorizontal: spacing.md,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    paddingHorizontal: 12,
+    minHeight: touchTarget.min,
+    borderRadius: borderRadius.card,
   },
   searchInput: {
     flex: 1,
     fontSize: fontSize.md,
-    padding: spacing.xs,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  loading: {
+    marginTop: spacing.xl,
+  },
+  list: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xxl,
+  },
+  section: {
+    fontSize: 13,
+    fontWeight: fontWeight.bold,
+    marginTop: spacing.md + 2,
+    marginBottom: 2,
+  },
+  hint: {
+    fontSize: 13,
+    paddingVertical: spacing.sm,
+  },
+  row: {
+    flexDirection: 'row',
     alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  scrollView: {
+  rowMain: {
+    flex: 1,
+    minHeight: touchTarget.min + 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  rowText: {
     flex: 1,
   },
-  areaSection: {
-    marginBottom: spacing.xs,
+  rowTitleLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rowName: {
+    flexShrink: 1,
+    fontSize: 16,
+  },
+  rowArea: {
+    fontSize: 12,
+    marginTop: 1,
   },
   areaHeader: {
+    minHeight: touchTarget.min + 4,
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
-    marginHorizontal: spacing.md,
-    marginBottom: spacing.xs,
+    gap: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  areaHeaderText: {
-    fontSize: fontSize.lg,
+  areaName: {
+    flex: 1,
+    fontSize: 15,
     fontWeight: fontWeight.semibold,
   },
-  resortListContainer: {
-    paddingLeft: spacing.md,
+  areaCount: {
+    fontSize: 13,
   },
-  resortItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
-    marginHorizontal: spacing.md,
-    borderRadius: borderRadius.sm,
-    marginBottom: spacing.xs,
+  areaList: {
+    paddingLeft: spacing.sm,
   },
-  resortName: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.medium,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xxl,
-    gap: spacing.md,
-  },
-  emptyText: {
-    fontSize: fontSize.md,
+  empty: {
+    textAlign: 'center',
+    marginTop: spacing.xl,
+    fontSize: 14,
   },
 });
+
+export default ResortSearch;

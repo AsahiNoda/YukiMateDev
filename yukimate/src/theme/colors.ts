@@ -1,9 +1,17 @@
 import { Colors as AppColors } from '@/constants/theme';
 
+/**
+ * ダークテーマの値に固定した旧来のショートカット。
+ * ライトモードにも対応するため、新しいコードでは `useAppColors()`（src/hooks/useAppColors.ts）で
+ * 端末の設定に合わせたトークンを取得すること。
+ */
 export const colors = {
     text: {
         primary: AppColors.dark.text,
         secondary: AppColors.dark.textSecondary,
+        muted: AppColors.dark.textMuted,
+        label: AppColors.dark.textLabel,
+        tint: AppColors.dark.tintText,
     },
     background: {
         primary: AppColors.dark.background,
@@ -12,9 +20,11 @@ export const colors = {
     },
     border: {
         light: AppColors.dark.borderLight,
+        divider: AppColors.dark.divider,
     },
     accent: {
         primary: AppColors.dark.tint,
+        gold: AppColors.dark.gold,
     },
 };
 
@@ -41,6 +51,9 @@ export const borderRadius = {
     md: 8,
     lg: 12,
     full: 9999,
+    // UIリデザインの基本ルール（src/constants/spacing.ts と同じ値）
+    card: 12,
+    pill: 999,
 };
 
 export const fontWeight = {

@@ -1,14 +1,20 @@
 import { Colors } from '@/constants/theme';
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
-import { supabase } from '@/lib/supabase';
+import { supabase, getAuthUser } from '@/lib/supabase';
+import { IMAGE_MAX_SIZE, resizeImageForUpload } from '@/lib/imageResize';
+import { Chip } from '@/components/ui/Chip';
+import { useAppColors } from '@/hooks/useAppColors';
+import { useTranslation } from '@/hooks/useTranslation';
+import { getResortName } from '@/utils/resort-helpers';
 import { IconSymbol } from '@components/ui/icon-symbol';
+import { ResortSearch } from '@components/snowfeed/ResortSearch';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { Image } from 'expo-image';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -21,34 +27,96 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+type ResortOption = { id: string; name: string; isHome?: boolean };
+
 type PostCreateModalProps = {
   visible: boolean;
-  resortId: string;
-  resortName: string;
+  /** 投稿先のゲレンデ。ゲレンデページから開くときはそのゲレンデ */
+  resortId?: string | null;
+  resortName?: string | null;
+  /**
+   * 投稿先のゲレンデを選べるようにする（「作成」タブなど、ゲレンデページの外から開くとき）。
+   * resortId を渡さなければホームゲレンデを初期値にする
+   */
+  allowResortChange?: boolean;
   onClose: () => void;
-  onPostCreated: () => void;
+  /** 投稿が完了したとき。投稿先のゲレンデを渡す */
+  onPostCreated: (resort: { id: string; name: string }) => void;
 };
 
 export function PostCreateModal({
   visible,
   resortId,
   resortName,
+  allowResortChange = false,
   onClose,
   onPostCreated,
 }: PostCreateModalProps) {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const c = useAppColors();
+  const { t, locale } = useTranslation();
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // 投稿先のゲレンデ
+  const [resort, setResort] = useState<ResortOption | null>(
+    resortId && resortName ? { id: resortId, name: resortName } : null
+  );
+  const [quickResorts, setQuickResorts] = useState<ResortOption[]>([]);
+  const [pickingResort, setPickingResort] = useState(false);
+
+  // 開くたびに、渡されたゲレンデを投稿先にする（渡されていなければ候補の読み込み後にホームゲレンデ）
+  useEffect(() => {
+    if (!visible) return;
+    setResort(resortId && resortName ? { id: resortId, name: resortName } : null);
+  }, [visible, resortId, resortName]);
+
+  // 選べるときは、ホームゲレンデを初期値にする（お気に入りスキー場は今は使わない。ほかは検索から選ぶ）
+  useEffect(() => {
+    if (!visible || !allowResortChange) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const {
+          data: { user },
+        } = await getAuthUser();
+        if (!user) return;
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('home_resort:resorts!profiles_home_resort_id_fkey(id, name, name_en)')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (cancelled) return;
+
+        const one = (value: any) => (Array.isArray(value) ? value[0] : value);
+        const home = one((profile as any)?.home_resort);
+        const options: ResortOption[] = home?.id
+          ? [{ id: home.id, name: getResortName(home, locale), isHome: true }]
+          : [];
+        setQuickResorts(options);
+        // 初期値：渡されたゲレンデ → ホームゲレンデ
+        setResort((current) => current ?? options[0] ?? null);
+      } catch (error) {
+        console.error('Error loading resort options:', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [visible, allowResortChange, locale]);
+
   // 画像選択
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('権限エラー', '写真ライブラリへのアクセス許可が必要です');
+      Alert.alert(t('postModal.permissionError'), t('postModal.photoLibraryAccess'));
       return;
     }
 
@@ -77,27 +145,28 @@ export function PostCreateModal({
       // Get current user
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await getAuthUser();
       if (!user) {
         throw new Error('User not authenticated');
       }
       console.log('✅ User authenticated:', user.id);
 
+      // アップロード前に縮小（長辺 1600px、JPEG）
+      const resized = await resizeImageForUpload(uri, IMAGE_MAX_SIZE.post);
+
       // Generate unique filename
       const timestamp = Date.now();
       const random = Math.random().toString(36).substring(2, 9);
-      const fileExtension = uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const fileExtension = resized.ext;
       const fileName = `${user.id}/${timestamp}_${random}.${fileExtension}`;
       console.log('📁 Generated filename:', fileName);
 
-      // Determine MIME type
-      const mimeType = fileExtension === 'png' ? 'image/png' : 'image/jpeg';
-      console.log('📄 MIME type:', mimeType);
+      const mimeType = resized.mimeType;
 
       // For React Native, we need to use FormData to upload the file
       const formData = new FormData();
       formData.append('', {
-        uri: uri,
+        uri: resized.uri,
         name: `${timestamp}_${random}.${fileExtension}`,
         type: mimeType,
       } as any);
@@ -138,9 +207,25 @@ export function PostCreateModal({
   };
 
   // 投稿送信
+  // 投稿ボタンの二重送信を防ぐ（isSubmitting は次の描画まで反映されない）
+  const submittingRef = React.useRef(false);
   const handleSubmit = async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      await submitPost();
+    } finally {
+      submittingRef.current = false;
+    }
+  };
+
+  const submitPost = async () => {
+    if (!resort) {
+      Alert.alert(t('postModal.resortRequired'));
+      return;
+    }
     if (!imageUri) {
-      Alert.alert('画像が必要です', '投稿する画像を選択してください');
+      Alert.alert(t('postModal.imageRequired'), t('postModal.selectImagePrompt'));
       return;
     }
 
@@ -150,20 +235,20 @@ export function PostCreateModal({
       // Get current user
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await getAuthUser();
       if (!user) {
-        throw new Error('ログインが必要です');
+        throw new Error(t('create.loginRequired'));
       }
 
       // Upload image
       const photoUrl = await uploadImage(imageUri);
       if (!photoUrl) {
-        throw new Error('画像のアップロードに失敗しました');
+        throw new Error(t('postModal.uploadFailed'));
       }
 
       // Create post
       const { error: postError } = await supabase.from('feed_posts').insert({
-        resort_id: resortId,
+        resort_id: resort.id,
         user_id: user.id,
         type: 'snow', // デフォルトで'snow'タイプ
         text: comment.trim() || null,
@@ -176,14 +261,15 @@ export function PostCreateModal({
       }
 
       // Success
-      Alert.alert('投稿完了', '投稿が正常に作成されました！');
+      const postedTo = { id: resort.id, name: resort.name };
+      Alert.alert(t('postModal.postComplete'), t('postModal.postCreatedAt', { resort: postedTo.name }));
       handleClose();
-      onPostCreated();
+      onPostCreated(postedTo);
     } catch (error) {
       console.error('Error creating post:', error);
       Alert.alert(
-        '投稿エラー',
-        error instanceof Error ? error.message : '投稿の作成に失敗しました'
+        t('postModal.postError'),
+        error instanceof Error ? error.message : t('postModal.postFailed')
       );
     } finally {
       setIsSubmitting(false);
@@ -194,11 +280,29 @@ export function PostCreateModal({
   const handleClose = () => {
     setImageUri(null);
     setComment('');
+    setPickingResort(false);
     onClose();
   };
 
+  const canSubmit = !!imageUri && !!resort && !isSubmitting;
+
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={() => (pickingResort ? setPickingResort(false) : handleClose())}>
+      {pickingResort ? (
+        // ほかのゲレンデを検索して選ぶ（同じモーダルの中で画面を切り替える）
+        <ResortSearch
+          onSelectResort={(id, name) => {
+            setResort({ id, name });
+            setPickingResort(false);
+          }}
+          onClose={() => setPickingResort(false)}
+          hasHomeResort
+        />
+      ) : (
       <KeyboardAvoidingView
         style={[styles.container, { backgroundColor: colors.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -212,14 +316,21 @@ export function PostCreateModal({
               borderBottomColor: colors.border,
             },
           ]}>
-          <TouchableOpacity onPress={handleClose} disabled={isSubmitting}>
+          <TouchableOpacity
+            onPress={handleClose}
+            disabled={isSubmitting}
+            style={styles.headerIconButton}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.cancel')}>
             <IconSymbol name="xmark" size={24} color={colors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>新規投稿</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t('postModal.title')}</Text>
           <TouchableOpacity
             onPress={handleSubmit}
-            disabled={isSubmitting || !imageUri}
-            style={styles.postButton}>
+            disabled={!canSubmit}
+            style={styles.postButton}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSubmit }}>
             {isSubmitting ? (
               <ActivityIndicator size="small" color={colors.accent} />
             ) : (
@@ -227,10 +338,10 @@ export function PostCreateModal({
                 style={[
                   styles.postButtonText,
                   {
-                    color: imageUri ? colors.accent : colors.textSecondary,
+                    color: canSubmit ? c.tintText : c.textLabel,
                   },
                 ]}>
-                投稿
+                {t('postModal.submit')}
               </Text>
             )}
           </TouchableOpacity>
@@ -240,11 +351,52 @@ export function PostCreateModal({
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           keyboardShouldPersistTaps="handled">
-          {/* Resort Info */}
-          <View style={[styles.resortInfo, { backgroundColor: colors.card }]}>
-            <IconSymbol name="mountain.2" size={20} color={colors.accent} />
-            <Text style={[styles.resortName, { color: colors.text }]}>{resortName}</Text>
-          </View>
+          {/* 投稿先のゲレンデ */}
+          {allowResortChange ? (
+            <View style={styles.resortPicker}>
+              <Text style={[styles.label, { color: colors.text }]}>{t('postModal.resortLabel')}</Text>
+              <TouchableOpacity
+                style={[styles.resortInfo, { backgroundColor: colors.card }]}
+                onPress={() => setPickingResort(true)}
+                disabled={isSubmitting}
+                accessibilityRole="button"
+                accessibilityLabel={`${t('postModal.resortLabel')}: ${resort?.name ?? t('postModal.selectResort')}`}
+                accessibilityHint={t('postModal.changeResort')}
+                testID="post-resort-picker">
+                <IconSymbol name="mountain.2" size={20} color={c.tintText} />
+                <Text
+                  style={[styles.resortName, styles.resortNameFlex, { color: resort ? colors.text : c.textLabel }]}
+                  numberOfLines={1}>
+                  {resort?.name ?? t('postModal.selectResort')}
+                </Text>
+                <Text style={[styles.changeText, { color: c.tintText }]}>{t('postModal.changeResort')}</Text>
+                <IconSymbol name="chevron.right" size={16} color={c.tintText} />
+              </TouchableOpacity>
+              {quickResorts.length > 1 ? (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.quickResorts}
+                  keyboardShouldPersistTaps="handled">
+                  {quickResorts.map((option) => (
+                    <Chip
+                      key={option.id}
+                      label={option.name}
+                      icon={option.isHome ? 'home' : undefined}
+                      accessibilityLabel={option.isHome ? `${option.name}（${t('chips.home')}）` : option.name}
+                      selected={resort?.id === option.id}
+                      onPress={() => setResort(option)}
+                    />
+                  ))}
+                </ScrollView>
+              ) : null}
+            </View>
+          ) : (
+            <View style={[styles.resortInfo, { backgroundColor: colors.card }]}>
+              <IconSymbol name="mountain.2" size={20} color={c.tintText} />
+              <Text style={[styles.resortName, { color: colors.text }]}>{resort?.name ?? resortName}</Text>
+            </View>
+          )}
 
           {/* Image Picker */}
           {!imageUri ? (
@@ -254,7 +406,7 @@ export function PostCreateModal({
               disabled={isSubmitting}>
               <IconSymbol name="photo" size={48} color={colors.icon} />
               <Text style={[styles.imagePickerText, { color: colors.textSecondary }]}>
-                画像を選択
+                {t('postModal.selectImage')}
               </Text>
             </TouchableOpacity>
           ) : (
@@ -271,7 +423,7 @@ export function PostCreateModal({
 
           {/* Comment Input */}
           <View style={styles.commentSection}>
-            <Text style={[styles.label, { color: colors.text }]}>コメント（任意）</Text>
+            <Text style={[styles.label, { color: colors.text }]}>{t('postModal.commentLabel')}</Text>
             <TextInput
               style={[
                 styles.commentInput,
@@ -281,7 +433,7 @@ export function PostCreateModal({
                   borderColor: colors.border,
                 },
               ]}
-              placeholder="今日の雪質やゲレンデの様子を共有しよう..."
+              placeholder={t('postModal.commentPlaceholder')}
               placeholderTextColor={colors.textSecondary}
               value={comment}
               onChangeText={setComment}
@@ -296,6 +448,7 @@ export function PostCreateModal({
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      )}
     </Modal>
   );
 }
@@ -341,6 +494,27 @@ const styles = StyleSheet.create({
   resortName: {
     fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
+  },
+  resortNameFlex: {
+    flex: 1,
+  },
+  resortPicker: {
+    gap: spacing.sm,
+  },
+  changeText: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
+  },
+  quickResorts: {
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  headerIconButton: {
+    width: 44,
+    height: 44,
+    marginLeft: -spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   imagePicker: {
     height: 300,

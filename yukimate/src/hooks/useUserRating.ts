@@ -1,4 +1,4 @@
-import { supabase } from '@lib/supabase';
+import { supabase, getAuthUser } from '@lib/supabase';
 import type { ReactionKind, UserRatingSummary } from '@lib/database.types';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -47,7 +47,7 @@ export function useUserRating(targetUserId?: string) {
     try {
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await getAuthUser();
 
       const [summaryRes, myRes] = await Promise.all([
         supabase.rpc('get_user_rating', { target: targetUserId }),
@@ -94,7 +94,7 @@ export function useUserRating(targetUserId?: string) {
 
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await getAuthUser();
       if (!user) return { success: false, error: 'not signed in' };
       if (user.id === targetUserId) return { success: false, error: 'cannot rate yourself' };
 

@@ -6,21 +6,23 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useBookmark } from '@/hooks/useBookmark';
 import { applyToEvent } from '@/hooks/useDiscoverEvents';
+import { resortPageHref } from '@/navigation/resortPage';
+import { syncEventReminders } from '@/services/eventNotificationService';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/lib/supabase';
 import { getResortName } from '@/utils/resort-helpers';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import { Image } from 'expo-image';
 import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -48,6 +50,8 @@ interface EventDetail {
   photos: string[];
   category: string;
   resortName: string;
+  /** ゲレンデページ（予報タブ）を開くため。README「6. Snowfeed」入口 #4 */
+  resortId: string | null;
   hostName: string;
   hostAvatar: string | null;
   hostUserId: string;
@@ -574,6 +578,7 @@ export default function EventDetailScreen() {
         photos: photoUrls,
         category: eventData.type,
         resortName: eventData.resorts ? getResortName(eventData.resorts, locale) : t('common.unknown'),
+        resortId: eventData.resorts?.id ?? null,
         hostName: eventData.profiles?.display_name || t('common.unknown'),
         hostAvatar: eventData.profiles?.avatar_url || null,
         hostUserId: eventData.host_user_id,
@@ -659,6 +664,8 @@ export default function EventDetailScreen() {
                 spotsTaken: Math.max(0, prev.spotsTaken - 1)
               } : null);
 
+              // 退会したイベントの開始リマインダーをこの端末から取り消す
+              syncEventReminders(session.user.id, locale);
               Alert.alert(t('eventDetail.withdrawComplete'), t('eventDetail.withdrawSuccess'));
               // 詳細を再読み込みして最新の状態を取得
               loadEventDetail();
@@ -832,15 +839,25 @@ export default function EventDetailScreen() {
               </View>
             </View>
 
-            {/* スキー場 */}
-            <View style={styles.gridItemWide}>
+            {/* スキー場（タップでそのゲレンデのページ・予報タブへ） */}
+            <TouchableOpacity
+              style={styles.gridItemWide}
+              disabled={!event.resortId}
+              onPress={() => event.resortId && router.push(resortPageHref(event.resortId, 'forecast'))}
+              accessibilityRole="link"
+              accessibilityHint={t('resortPage.currentConditions')}
+              testID="event-detail-resort"
+            >
               <View style={styles.gridIconContainer}>
                 <IconSymbol name="mountain.2.fill" size={20} color={colors.icon} />
               </View>
-              <View style={styles.gridTextContainer}>
-                <Text style={[styles.gridValue, { color: colors.text }]}>{event.resortName}</Text>
+              <View style={[styles.gridTextContainer, { flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                <Text style={[styles.gridValue, { color: event.resortId ? colors.tintText : colors.text, flexShrink: 1 }]}>
+                  {event.resortName}
+                </Text>
+                {event.resortId ? <IconSymbol name="chevron.right" size={16} color={colors.tintText} /> : null}
               </View>
-            </View>
+            </TouchableOpacity>
 
             {/* 参加人数 */}
             <View style={styles.gridItem}>

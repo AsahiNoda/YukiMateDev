@@ -1,88 +1,110 @@
+import type { Locale } from '@/contexts/LocaleContext';
+import { getTranslation } from '@/i18n/translations';
 import { supabase } from '@/lib/supabase';
-import { scheduleNotificationAtTime } from '@/utils/notifications';
-import { notifyEventStarting, notifyEventCancelled, notifyNewParticipant } from './notificationService';
+import * as Notifications from 'expo-notifications';
+import { notifyEventCancelled, notifyNewParticipant } from './notificationService';
+
+/** イベント開始の何分前に知らせるか */
+export const EVENT_REMINDER_MINUTES = 30;
+
+const REMINDER_ID_PREFIX = 'event-reminder-';
+const reminderIdFor = (eventId: string) => `${REMINDER_ID_PREFIX}${eventId}`;
 
 /**
- * イベント開始30分前のリマインダーをスケジュール
+ * イベント開始30分前のリマインダーを、この端末（ログイン中のユーザー本人）に合わせて揃える。
+ *
+ * 以前はホストが参加を承認したときに予約していたため、リマインダーがホストの端末に入り、
+ * 参加者本人には届いていなかった（承認した人数ぶん、ホストに重複して入っていた）。
+ * 今は本人のアプリが起動・前面に戻ったとき・承認の通知を受け取ったときにこの関数を呼び、
+ *  - 参加中（left_at が空）または主催しているこれからのイベントには、リマインダーを予約する
+ *  - 退会した・キャンセルされた・終わったイベントのリマインダーは取り消す
+ *  - 開始時刻やタイトルが変わったものは予約し直す
+ * 通知の許可がない端末では何もしない。
  */
-export async function scheduleEventStartReminder(
-  eventId: string,
-  eventTitle: string,
-  startAt: string
-) {
+export async function syncEventReminders(userId: string, locale: Locale): Promise<void> {
   try {
-    // イベント開始30分前の時刻を計算
-    const startTime = new Date(startAt);
-    const reminderTime = new Date(startTime.getTime() - 30 * 60 * 1000);
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') return;
 
-    // 現在時刻よりも前の場合はスケジュールしない
-    if (reminderTime <= new Date()) {
-      console.log('⚠️ Reminder time is in the past, skipping');
-      return;
-    }
+    const nowIso = new Date().toISOString();
+    const [participantRes, hostRes] = await Promise.all([
+      supabase.from('event_participants').select('event_id').eq('user_id', userId).is('left_at', null),
+      supabase.from('posts_events').select('id').eq('host_user_id', userId).gte('start_at', nowIso),
+    ]);
+    if (participantRes.error) throw participantRes.error;
+    if (hostRes.error) throw hostRes.error;
 
-    // イベントの参加者を取得
-    const { data: participants, error } = await supabase
-      .from('event_participants')
-      .select('user_id')
-      .eq('event_id', eventId)
-      .is('left_at', null);
+    const ids = [
+      ...new Set([
+        ...(participantRes.data || []).map((p) => p.event_id as string),
+        ...(hostRes.data || []).map((e) => e.id as string),
+      ]),
+    ];
 
-    if (error) {
-      console.error('❌ Error fetching participants:', error);
-      return;
-    }
-
-    // 各参加者にローカル通知をスケジュール
-    for (const participant of participants || []) {
-      await scheduleNotificationAtTime(
-        'イベント開始まであと少し',
-        `「${eventTitle}」が30分後に始まります。`,
-        reminderTime,
-        {
-          type: 'event_starting',
-          eventId,
-        }
-      );
-    }
-
-    console.log(`✅ Scheduled ${participants?.length || 0} event start reminders`);
-  } catch (error) {
-    console.error('❌ Error scheduling event start reminders:', error);
-  }
-}
-
-/**
- * イベント参加時に開始リマインダーをスケジュール
- */
-export async function scheduleReminderOnJoin(
-  userId: string,
-  eventId: string,
-  eventTitle: string,
-  startAt: string
-) {
-  try {
-    const startTime = new Date(startAt);
-    const reminderTime = new Date(startTime.getTime() - 30 * 60 * 1000);
-
-    if (reminderTime <= new Date()) {
-      console.log('⚠️ Reminder time is in the past, skipping');
-      return;
-    }
-
-    await scheduleNotificationAtTime(
-      'イベント開始まであと少し',
-      `「${eventTitle}」が30分後に始まります。`,
-      reminderTime,
-      {
-        type: 'event_starting',
-        eventId,
+    // 予約したいリマインダー：eventId → { title, startAt }
+    const wanted = new Map<string, { title: string; startAt: string }>();
+    if (ids.length > 0) {
+      const { data: events, error } = await supabase
+        .from('posts_events')
+        .select('id, title, start_at, status')
+        .in('id', ids)
+        .gte('start_at', nowIso)
+        .neq('status', 'cancelled');
+      if (error) throw error;
+      for (const e of events || []) {
+        const remindAt = new Date(e.start_at).getTime() - EVENT_REMINDER_MINUTES * 60 * 1000;
+        if (remindAt > Date.now()) wanted.set(e.id, { title: e.title, startAt: e.start_at });
       }
-    );
+    }
 
-    console.log('✅ Scheduled event start reminder for user');
+    const allScheduled = await Notifications.getAllScheduledNotificationsAsync();
+
+    // 以前の仕組み（ホストの端末に予約していた）で残っているリマインダーを取り消す
+    for (const n of allScheduled) {
+      const type = (n.content.data as { type?: string } | undefined)?.type;
+      if (type === 'event_starting' && !n.identifier.startsWith(REMINDER_ID_PREFIX)) {
+        await Notifications.cancelScheduledNotificationAsync(n.identifier);
+      }
+    }
+
+    // すでにこの端末に予約されているリマインダー
+    const scheduled = allScheduled.filter((n) => n.identifier.startsWith(REMINDER_ID_PREFIX));
+    const scheduledById = new Map(scheduled.map((n) => [n.identifier, n]));
+
+    // いらなくなった・内容が変わったものを取り消す
+    for (const n of scheduled) {
+      const eventId = n.identifier.slice(REMINDER_ID_PREFIX.length);
+      const want = wanted.get(eventId);
+      const data = (n.content.data || {}) as { startAt?: string; title?: string };
+      if (!want || data.startAt !== want.startAt || data.title !== want.title) {
+        await Notifications.cancelScheduledNotificationAsync(n.identifier);
+        scheduledById.delete(n.identifier);
+      }
+    }
+
+    // まだ予約されていないものを予約する
+    for (const [eventId, e] of wanted) {
+      const identifier = reminderIdFor(eventId);
+      if (scheduledById.has(identifier)) continue;
+      await Notifications.scheduleNotificationAsync({
+        identifier,
+        content: {
+          title: getTranslation(locale, 'notifications.eventStarting.title'),
+          body: getTranslation(locale, 'notifications.eventStarting.body', {
+            eventTitle: e.title,
+            minutes: EVENT_REMINDER_MINUTES,
+          }),
+          data: { type: 'event_starting', eventId, startAt: e.startAt, title: e.title },
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: new Date(new Date(e.startAt).getTime() - EVENT_REMINDER_MINUTES * 60 * 1000),
+        },
+      });
+    }
   } catch (error) {
-    console.error('❌ Error scheduling reminder on join:', error);
+    console.warn('[syncEventReminders] failed', error);
   }
 }
 

@@ -5,20 +5,28 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useResorts } from '@/hooks/useResorts';
 import { useTranslation } from '@/hooks/useTranslation';
 import { supabase } from '@/lib/supabase';
+import { IMAGE_MAX_SIZE, resizeImageForUpload } from '@/lib/imageResize';
 import type { SkillLevel } from '@/types';
 import { getResortName, getResortPrefecture } from '@/utils/resort-helpers';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { DatePickerSheet } from '@/components/ui/DatePickerSheet';
+import { ResortSearch } from '@/components/snowfeed/ResortSearch';
+import * as FileSystem from 'expo-file-system/legacy';
+import { decode } from 'base64-arraybuffer';
+import { syncEventReminders } from '@/services/eventNotificationService';
+import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import { Image } from 'expo-image';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Modal,
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -41,19 +49,29 @@ const SKILL_LEVELS: { value: SkillLevel | ''; labelKey: string }[] = [
   { value: 'advanced', labelKey: 'create.levelAdvanced' },
 ];
 
-// 5分刻みの時刻オプションを生成 (00:00 ~ 23:55)
-const generateTimeOptions = (): string[] => {
-  const options: string[] = [];
-  for (let hour = 0; hour < 24; hour++) {
-    for (let minute = 0; minute < 60; minute += 5) {
-      const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-      options.push(timeStr);
-    }
+/**
+ * 前の画面に戻る。戻り先がない（タブバーの「作成」から直接開いた）ときはホームへ。
+ * router.back() だけだと "The action 'GO_BACK' was not handled" になっていた
+ */
+const goBackOrHome = () => {
+  if (router.canGoBack()) {
+    router.back();
+  } else {
+    router.navigate('/(tabs)/home');
   }
-  return options;
 };
 
-const TIME_OPTIONS = generateTimeOptions();
+// 時刻は "HH:mm" の文字列で持ち、選ぶときは端末の標準の時刻ピッカーを使う
+const timeStringToDate = (time: string): Date | null => {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(time);
+  if (!match) return null;
+  const d = new Date();
+  d.setHours(Number(match[1]), Number(match[2]), 0, 0);
+  return d;
+};
+
+const dateToTimeString = (date: Date): string =>
+  `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 
 export default function CreateEventScreen() {
   const insets = useSafeAreaInsets();
@@ -61,7 +79,14 @@ export default function CreateEventScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const styles = React.useMemo(() => createStyles(colors), [colors]);
   const resortsState = useResorts();
-  const params = useLocalSearchParams<{ eventId?: string }>();
+  // presetDate（YYYY-MM-DD）・presetStartTime（HH:mm）・presetResortId：ホームの「朝イチ組を作る」などから入力済みで開く
+  const params = useLocalSearchParams<{
+    eventId?: string;
+    presetDate?: string;
+    presetStartTime?: string;
+    presetResortId?: string;
+    t?: string;
+  }>();
   const isEditMode = !!params.eventId;
   const { t, locale } = useTranslation();
 
@@ -77,6 +102,31 @@ export default function CreateEventScreen() {
   const [capacity, setCapacity] = useState('');
   const [level, setLevel] = useState<SkillLevel | ''>('');
   const [price, setPrice] = useState('');
+  // 一人参加OK（posts_events.solo_ok）
+  const [soloOk, setSoloOk] = useState(false);
+
+  // 入力済みで開く（新規作成のときだけ）
+  React.useEffect(() => {
+    if (params.eventId) return;
+    if (params.presetDate) {
+      const [y, m, d] = params.presetDate.split('-').map(Number);
+      if (y && m && d) setDate(new Date(y, m - 1, d));
+    }
+    if (params.presetStartTime && /^\d{1,2}:\d{2}$/.test(params.presetStartTime)) {
+      setStartTime(params.presetStartTime.padStart(5, '0'));
+    }
+    if (params.presetResortId) setResortId(params.presetResortId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.presetDate, params.presetStartTime, params.presetResortId, params.t]);
+
+  // この画面はタブなので開いたままになり、前回のスクロール位置（作成ボタンのある下の方）が残る。
+  // 開くたびに一番上から表示する
+  const formScrollRef = React.useRef<ScrollView>(null);
+  useFocusEffect(
+    React.useCallback(() => {
+      formScrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, [params.eventId])
+  );
   const [meetingPlace, setMeetingPlace] = useState('');
   const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -92,29 +142,6 @@ export default function CreateEventScreen() {
 
   // Resort filter states
   const [expandedArea, setExpandedArea] = useState<string | null>(null);
-
-  // ScrollView refs for time pickers
-  const startTimeScrollRef = React.useRef<ScrollView>(null);
-  const endTimeScrollRef = React.useRef<ScrollView>(null);
-
-  // スクロール位置を選択中の時刻に合わせる（中央に表示）
-  const scrollToSelectedTime = (scrollRef: React.RefObject<ScrollView | null>, selectedTime: string) => {
-    const index = TIME_OPTIONS.indexOf(selectedTime);
-    if (index !== -1) {
-      // アイテムの実際の高さ（padding 12*2 + fontSize 16 + line-height + border 1）
-      // 45と49の中間値で調整
-      const itemHeight = 47;
-      const containerHeight = 200; // maxHeightと同じ値
-      // 選択中のアイテムを中央に表示
-      // コンテナの中央（100px）に選択アイテムを配置
-      const scrollToY = Math.max(0, (index * itemHeight) - (containerHeight / 2));
-
-      // setTimeoutで確実にレンダリング後にスクロール
-      setTimeout(() => {
-        scrollRef.current?.scrollTo({ y: scrollToY, animated: true });
-      }, 100);
-    }
-  };
 
   // Load event data for edit mode
   useEffect(() => {
@@ -156,6 +183,7 @@ export default function CreateEventScreen() {
       setCapacity(String(eventData.capacity_total || 6));
       setLevel(eventData.level_required || '');
       setPrice(eventData.price_per_person_jpy ? String(eventData.price_per_person_jpy) : '');
+      setSoloOk(!!eventData.solo_ok);
       setMeetingPlace(eventData.meeting_place || '');
       setTags(eventData.tags || []);
 
@@ -177,7 +205,7 @@ export default function CreateEventScreen() {
     } catch (error) {
       console.error('Error loading event data:', error);
       Alert.alert(t('common.error'), t('create.loadEventFailed'));
-      router.back();
+      goBackOrHome();
     } finally {
       setLoading(false);
     }
@@ -278,6 +306,7 @@ export default function CreateEventScreen() {
     setCapacity('');
     setLevel('');
     setPrice('');
+    setSoloOk(false);
     setMeetingPlace('');
     setTagInput('');
     setTags([]);
@@ -352,7 +381,7 @@ export default function CreateEventScreen() {
                   onPress: () => {
                     resetForm();
                     // After deletion, go back (the event detail will handle the missing event)
-                    router.back();
+                    goBackOrHome();
                   },
                 },
               ]);
@@ -369,38 +398,71 @@ export default function CreateEventScreen() {
   };
 
   const uploadImages = async (eventId: string): Promise<string[]> => {
-    const uploadedPaths: string[] = [];
+    // 複数枚を並列でアップロード（順番は selectedImages の並びを維持）
+    const baseTime = Date.now();
+    return Promise.all(
+      selectedImages.map(async (imageUri, i) => {
+        let uploadUri = imageUri;
+        let fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
+        let contentType = `image/${fileExt}`;
 
-    for (let i = 0; i < selectedImages.length; i++) {
-      const imageUri = selectedImages[i];
-      const fileExt = imageUri.split('.').pop()?.toLowerCase() || 'jpg';
-      const fileName = `${eventId}/${Date.now()}-${i}.${fileExt}`;
+        // 端末内の画像はアップロード前に縮小（長辺 1600px、JPEG）
+        if (!imageUri.startsWith('http')) {
+          const resized = await resizeImageForUpload(imageUri, IMAGE_MAX_SIZE.event);
+          uploadUri = resized.uri;
+          fileExt = resized.ext;
+          contentType = resized.mimeType;
+        }
 
-      // Fetch the image as arraybuffer
-      const response = await fetch(imageUri);
-      const arrayBuffer = await response.arrayBuffer();
+        const fileName = `${eventId}/${baseTime}-${i}.${fileExt}`;
 
-      const { data, error } = await supabase.storage
-        .from('event_images')
-        .upload(fileName, arrayBuffer, {
-          contentType: `image/${fileExt}`,
-          upsert: false,
-        });
+        // 端末内のファイルは base64 で読んで ArrayBuffer にする（プロフィール画像のアップロードと同じ方法）。
+        // 以前の fetch(file://...).arrayBuffer() は Android で失敗することがあり、
+        // イベントは作成されるのに画像だけ登録されなかった
+        let arrayBuffer: ArrayBuffer;
+        if (uploadUri.startsWith('http')) {
+          const response = await fetch(uploadUri);
+          arrayBuffer = await response.arrayBuffer();
+        } else {
+          const base64 = await FileSystem.readAsStringAsync(uploadUri, { encoding: 'base64' });
+          arrayBuffer = decode(base64);
+        }
+        if (arrayBuffer.byteLength === 0) {
+          throw new Error(`Empty image data: ${uploadUri}`);
+        }
 
-      if (error) {
-        console.error('Image upload error:', error);
-        throw error;
-      }
+        const { error } = await supabase.storage
+          .from('event_images')
+          .upload(fileName, arrayBuffer, {
+            contentType,
+            upsert: false,
+          });
 
-      // ファイルパスを保存（URLではなく）
-      // useDiscoverEventsフックが自動的にPublic URLを生成します
-      uploadedPaths.push(fileName);
-    }
+        if (error) {
+          console.error('Image upload error:', error);
+          throw error;
+        }
 
-    return uploadedPaths;
+        // ファイルパスを保存（URLではなく）
+        // useDiscoverEventsフックが自動的にPublic URLを生成します
+        return fileName;
+      })
+    );
   };
 
+  // 作成ボタンの二重送信を防ぐ（loading は次の描画まで反映されないので、連続タップで2件作られていた）
+  const submittingRef = React.useRef(false);
   const handleCreate = async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
+    try {
+      await createEvent();
+    } finally {
+      submittingRef.current = false;
+    }
+  };
+
+  const createEvent = async () => {
     // Validation
     if (!(title || '').trim()) {
       Alert.alert(t('common.error'), t('create.enterTitle'));
@@ -466,6 +528,7 @@ export default function CreateEventScreen() {
         capacity_total: capacityNum,
         level_required: level || null,
         price_per_person_jpy: priceNum,
+        solo_ok: soloOk,
         meeting_place: (meetingPlace || '').trim() || null,
         tags: tags.length > 0 ? tags : null,
       };
@@ -542,13 +605,16 @@ export default function CreateEventScreen() {
         }
       }
 
+      // 主催するイベントの開始リマインダーを揃える（新規作成・日時の変更）
+      syncEventReminders(session.user.id, locale);
+
       Alert.alert(t('common.complete'), isEditMode ? t('create.postUpdated') : t('create.postCreated'), [
         {
           text: t('common.ok'),
           onPress: () => {
             // Always reset form to prevent leftover data
             resetForm();
-            router.back();
+            goBackOrHome();
           },
         },
       ]);
@@ -565,7 +631,10 @@ export default function CreateEventScreen() {
 
   const selectedResortName =
     resortsState.status === 'success'
-      ? resortsState.resorts.find((r) => r.id === resortId)?.name || t('create.selectResort')
+      ? (() => {
+          const r = resortsState.resorts.find((x) => x.id === resortId);
+          return r ? getResortName(r, locale) : t('create.selectResort');
+        })()
       : t('create.selectResort');
 
   const selectedLevelLabel =
@@ -591,7 +660,7 @@ export default function CreateEventScreen() {
                     style: 'destructive',
                     onPress: () => {
                       resetForm();
-                      router.back();
+                      goBackOrHome();
                     },
                   },
                 ],
@@ -608,7 +677,11 @@ export default function CreateEventScreen() {
         </View>
       )}
 
-      <ScrollView style={styles.scrollContainer} contentContainerStyle={{ paddingTop: isEditMode ? 0 : Math.max(insets.top, 16) }}>
+      <ScrollView
+        ref={formScrollRef}
+        style={styles.scrollContainer}
+        contentContainerStyle={{ paddingTop: isEditMode ? 0 : Math.max(insets.top, 16) }}
+      >
         <View style={styles.content}>
           {!isEditMode && <Text style={styles.title}>{t('create.title')}</Text>}
 
@@ -691,75 +764,22 @@ export default function CreateEventScreen() {
                 <IconSymbol name="chevron.down" size={20} color={colors.icon} />
               </TouchableOpacity>
 
+              {/* ゲレンデの一覧（さがす・ゲレンデページと同じ。♡ でお気に入り、ホームとお気に入りが上に並ぶ） */}
               <Modal
                 visible={showResortPicker}
                 animationType="slide"
-                transparent={false}
+                presentationStyle="pageSheet"
                 onRequestClose={() => setShowResortPicker(false)}
               >
-                <SafeAreaView style={styles.modalContainer}>
-                  <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>{t('create.selectResortTitle')}</Text>
-                    <TouchableOpacity
-                      onPress={() => setShowResortPicker(false)}
-                      style={styles.closeButton}
-                    >
-                      <IconSymbol name="xmark" size={24} color={colors.text} />
-                    </TouchableOpacity>
-                  </View>
-
-                  <ScrollView style={styles.modalContent}>
-                    {Object.entries(resortsByArea).map(([area, resorts]) => (
-                      <View key={area} style={styles.areaSection}>
-                        <TouchableOpacity
-                          style={styles.areaHeader}
-                          onPress={() => setExpandedArea(expandedArea === area ? null : area)}
-                        >
-                          <Text style={styles.areaHeaderText}>
-                            {area} ({resorts.length})
-                          </Text>
-                          <IconSymbol
-                            name={expandedArea === area ? 'chevron.up' : 'chevron.down'}
-                            size={20}
-                            color={colors.icon}
-                          />
-                        </TouchableOpacity>
-
-                        {expandedArea === area && (
-                          <View style={styles.resortListContainer}>
-                            {resorts.map((resort) => (
-                              <TouchableOpacity
-                                key={resort.id}
-                                style={[
-                                  styles.resortItem,
-                                  resortId === resort.id && styles.resortItemActive,
-                                ]}
-                                onPress={() => {
-                                  setResortId(resort.id);
-                                  setShowResortPicker(false);
-                                  setExpandedArea(null);
-                                }}
-                              >
-                                <Text
-                                  style={[
-                                    styles.resortItemText,
-                                    resortId === resort.id && styles.resortItemTextActive,
-                                  ]}
-                                >
-                                  {getResortName(resort, locale)}
-                                </Text>
-                                {resortId === resort.id && (
-                                  <IconSymbol name="checkmark" size={16} color={colors.tint} />
-                                )}
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                        )}
-                      </View>
-                    ))}
-                    <View style={{ height: 40 }} />
-                  </ScrollView>
-                </SafeAreaView>
+                <ResortSearch
+                  title={t('create.selectResortTitle')}
+                  selectedId={resortId || null}
+                  onSelectResort={(id) => {
+                    setResortId(id);
+                    setShowResortPicker(false);
+                  }}
+                  onClose={() => setShowResortPicker(false)}
+                />
               </Modal>
             </>
           )}
@@ -794,95 +814,59 @@ export default function CreateEventScreen() {
             <Text style={styles.label}>{t('create.startTimeLabel')}</Text>
             <TouchableOpacity
               style={styles.picker}
-              onPress={() => setShowStartTimePicker(!showStartTimePicker)}
+              onPress={() => setShowStartTimePicker(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`${t('create.startTimeLabel')} ${startTime || t('create.selectTime')}`}
             >
               <Text style={[styles.pickerText, !startTime && styles.placeholderText]}>
                 {startTime || t('create.selectTime')}
               </Text>
-              <IconSymbol name="chevron.down" size={20} color={colors.icon} />
+              <Ionicons name="time-outline" size={20} color={colors.icon} />
             </TouchableOpacity>
-            {showStartTimePicker && (
-              <ScrollView
-                ref={startTimeScrollRef}
-                style={styles.timePickerOptions}
-                nestedScrollEnabled
-                showsVerticalScrollIndicator={true}
-                onLayout={() => {
-                  scrollToSelectedTime(startTimeScrollRef, startTime);
-                }}
-              >
-                {TIME_OPTIONS.map((time) => (
-                  <TouchableOpacity
-                    key={time}
-                    style={styles.timePickerOption}
-                    onPress={() => {
-                      setStartTime(time);
-                      setShowStartTimePicker(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.pickerOptionText,
-                        startTime === time && styles.pickerOptionTextActive,
-                      ]}
-                    >
-                      {time}
-                    </Text>
-                    {startTime === time && (
-                      <IconSymbol name="checkmark" size={16} color={colors.tint} />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
           </View>
           <View style={styles.rowItem}>
             <Text style={styles.label}>{t('create.endTimeLabel')}</Text>
             <TouchableOpacity
               style={styles.picker}
-              onPress={() => setShowEndTimePicker(!showEndTimePicker)}
+              onPress={() => setShowEndTimePicker(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`${t('create.endTimeLabel')} ${endTime || t('create.selectTime')}`}
             >
               <Text style={[styles.pickerText, !endTime && styles.placeholderText]}>
                 {endTime || t('create.selectTime')}
               </Text>
-              <IconSymbol name="chevron.down" size={20} color={colors.icon} />
+              <Ionicons name="time-outline" size={20} color={colors.icon} />
             </TouchableOpacity>
-            {showEndTimePicker && (
-              <ScrollView
-                ref={endTimeScrollRef}
-                style={styles.timePickerOptions}
-                nestedScrollEnabled
-                showsVerticalScrollIndicator={true}
-                onLayout={() => {
-                  scrollToSelectedTime(endTimeScrollRef, endTime);
-                }}
-              >
-                {TIME_OPTIONS.map((time) => (
-                  <TouchableOpacity
-                    key={time}
-                    style={styles.timePickerOption}
-                    onPress={() => {
-                      setEndTime(time);
-                      setShowEndTimePicker(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.pickerOptionText,
-                        endTime === time && styles.pickerOptionTextActive,
-                      ]}
-                    >
-                      {time}
-                    </Text>
-                    {endTime === time && (
-                      <IconSymbol name="checkmark" size={16} color={colors.tint} />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
           </View>
         </View>
+
+        {/* 時刻は端末の標準の時刻ピッカー（Android は時計、iOS はドラム） */}
+        <DatePickerSheet
+          visible={showStartTimePicker}
+          mode="time"
+          title={t('create.startTimeLabel')}
+          value={timeStringToDate(startTime)}
+          onConfirm={(value) => {
+            setShowStartTimePicker(false);
+            setStartTime(dateToTimeString(value));
+          }}
+          onCancel={() => setShowStartTimePicker(false)}
+          confirmLabel={t('common.ok')}
+          cancelLabel={t('common.cancel')}
+        />
+        <DatePickerSheet
+          visible={showEndTimePicker}
+          mode="time"
+          title={t('create.endTimeLabel')}
+          value={timeStringToDate(endTime) ?? timeStringToDate(startTime)}
+          onConfirm={(value) => {
+            setShowEndTimePicker(false);
+            setEndTime(dateToTimeString(value));
+          }}
+          onCancel={() => setShowEndTimePicker(false)}
+          confirmLabel={t('common.ok')}
+          cancelLabel={t('common.cancel')}
+        />
 
         {/* Capacity */}
         <View style={styles.section}>
@@ -942,6 +926,24 @@ export default function CreateEventScreen() {
             value={price}
             onChangeText={setPrice}
             keyboardType="number-pad"
+          />
+        </View>
+
+        {/* 一人参加OK */}
+        <View style={[styles.section, styles.switchRow]}>
+          <View style={styles.switchText}>
+            <Text style={[styles.label, styles.switchLabel]}>{t('create.soloOkLabel')}</Text>
+            <Text style={styles.switchHint}>{t('create.soloOkHint')}</Text>
+          </View>
+          <Switch
+            value={soloOk}
+            onValueChange={setSoloOk}
+            trackColor={{ false: colors.backgroundTertiary, true: colors.primaryButton }}
+            thumbColor={Platform.OS === 'android' ? (soloOk ? colors.primaryButtonText : colors.textLabel) : undefined}
+            ios_backgroundColor={colors.backgroundTertiary}
+            accessibilityLabel={t('create.soloOkLabel')}
+            accessibilityHint={t('create.soloOkHint')}
+            testID="create-solo-ok"
           />
         </View>
 
@@ -1094,6 +1096,23 @@ function createStyles(colors: typeof Colors.light) {
     },
     section: {
       marginBottom: 20,
+    },
+    switchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+      minHeight: 44,
+    },
+    switchText: {
+      flex: 1,
+    },
+    switchLabel: {
+      marginBottom: 2,
+    },
+    switchHint: {
+      fontSize: 12,
+      color: colors.textLabel,
     },
     label: {
       fontSize: 14,

@@ -4,18 +4,19 @@ import { Colors } from '@/constants/theme';
 import { useEventApplications, type EventApplicationWithDetails } from '@/hooks/useEventApplications';
 import { useEventChats } from '@/hooks/useEventChats';
 import { useTranslation } from '@/hooks/useTranslation';
-import { supabase } from '@/lib/supabase';
+import { formatEventDate } from '@/utils/formatEventDate';
+import { supabase, getAuthUser } from '@/lib/supabase';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import type { EventChat } from '@types';
 import { BlurView } from 'expo-blur';
-import { router } from 'expo-router';
-import React, { useMemo, useState } from 'react';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Image } from 'expo-image';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   Platform,
   RefreshControl,
   SectionList,
@@ -40,6 +41,12 @@ export default function ChatScreen() {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>('chats');
 
+  // ほかの画面から「リクエスト」タブを開く：/(tabs)/chat?tab=requests&t=...
+  const routeParams = useLocalSearchParams<{ tab?: string; t?: string }>();
+  useEffect(() => {
+    if (routeParams.tab === 'requests' || routeParams.tab === 'chats') setActiveTab(routeParams.tab);
+  }, [routeParams.tab, routeParams.t]);
+
   const { chats, loading: chatsLoading, error: chatsError, refetch } = useEventChats();
   const {
     applications,
@@ -57,7 +64,7 @@ export default function ChatScreen() {
   // 現在のユーザーIDを取得（一度だけ）
   React.useEffect(() => {
     async function getCurrentUser() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await getAuthUser();
       if (user) {
         setCurrentUserId(user.id);
       }
@@ -182,99 +189,59 @@ export default function ChatScreen() {
     );
   }
 
+  /**
+   * チャット一覧の1行（軽くした）：小さい写真／タイトルと最後の時刻／日時・ゲレンデ／最後のメッセージ。
+   * 全行に出していた赤い太字の削除警告はやめ、削除の予告はチャットの中のバー1か所だけにした。
+   */
   function renderChatItem({ item }: { item: EventChat }) {
     const lastMessage = item.messages[0]; // messages are already sorted DESC in hook
     const messagePreview = lastMessage?.contentText || t('chat.noMessages');
     const firstPhoto = item.eventPhotos?.[0];
 
-    // イベント開始から6時間経過しているかチェック
-    const eventStartTime = new Date(item.eventStartAt);
-    const now = new Date();
-    const hoursSinceStart = (now.getTime() - eventStartTime.getTime()) / (1000 * 60 * 60);
-    const shouldShowDeletionWarning = hoursSinceStart >= 6;
-
-    // 時刻のフォーマット
     const formatTime = (dateString: string) => {
       const date = new Date(dateString);
       const now = new Date();
       const yesterday = new Date(now);
       yesterday.setDate(yesterday.getDate() - 1);
-
-      const isToday = date.toDateString() === now.toDateString();
-      const isYesterday = date.toDateString() === yesterday.toDateString();
-
-      if (isToday) {
-        return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-      } else if (isYesterday) {
-        return t('chat.yesterday');
-      } else {
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (date.toDateString() === now.toDateString()) {
+        return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
       }
+      if (date.toDateString() === yesterday.toDateString()) return t('chat.yesterday');
+      return `${date.getMonth() + 1}/${date.getDate()}`;
     };
-
     const timeAgo = lastMessage ? formatTime(lastMessage.createdAt) : '';
 
     return (
       <TouchableOpacity
-        style={styles.chatItemContainer}
+        style={[styles.chatRow, { borderBottomColor: colors.divider }]}
         onPress={() => router.push({
           pathname: '/event-chat/[eventId]',
           params: { eventId: item.eventId },
-        } as any)}>
-        <BlurView intensity={95} tint={colorScheme === 'dark' ? 'dark' : 'light'} style={styles.blurContainer}>
-          <View style={[styles.chatItemGradient, { backgroundColor: colors.card }]}>
-            {firstPhoto ? (
-              <Image source={{ uri: firstPhoto }} style={styles.chatImage} />
-            ) : (
-              <View style={[styles.chatIcon, { backgroundColor: 'rgba(255, 255, 255, 0.1)' }]}>
-                <IconSymbol name="person.2.fill" size={24} color={colors.icon} />
-              </View>
-            )}
-            <View style={styles.chatInfo}>
-              <View style={styles.chatTopRow}>
-                <Text style={[styles.chatTitle, { color: colors.text }]} numberOfLines={1}>
-                  {item.eventTitle}
-                </Text>
-                <View style={styles.chatTimeContainer}>
-                  {timeAgo && (
-                    <Text style={[styles.chatTime, { color: colors.textSecondary }]}>{timeAgo}</Text>
-                  )}
-                  {/* Participants */}
-                  {item.participants && item.participants.length > 0 && (
-                    <View style={styles.participantsAvatars}>
-                      {item.participants.slice(0, 3).map((p, idx) => (
-                        <View key={p.userId} style={{ marginLeft: idx > 0 ? -8 : 0 }}>
-                          <RoleBasedAvatar
-                            avatarUrl={p.avatarUrl}
-                            role={p.role}
-                            size={24}
-                            showBadge={false}
-                          />
-                        </View>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              </View>
-              <Text style={[styles.chatResort, { color: colors.textSecondary }]} numberOfLines={1}>
-                {new Date(item.eventStartAt).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                })}{' '}
-                • {item.eventResortName || t('chat.resortNotSet')}
-              </Text>
-              {shouldShowDeletionWarning ? (
-                <Text style={styles.deletionWarning} numberOfLines={1}>
-                  {t('chat.deletionWarning')}
-                </Text>
-              ) : (
-                <Text style={[styles.chatPreview, { color: colors.textSecondary }]} numberOfLines={1}>
-                  {messagePreview}
-                </Text>
-              )}
-            </View>
+        } as any)}
+        accessibilityRole="button"
+        accessibilityLabel={[item.eventTitle, formatEventDate(item.eventStartAt, t), messagePreview].join(', ')}
+      >
+        {firstPhoto ? (
+          <Image source={{ uri: firstPhoto }} style={[styles.chatThumb, { backgroundColor: colors.chipBackground }]} />
+        ) : (
+          <View style={[styles.chatThumb, styles.chatThumbPlaceholder, { backgroundColor: colors.chipBackground }]}>
+            <IconSymbol name="person.2.fill" size={22} color={colors.textLabel} />
           </View>
-        </BlurView>
+        )}
+        <View style={styles.chatInfo}>
+          <View style={styles.chatTopRow}>
+            <Text style={[styles.chatTitle, { color: colors.text }]} numberOfLines={1}>
+              {item.eventTitle}
+            </Text>
+            {timeAgo ? <Text style={[styles.chatTime, { color: colors.textLabel }]}>{timeAgo}</Text> : null}
+          </View>
+          <Text style={[styles.chatResort, { color: colors.tintText }]} numberOfLines={1}>
+            {formatEventDate(item.eventStartAt, t)} ・ {item.eventResortName || t('chat.resortNotSet')}
+          </Text>
+          <Text style={[styles.chatPreview, { color: colors.textMuted }]} numberOfLines={1}>
+            {messagePreview}
+          </Text>
+        </View>
       </TouchableOpacity>
     );
   }
@@ -410,7 +377,7 @@ export default function ChatScreen() {
         <SectionList
           sections={sections}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.chatList}
+          contentContainerStyle={styles.chatSectionList}
           renderItem={renderChatItem}
           renderSectionHeader={({ section: { title } }) => (
             <View style={[styles.sectionHeader, { backgroundColor: colors.background }]}>
@@ -503,6 +470,10 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
     gap: spacing.md,
   },
+  // チャット一覧は区切り線の行なので、外側の余白と行間は付けない
+  chatSectionList: {
+    paddingBottom: 120,
+  },
   chatItemContainer: {
     borderRadius: borderRadius.xl,
     ...Platform.select({
@@ -540,6 +511,23 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: borderRadius.md,
+  },
+  chatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md - 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md - 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  chatThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: borderRadius.card,
+  },
+  chatThumbPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   chatInfo: {
     flex: 1,

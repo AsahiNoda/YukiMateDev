@@ -50,6 +50,326 @@ export const translations = {
       selectDate: '日付を選択',
     },
 
+    // ===== UIリデザイン（docs/ui-redesign）で使う文言 =====
+
+    // 日付の短い表記「12/20（土）8:30」
+    dateFormat: {
+      weekdaySun: '日',
+      weekdayMon: '月',
+      weekdayTue: '火',
+      weekdayWed: '水',
+      weekdayThu: '木',
+      weekdayFri: '金',
+      weekdaySat: '土',
+      monthDayWeekday: '{month}/{day}（{weekday}）',
+      monthDayWeekdayTime: '{month}/{day}（{weekday}）{time}',
+      daysUntil: 'あと{days}日',
+      today: '今日',
+      tomorrow: '明日',
+      thisWeekend: '今週末',
+    },
+
+    // 下部タブ（5つ・ラベル付き）
+    tabs: {
+      home: 'ホーム',
+      explore: 'さがす',
+      create: '作成',
+      chat: 'チャット',
+      myPage: 'マイページ',
+      badgeCount: '未対応{count}件',
+    },
+
+    // 共通の操作
+    actions: {
+      save: '保存',
+      saved: '保存済み',
+      unsave: '保存を解除',
+      skip: 'スキップ',
+      apply: '参加申請',
+      details: '詳細',
+      openChat: 'チャットを開く',
+      settings: '設定',
+      editProfile: 'プロフィールを編集',
+      viewAsOthers: '相手からの見え方',
+      report: '通報',
+      more: 'その他',
+      seeAll: 'すべて見る',
+      createYourself: '自分で作る',
+    },
+
+    // チップ・バッジ
+    chips: {
+      soloOk: '一人参加OK',
+      spotsLeft: '残り{count}人',
+      full: '満員',
+      free: '無料',
+      official: '公式',
+      host: 'ホスト',
+      home: 'ホーム',
+      weekend: '週末',
+      starredJoining: '★登録ユーザー参加中',
+      starredUserJoining: '★登録した{name}さんが参加',
+      newMessages: '新着{count}',
+      participants: '{count}人',
+      perPerson: ' / 1人',
+    },
+
+    // レベル（生の値 beginner などをそのまま出さない）
+    levels: {
+      beginner: '初級',
+      intermediate: '中級',
+      advanced: '上級',
+      all: 'すべてのレベル',
+    },
+
+    // ライディングスタイル
+    ridingStyles: {
+      Freeride: 'フリーライド',
+      Powder: 'パウダー',
+      Carving: 'カービング',
+      Park: 'パーク',
+      Backcountry: 'バックカントリー',
+    },
+
+    // 「作成」タブの選択
+    createMenu: {
+      title: '何を作りますか？',
+      createEvent: 'イベントを作る',
+      createEventDescription: '一緒に滑る人を募集する',
+      postResortNow: 'ゲレンデの今を投稿',
+      postResortNowDescription: '雪の状態や混み具合を共有する',
+    },
+
+    // さがす（リスト／スワイプ）
+    search: {
+      title: 'さがす',
+      viewList: 'リスト',
+      viewSwipe: 'スワイプ',
+      filterResort: 'ゲレンデ',
+      filterDate: '日付',
+      filterCategory: 'カテゴリ',
+      filterLevel: 'レベル',
+      resultsCount: '{count}件',
+      resortInfo: 'ゲレンデ情報',
+      swipeHintSkip: '← スワイプでスキップ',
+      swipeHintSave: 'スワイプで保存 →',
+      applyConfirmTitle: '参加申請の確認',
+      applyConfirmMessage: '「{title}」に参加申請を送りますか？',
+      anyDate: '指定なし',
+      pickDate: '日付を選ぶ',
+      anyCategory: 'すべてのカテゴリ',
+      applyHint: '確認してから送信',
+      applySent: '参加申請を送りました',
+      applySentMessage: 'ホストが承認するとチャットに参加できます',
+      applyFailed: '参加申請を送れませんでした',
+      saveFailed: '保存できませんでした',
+      saved: '保存しました',
+      viewInList: 'リストで見る',
+      showSkippedAgain: 'スキップした{count}件をもう一度見る',
+      host: 'ホスト {name}',
+      allSwiped: 'このあたりのイベントはすべて見ました',
+      allSwipedSubtitle: 'リストでは、スキップしたイベントも含めてすべて見られます',
+    },
+
+    // ホーム（リデザイン）
+    homeFeed: {
+      homeResort: 'ホームゲレンデ',
+      slideWeather: '天気',
+      slideNextPlan: '次の予定',
+      slideNextPlanWithDays: '次の予定・あと{days}日',
+      meetingPlace: '集合',
+      members: 'メンバー',
+      pendingApplications: '申請 返事待ち {count}件',
+      receivedRequests: '届いたリクエスト {count}件',
+      weeklySnowForecast: '週間の雪予報',
+      featuredTitle: '{resort}の投稿',
+      recommendedTitle: 'あなたに合いそう',
+      recommendedReason: 'プロフィールの「{level}」「{style}」から',
+      resortNow: 'ゲレンデの今',
+      viewPosts: '投稿を見る',
+      powderAlertTitle: 'パウダーアラート',
+      powderAlertMessage: '明日の朝 +{cm}cm の予報',
+      makeEarlyGroup: '朝イチ組を作る',
+      noPlanTitle: '今週末の予定はまだありません',
+      noPlanSoloCount: '一人参加OKのイベントが{count}件あります',
+      seeInExplore: '{count}件をさがすで見る',
+      noPlanSoloNone: '一人参加OKのイベントはまだありません',
+      updatedAt: '{time} 更新',
+      newSnow: '新雪 {cm}cm',
+      wind: '風 {wind} m/s',
+      visibility: '視界 {visibility}',
+      hourlyTitle: '今日の時間ごと',
+      hourLabel: '{hour}時',
+      snowCm: '{cm}cm',
+      goodTime: '滑るのに良い時間',
+      resortInfoLink: 'ゲレンデ情報・投稿を見る',
+      dateTime: '日時',
+      youPlus: 'あなた＋{count}人',
+      justYou: 'あなただけ',
+      newSnowUnit: '新雪 cm',
+      participating: '{count}人が参加中',
+      featuredEmpty: 'このゲレンデの投稿はまだありません',
+      featuredEmptySubtitle: '一緒に滑る人を募集してみましょう',
+      seeMore: 'もっと見る',
+      noResortPosts: 'まだ投稿がありません',
+      setHomeResortTitle: 'ゲレンデを登録しましょう',
+      quoted: '「{text}」',
+      myEventsLink: '自分の投稿一覧',
+      weatherUnavailable: '天気を取得できませんでした。通信状況を確認して、もう一度お試しください',
+      recommendedFrom: 'プロフィールの{items}から',
+    },
+
+    // ゲレンデページ（Snowfeed）
+    resortPage: {
+      tabPosts: '投稿',
+      tabForecast: '予報',
+      tabRatings: '評価',
+      favoriteResorts: 'お気に入りゲレンデ',
+      addFavorite: 'お気に入りに追加',
+      removeFavorite: 'お気に入りから外す',
+      eventsBanner: 'このゲレンデのイベント（今週末{weekend}件・一人参加OK{solo}件）',
+      filterAll: 'すべて',
+      filterSnow: '雪質',
+      filterCrowd: '混雑・リフト',
+      filterPhotos: '写真のみ',
+      helpful: '参考になった {count}',
+      postResortNow: 'ゲレンデの今を投稿',
+      ratingsTitle: 'ゲレンデの評価',
+      ratingOverall: '総合',
+      ratingPowder: 'パウダー',
+      ratingCarving: 'カービング',
+      ratingFamily: 'ファミリー',
+      ratingPark: 'パーク',
+      ratingNight: 'ナイター',
+      currentConditions: '現在のコンディション',
+      switchTitle: 'ゲレンデを切り替え',
+      homeSection: 'ホームゲレンデ',
+      favoritesSection: 'お気に入り',
+      favoritesHint: 'ゲレンデページの ♡ を押すと、お気に入りとしてここに並びます',
+      searchOther: 'ほかのゲレンデを検索',
+      setAsHome: '{resort}をホームゲレンデにする',
+      setAsHomeConfirmTitle: 'ホームゲレンデを変更',
+      setAsHomeConfirmMessage: '{resort}をホームゲレンデにしますか？ホームの天気やイベントもこのゲレンデになります',
+      homeChanged: '{resort}をホームゲレンデにしました',
+      homeChangeFailed: 'ホームゲレンデを変更できませんでした',
+      favoriteFailed: 'お気に入りを変更できませんでした',
+      eventsBannerTitle: 'このゲレンデのイベント',
+      eventsBannerCounts: '今週末 {weekend}件 ・ 一人参加OK {solo}件',
+      noRatings: 'まだ評価がありません',
+      votes: '{count}件の評価',
+      postMenu: '投稿メニュー',
+      deletePost: '投稿を削除',
+      deleteConfirmTitle: '投稿を削除',
+      deleteConfirmMessage: 'この投稿を削除しますか？元に戻せません',
+      deleteFailed: '投稿を削除できませんでした',
+      reportPost: '通報する',
+      reportTitle: '通報の理由',
+      reasonInappropriate: '不適切な内容',
+      reasonSpam: 'スパム・宣伝',
+      reasonDangerous: '危険な行為・情報',
+      reasonOther: 'その他',
+      reportThanks: '通報を受け付けました',
+      reportThanksMessage: '内容を確認して対応します。ご協力ありがとうございます',
+      reportFailed: '通報を送れませんでした',
+      helpfulFailed: '「参考になった」を変更できませんでした',
+    },
+
+    // プロフィール作成・編集のフォーム
+    profileForm: {
+      basic: '基本情報',
+      riding: '滑り方',
+      gear: 'ギア（任意・名前だけ）',
+      social: 'SNS',
+      changeHeader: 'ヘッダーを変更',
+      gearBoard: '板',
+      gearBinding: 'バインディング',
+      gearBoots: 'ブーツ',
+      instagramPlaceholder: 'Instagram のユーザー名',
+      xPlaceholder: 'X（Twitter）のユーザー名',
+      youtubePlaceholder: 'YouTube のハンドル名または URL',
+      tiktokPlaceholder: 'TikTok のユーザー名',
+      socialHint: '@ は付けなくてOKです。入力したものだけプロフィールの一番下に表示されます',
+    },
+
+    // お問い合わせ
+    inquiry: {
+      title: 'お問い合わせ',
+      lead: '不具合の報告やご要望をお送りください。内容を確認して対応します。',
+      formTitle: '内容',
+      category: '種類',
+      categories: {
+        bug_report: '不具合の報告',
+        feature_request: '機能の要望',
+        account_issue: 'アカウントについて',
+        other: 'その他',
+      },
+      body: '本文',
+      bodyPlaceholder: 'できるだけ具体的に書いてください（起きた画面・操作など）',
+      send: '送信する',
+      sentTitle: '送信しました',
+      sentMessage: 'お問い合わせありがとうございます。内容を確認して対応します',
+      failed: '送信できませんでした。時間をおいてもう一度お試しください',
+    },
+
+    // ゲレンデの一覧（選択画面）
+    resortPicker: {
+      title: 'ゲレンデを選択',
+      searchPlaceholder: 'ゲレンデ名で検索',
+      firstTimeInfo: 'よく行くゲレンデをホームゲレンデに設定しましょう。あとからゲレンデページで変更できます',
+      noResults: 'ゲレンデが見つかりませんでした',
+      favoritesHint: 'ゲレンデ名の横の ♡ を押すとお気に入りになり、ここに並びます',
+      byArea: 'エリアから探す',
+      otherArea: 'その他',
+    },
+
+    // イベントチャット（リデザイン）
+    chatRoom: {
+      headerMeta: '{date}・{resort}・{count}人',
+      deletionNotice: 'このチャットはイベント終了の24時間後に消えます',
+      openDetails: 'イベントの詳細',
+    },
+
+    // マイページ
+    myPage: {
+      homeResortLabel: 'ホーム：{resort}',
+      statsJoined: '参加',
+      statsHosted: '主催',
+      statsWantAgain: 'また滑りたい',
+      frequentResorts: 'よく行くゲレンデ',
+      bio: '自己紹介',
+      savedEvents: '保存したイベント',
+      hostedEvents: '主催したイベント',
+      previewBanner: '相手からの見え方（プレビュー）',
+      countUnit: '{count}件',
+      rateUser: 'この人を評価',
+      visitCount: '{count}回',
+      gear: 'ギア',
+      noPosts: 'まだ投稿がありません',
+    },
+
+    // 設定（グループ）
+    settingsGroups: {
+      account: 'アカウント',
+      notifications: '通知',
+      display: '表示',
+      privacySafety: 'プライバシーと安全',
+      support: 'サポート',
+      homeResort: 'ホームゲレンデ',
+      emailPassword: 'メールアドレス・パスワード',
+      notifyChat: 'チャットの新着',
+      notifyApplications: '参加申請・リクエスト',
+      notifyPowderAlert: 'パウダーアラート',
+      powderAlertThreshold: '+{cm}cm以上',
+      notifyEventReminder: 'イベント前日のリマインド',
+      theme: 'テーマ',
+      units: '単位',
+      profileVisibility: 'プロフィールの公開範囲',
+      safetyGuide: '通報・安全ガイド',
+      helpContact: 'ヘルプ・お問い合わせ',
+      termsAndPrivacy: '利用規約・プライバシーポリシー',
+      version: 'バージョン',
+    },
+
     // Settings Screen
     settings: {
       title: '設定',
@@ -256,7 +576,7 @@ export const translations = {
       official: '公式',
       developer: '開発者',
       noHomeResort: 'ホームゲレンデが設定されていません',
-      setHomeResortFromSnowfeed: 'snowfeedページから設定してください',
+      setHomeResortFromSnowfeed: '設定すると、ゲレンデの天気やイベントがここに表示されます',
       goToSnowfeed: 'snowfeedへ',
     },
 
@@ -370,6 +690,8 @@ export const translations = {
       capacityLabel: '定員 *',
       levelLabel: 'レベル',
       priceLabel: '価格（円）',
+      soloOkLabel: '一人参加OK',
+      soloOkHint: '一人で参加する人も歓迎する場合はオンにします',
       pricePlaceholder: '0 (無料の場合は空欄)',
       meetingPlaceLabel: '集合場所',
       tagsLabel: 'タグ（最大10個）',
@@ -443,10 +765,10 @@ export const translations = {
       rejectButton: '却下',
       rejectSuccess: '参加を却下しました',
       rejectError: '却下に失敗しました',
-      sectionToday: 'Today',
-      sectionUpcoming: 'Upcoming',
-      sectionEarlier: 'Earlier',
-      yesterday: 'Yesterday',
+      sectionToday: '今日',
+      sectionUpcoming: 'これから',
+      sectionEarlier: '終了したイベント',
+      yesterday: '昨日',
     },
 
     // Discover
@@ -574,6 +896,16 @@ export const translations = {
       postCreated: '投稿が正常に作成されました！',
       postError: '投稿エラー',
       postFailed: '投稿の作成に失敗しました',
+      title: 'ゲレンデの今を投稿',
+      submit: '投稿',
+      selectImage: '画像を選択',
+      commentLabel: 'コメント（任意）',
+      commentPlaceholder: '今日の雪質やゲレンデの様子を共有しよう...',
+      resortLabel: '投稿するゲレンデ',
+      selectResort: 'ゲレンデを選択',
+      changeResort: '変更',
+      resortRequired: '投稿するゲレンデを選んでください',
+      postCreatedAt: '{resort}に投稿しました',
     },
 
     // Snowfeed
@@ -604,7 +936,7 @@ export const translations = {
       visibility: '視界',
       newSnow: '新雪',
       visibilityGood: '良好',
-      visibilityModerate: '中等',
+      visibilityModerate: 'ふつう',
       visibilityPoor: '不良',
       clear: '快晴',
       sunny: '晴れ',
@@ -622,7 +954,7 @@ export const translations = {
 
     // Explore Screen
     explore: {
-      searchPlaceholder: '検索',
+      searchPlaceholder: 'イベント名・タグで検索',
       categoryEvent: 'イベント',
       categoryLesson: 'レッスン',
       categoryFilming: '撮影',
@@ -783,6 +1115,326 @@ export const translations = {
       minute: '',
       today: 'Today',
       selectDate: 'Select date',
+    },
+
+    // ===== UI redesign (docs/ui-redesign) =====
+
+    // Short date format "Sat 12/20 8:30"
+    dateFormat: {
+      weekdaySun: 'Sun',
+      weekdayMon: 'Mon',
+      weekdayTue: 'Tue',
+      weekdayWed: 'Wed',
+      weekdayThu: 'Thu',
+      weekdayFri: 'Fri',
+      weekdaySat: 'Sat',
+      monthDayWeekday: '{weekday} {month}/{day}',
+      monthDayWeekdayTime: '{weekday} {month}/{day} {time}',
+      daysUntil: 'In {days} days',
+      today: 'Today',
+      tomorrow: 'Tomorrow',
+      thisWeekend: 'This weekend',
+    },
+
+    // Bottom tabs (5, with labels)
+    tabs: {
+      home: 'Home',
+      explore: 'Explore',
+      create: 'Create',
+      chat: 'Chat',
+      myPage: 'My Page',
+      badgeCount: '{count} pending',
+    },
+
+    // Common actions
+    actions: {
+      save: 'Save',
+      saved: 'Saved',
+      unsave: 'Remove from saved',
+      skip: 'Skip',
+      apply: 'Request to join',
+      details: 'Details',
+      openChat: 'Open chat',
+      settings: 'Settings',
+      editProfile: 'Edit profile',
+      viewAsOthers: 'View as others',
+      report: 'Report',
+      more: 'More',
+      seeAll: 'See all',
+      createYourself: 'Create your own',
+    },
+
+    // Chips & badges
+    chips: {
+      soloOk: 'Solo OK',
+      spotsLeft: '{count} spots left',
+      full: 'Full',
+      free: 'Free',
+      official: 'Official',
+      host: 'Host',
+      home: 'Home',
+      weekend: 'Weekend',
+      starredJoining: 'Starred user joining',
+      starredUserJoining: '{name} (starred) is joining',
+      newMessages: '{count} new',
+      participants: '{count}',
+      perPerson: ' / person',
+    },
+
+    // Levels (never show raw values like "beginner")
+    levels: {
+      beginner: 'Beginner',
+      intermediate: 'Intermediate',
+      advanced: 'Advanced',
+      all: 'All levels',
+    },
+
+    // Riding styles
+    ridingStyles: {
+      Freeride: 'Freeride',
+      Powder: 'Powder',
+      Carving: 'Carving',
+      Park: 'Park',
+      Backcountry: 'Backcountry',
+    },
+
+    // "Create" tab chooser
+    createMenu: {
+      title: 'What would you like to create?',
+      createEvent: 'Create an event',
+      createEventDescription: 'Find people to ride with',
+      postResortNow: 'Post slope conditions',
+      postResortNowDescription: 'Share snow and crowd conditions',
+    },
+
+    // Explore (list / swipe)
+    search: {
+      title: 'Explore',
+      viewList: 'List',
+      viewSwipe: 'Swipe',
+      filterResort: 'Resort',
+      filterDate: 'Date',
+      filterCategory: 'Category',
+      filterLevel: 'Level',
+      resultsCount: '{count} results',
+      resortInfo: 'Resort info',
+      swipeHintSkip: '← Swipe to skip',
+      swipeHintSave: 'Swipe to save →',
+      applyConfirmTitle: 'Confirm request',
+      applyConfirmMessage: 'Send a request to join "{title}"?',
+      anyDate: 'Any date',
+      pickDate: 'Pick a date',
+      anyCategory: 'All categories',
+      applyHint: 'You\'ll confirm first',
+      applySent: 'Request sent',
+      applySentMessage: 'Once the host approves, you can join the chat',
+      applyFailed: 'Couldn\'t send the request',
+      saveFailed: 'Couldn\'t save',
+      saved: 'Saved',
+      viewInList: 'View as list',
+      showSkippedAgain: 'Show {count} skipped again',
+      host: 'Host {name}',
+      allSwiped: 'You\'ve seen all events here',
+      allSwipedSubtitle: 'The list shows everything, including events you skipped',
+    },
+
+    // Home (redesign)
+    homeFeed: {
+      homeResort: 'Home resort',
+      slideWeather: 'Weather',
+      slideNextPlan: 'Next plan',
+      slideNextPlanWithDays: 'Next plan · in {days} days',
+      meetingPlace: 'Meet at',
+      members: 'Members',
+      pendingApplications: 'Awaiting reply: {count}',
+      receivedRequests: 'Requests received: {count}',
+      weeklySnowForecast: 'Weekly snow forecast',
+      featuredTitle: 'Events at {resort}',
+      recommendedTitle: 'Picked for you',
+      recommendedReason: 'Based on "{level}" and "{style}" in your profile',
+      resortNow: 'On the slopes now',
+      viewPosts: 'View posts',
+      powderAlertTitle: 'Powder alert',
+      powderAlertMessage: '+{cm}cm forecast for tomorrow morning',
+      makeEarlyGroup: 'Start a first-chair group',
+      noPlanTitle: 'No plans for this weekend yet',
+      noPlanSoloCount: '{count} solo-friendly events',
+      seeInExplore: 'See {count} in Explore',
+      noPlanSoloNone: 'No solo-friendly events yet',
+      updatedAt: 'Updated {time}',
+      newSnow: 'New snow {cm}cm',
+      wind: 'Wind {wind} m/s',
+      visibility: 'Visibility {visibility}',
+      hourlyTitle: 'Today by hour',
+      hourLabel: '{hour}:00',
+      snowCm: '{cm}cm',
+      goodTime: 'Good time to ride',
+      resortInfoLink: 'Resort info & posts',
+      dateTime: 'When',
+      youPlus: 'You + {count}',
+      justYou: 'Just you',
+      newSnowUnit: 'New snow (cm)',
+      participating: '{count} joining',
+      featuredEmpty: 'No events at this resort yet',
+      featuredEmptySubtitle: 'Why not find people to ride with?',
+      seeMore: 'See more',
+      noResortPosts: 'No posts yet',
+      setHomeResortTitle: 'Add your resort',
+      quoted: '"{text}" ',
+      myEventsLink: 'My events',
+      weatherUnavailable: "Couldn't load the weather. Check your connection and try again",
+      recommendedFrom: 'Based on {items}in your profile',
+    },
+
+    // Resort page (Snowfeed)
+    resortPage: {
+      tabPosts: 'Posts',
+      tabForecast: 'Forecast',
+      tabRatings: 'Ratings',
+      favoriteResorts: 'Favorite resorts',
+      addFavorite: 'Add to favorites',
+      removeFavorite: 'Remove from favorites',
+      eventsBanner: 'Events at this resort ({weekend} this weekend · {solo} solo OK)',
+      filterAll: 'All',
+      filterSnow: 'Snow',
+      filterCrowd: 'Crowds & lifts',
+      filterPhotos: 'Photos only',
+      helpful: 'Helpful {count}',
+      postResortNow: 'Post slope conditions',
+      ratingsTitle: 'Resort ratings',
+      ratingOverall: 'Overall',
+      ratingPowder: 'Powder',
+      ratingCarving: 'Carving',
+      ratingFamily: 'Family',
+      ratingPark: 'Park',
+      ratingNight: 'Night',
+      currentConditions: 'Current conditions',
+      switchTitle: 'Switch resort',
+      homeSection: 'Home resort',
+      favoritesSection: 'Favorites',
+      favoritesHint: 'Tap ♡ on a resort page to add it here',
+      searchOther: 'Search other resorts',
+      setAsHome: 'Make {resort} my home resort',
+      setAsHomeConfirmTitle: 'Change home resort',
+      setAsHomeConfirmMessage: 'Make {resort} your home resort? Weather and events on Home will switch to it',
+      homeChanged: '{resort} is now your home resort',
+      homeChangeFailed: "Couldn't change your home resort",
+      favoriteFailed: "Couldn't update favorites",
+      eventsBannerTitle: 'Events at this resort',
+      eventsBannerCounts: '{weekend} this weekend · {solo} solo OK',
+      noRatings: 'No ratings yet',
+      votes: '{count} ratings',
+      postMenu: 'Post menu',
+      deletePost: 'Delete post',
+      deleteConfirmTitle: 'Delete post',
+      deleteConfirmMessage: "Delete this post? This can't be undone",
+      deleteFailed: "Couldn't delete the post",
+      reportPost: 'Report',
+      reportTitle: 'Reason for report',
+      reasonInappropriate: 'Inappropriate content',
+      reasonSpam: 'Spam or advertising',
+      reasonDangerous: 'Dangerous behavior or info',
+      reasonOther: 'Other',
+      reportThanks: 'Report received',
+      reportThanksMessage: "We'll review it. Thank you for letting us know",
+      reportFailed: "Couldn't send the report",
+      helpfulFailed: 'Couldn\'t update "Helpful"',
+    },
+
+    // Profile setup / edit form
+    profileForm: {
+      basic: 'Basic info',
+      riding: 'How you ride',
+      gear: 'Gear (optional, names only)',
+      social: 'Social',
+      changeHeader: 'Change header',
+      gearBoard: 'Board',
+      gearBinding: 'Binding',
+      gearBoots: 'Boots',
+      instagramPlaceholder: 'Instagram username',
+      xPlaceholder: 'X (Twitter) username',
+      youtubePlaceholder: 'YouTube handle or URL',
+      tiktokPlaceholder: 'TikTok username',
+      socialHint: 'No need for @. Only the ones you fill in appear at the bottom of your profile',
+    },
+
+    // Contact
+    inquiry: {
+      title: 'Contact us',
+      lead: 'Send us bug reports or requests. We will review and respond.',
+      formTitle: 'Details',
+      category: 'Type',
+      categories: {
+        bug_report: 'Bug report',
+        feature_request: 'Feature request',
+        account_issue: 'Account',
+        other: 'Other',
+      },
+      body: 'Message',
+      bodyPlaceholder: 'Please be as specific as possible (screen, what you did, etc.)',
+      send: 'Send',
+      sentTitle: 'Sent',
+      sentMessage: 'Thank you for contacting us. We will review your message',
+      failed: "Couldn't send. Please try again later",
+    },
+
+    // Resort list (picker)
+    resortPicker: {
+      title: 'Choose a resort',
+      searchPlaceholder: 'Search resorts',
+      firstTimeInfo: 'Set the resort you go to most as your home resort. You can change it later on the resort page',
+      noResults: 'No resorts found',
+      favoritesHint: 'Tap ♡ next to a resort name to add it to your favorites',
+      byArea: 'Browse by area',
+      otherArea: 'Other',
+    },
+
+    // Event chat (redesign)
+    chatRoom: {
+      headerMeta: '{date} · {resort} · {count} people',
+      deletionNotice: 'This chat disappears 24 hours after the event ends',
+      openDetails: 'Event details',
+    },
+
+    // My Page
+    myPage: {
+      homeResortLabel: 'Home: {resort}',
+      statsJoined: 'Joined',
+      statsHosted: 'Hosted',
+      statsWantAgain: 'Ride again',
+      frequentResorts: 'Frequent resorts',
+      bio: 'About',
+      savedEvents: 'Saved events',
+      hostedEvents: 'Events you host',
+      previewBanner: 'How others see you (preview)',
+      countUnit: '{count}',
+      rateUser: 'Rate this rider',
+      visitCount: '{count} times',
+      gear: 'Gear',
+      noPosts: 'No posts yet',
+    },
+
+    // Settings (groups)
+    settingsGroups: {
+      account: 'Account',
+      notifications: 'Notifications',
+      display: 'Display',
+      privacySafety: 'Privacy & safety',
+      support: 'Support',
+      homeResort: 'Home resort',
+      emailPassword: 'Email & password',
+      notifyChat: 'New chat messages',
+      notifyApplications: 'Join requests',
+      notifyPowderAlert: 'Powder alert',
+      powderAlertThreshold: '+{cm}cm or more',
+      notifyEventReminder: 'Day-before event reminder',
+      theme: 'Theme',
+      units: 'Units',
+      profileVisibility: 'Profile visibility',
+      safetyGuide: 'Reporting & safety guide',
+      helpContact: 'Help & contact',
+      termsAndPrivacy: 'Terms & privacy policy',
+      version: 'Version',
     },
 
     // Settings Screen
@@ -991,7 +1643,7 @@ export const translations = {
       official: 'Official',
       developer: 'Developer',
       noHomeResort: 'Home Resort Not Set',
-      setHomeResortFromSnowfeed: 'Please set it from the snowfeed page',
+      setHomeResortFromSnowfeed: 'Set one to see its weather and events here',
       goToSnowfeed: 'Go to SnowFeed',
     },
 
@@ -1105,6 +1757,8 @@ export const translations = {
       capacityLabel: 'Capacity *',
       levelLabel: 'Level',
       priceLabel: 'Price (JPY)',
+      soloOkLabel: 'Solo OK',
+      soloOkHint: 'Turn on if people joining on their own are welcome',
       pricePlaceholder: '0 (leave blank for free)',
       meetingPlaceLabel: 'Meeting Place',
       tagsLabel: 'Tags (max 10)',
@@ -1309,6 +1963,16 @@ export const translations = {
       postCreated: 'Post created successfully!',
       postError: 'Post Error',
       postFailed: 'Failed to create post',
+      title: 'Post slope conditions',
+      submit: 'Post',
+      selectImage: 'Choose a photo',
+      commentLabel: 'Comment (optional)',
+      commentPlaceholder: 'Share today\'s snow and slope conditions...',
+      resortLabel: 'Resort',
+      selectResort: 'Choose a resort',
+      changeResort: 'Change',
+      resortRequired: 'Choose a resort to post to',
+      postCreatedAt: 'Posted to {resort}',
     },
 
     // Snowfeed
@@ -1357,7 +2021,7 @@ export const translations = {
 
     // Explore Screen
     explore: {
-      searchPlaceholder: 'Search',
+      searchPlaceholder: 'Search events or tags',
       categoryEvent: 'Event',
       categoryLesson: 'Lesson',
       categoryFilming: 'Filming',
@@ -1474,7 +2138,20 @@ export const translations = {
 
 export type TranslationKey = keyof typeof translations['ja'];
 
-export function getTranslation(locale: Locale, key: string): string {
+export type TranslationParams = Record<string, string | number>;
+
+/**
+ * 文言中のプレースホルダーを置き換える。
+ * 新しい文言は `{name}` 形式で書く。既存の `${name}` 形式も同じように置き換える。
+ */
+export function interpolate(template: string, params?: TranslationParams): string {
+  if (!params) return template;
+  return template.replace(/\$?\{(\w+)\}/g, (match, name: string) =>
+    Object.prototype.hasOwnProperty.call(params, name) ? String(params[name]) : match
+  );
+}
+
+export function getTranslation(locale: Locale, key: string, params?: TranslationParams): string {
   const keys = key.split('.');
   let value: any = translations[locale];
 
@@ -1482,5 +2159,5 @@ export function getTranslation(locale: Locale, key: string): string {
     value = value?.[k];
   }
 
-  return typeof value === 'string' ? value : key;
+  return typeof value === 'string' ? interpolate(value, params) : key;
 }

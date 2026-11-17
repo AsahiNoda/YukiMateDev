@@ -5,14 +5,14 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useSavedPosts } from '@/hooks/useSavedPosts';
 import { router } from 'expo-router';
 import React from 'react';
+import { Image } from 'expo-image';
 import {
-    ActivityIndicator,
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

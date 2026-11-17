@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import type { UserGear, UserRole } from '@/types';
 import { Session, User } from '@supabase/supabase-js';
-import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
+import React, { createContext, ReactNode, useContext, useEffect, useRef, useState } from 'react';
 
 // AppUser type for AuthContext
 interface AppUser {
@@ -44,6 +44,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
+  // プロフィール取得済みのユーザーID（同一ユーザーのトークン更新等で再取得しないため）
+  const loadedUserIdRef = useRef<string | null>(null);
+  // 取得中のリクエスト（起動直後の getSession と SIGNED_IN の重複取得を防ぐ）
+  const inFlightLoadRef = useRef<{ userId: string; promise: Promise<void> } | null>(null);
 
   useEffect(() => {
     // セッション確認
@@ -68,8 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
-        fetchUserRole(session.user.id);
+        loadUserData(session.user.id);
       } else {
         setLoading(false);
       }
@@ -77,20 +80,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // 認証状態の変化を監視
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log(`🔔 AuthContext: Auth event: ${event}, Has session: ${!!session}`);
 
-        console.log(`🔔 AuthContext: User email: ${session?.user?.email}`);
-        console.log(`🔔 AuthContext: Session type: ${session?.user?.app_metadata?.provider}`);
+        // INITIAL_SESSION は上の getSession() で処理済みなので二重取得しない
+        if (event === 'INITIAL_SESSION') return;
+
         setSession(session);
         setUser(session?.user ?? null);
+
         if (session?.user) {
-          console.log(`🔔 AuthContext: Fetching profile for user: ${session.user.id}`);
-          await fetchProfile(session.user.id);
-          console.log(`🔔 AuthContext: Fetching role for user: ${session.user.id}`);
-          await fetchUserRole(session.user.id);
-          console.log(`🔔 AuthContext: Profile and role fetch complete`);
+          // 同じユーザーでプロフィール取得済みなら再取得しない
+          // （TOKEN_REFRESHED や復帰時の SIGNED_IN で毎回3クエリ走るのを防ぐ）
+          if (loadedUserIdRef.current === session.user.id && event !== 'USER_UPDATED') {
+            return;
+          }
+          loadUserData(session.user.id);
         } else {
+          loadedUserIdRef.current = null;
           setProfile(null);
           setUserRole(null);
           setLoading(false);
@@ -101,25 +108,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  /** プロフィールとロールを並列取得（同一ユーザーの取得中は同じPromiseを共有） */
+  function loadUserData(userId: string): Promise<void> {
+    const inFlight = inFlightLoadRef.current;
+    if (inFlight && inFlight.userId === userId) {
+      return inFlight.promise;
+    }
+    const promise = Promise.all([fetchProfile(userId), fetchUserRole(userId)])
+      .then(() => undefined)
+      .finally(() => {
+        if (inFlightLoadRef.current?.promise === promise) {
+          inFlightLoadRef.current = null;
+        }
+      });
+    inFlightLoadRef.current = { userId, promise };
+    return promise;
+  }
+
   async function fetchProfile(userId: string) {
     try {
       console.log('⏳ [AuthContext] Fetching profile...');
 
       // タイムアウト処理を追加（5秒）
+      // profiles と gear は互いに依存しないので並列に取得する
       const profilePromise = supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
 
+      const gearPromise = supabase
+        .from('gear')
+        .select('board_name, binding_name, boots_name, others')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000);
+        timeoutId = setTimeout(() => reject(new Error('Profile fetch timeout')), 5000);
       });
 
-      const { data, error } = await Promise.race([
-        profilePromise,
+      const [{ data, error }, { data: gearData }] = await Promise.race([
+        Promise.all([profilePromise, gearPromise]),
         timeoutPromise,
-      ]) as any;
+      ]).finally(() => clearTimeout(timeoutId)) as any;
 
       if (error) {
         // プロフィールが存在しない場合
@@ -129,13 +161,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           throw error;
         }
       } else if (data) {
-        // Fetch gear information
-        const { data: gearData } = await supabase
-          .from('gear')
-          .select('board_name, binding_name, boots_name, others')
-          .eq('user_id', userId)
-          .single();
-
         const appUser: AppUser = {
           id: data.user_id,
           username: data.display_name || 'ユーザー',
@@ -155,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           updatedAt: data.updated_at,
         };
         setProfile(appUser);
+        loadedUserIdRef.current = userId;
       }
     } catch (error: any) {
       if (error.message === 'Profile fetch timeout') {
@@ -179,14 +205,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .eq('id', userId)
         .single();
 
+      let timeoutId: ReturnType<typeof setTimeout> | undefined;
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('User role fetch timeout')), 5000);
+        timeoutId = setTimeout(() => reject(new Error('User role fetch timeout')), 5000);
       });
 
       const { data, error } = await Promise.race([
         rolePromise,
         timeoutPromise,
-      ]) as any;
+      ]).finally(() => clearTimeout(timeoutId)) as any;
 
       if (error) {
         // PGRST116 = レコードが見つからない
@@ -276,8 +303,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function refreshProfile() {
     if (user) {
-      await fetchProfile(user.id);
-      await fetchUserRole(user.id);
+      await loadUserData(user.id);
     }
   }
 

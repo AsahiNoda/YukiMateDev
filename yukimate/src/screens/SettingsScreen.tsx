@@ -1,244 +1,209 @@
-import { Colors } from '@/constants/theme';
+import { ResortSearch } from '@/components/snowfeed/ResortSearch';
+import { ActionSheet } from '@/components/ui/ActionSheet';
+import { borderRadius, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocale } from '@/contexts/LocaleContext';
+import { useAppColors } from '@/hooks/useAppColors';
+import { useResortPreferences } from '@/hooks/useResortPreferences';
 import { useTranslation } from '@/hooks/useTranslation';
-import { IconSymbol } from '@components/ui/icon-symbol';
+import { supabase } from '@/lib/supabase';
+import { getResortName } from '@/utils/resort-helpers';
+import { Ionicons } from '@expo/vector-icons';
+import { useQuery } from '@tanstack/react-query';
+import Constants from 'expo-constants';
 import { router } from 'expo-router';
-import React from 'react';
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useColorScheme,
-  View,
-} from 'react-native';
+import React, { useState } from 'react';
+import { Alert, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+type RowProps = {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value?: string | null;
+  onPress?: () => void;
+  first?: boolean;
+  testID?: string;
+};
+
+/**
+ * 設定（マイページ右上の「設定」から開く別画面。タブバーは出さない）。
+ * 見た目の仕様：docs/ui-redesign/mockups/New-Settings.html
+ * グループ：アカウント／通知／プライバシーと安全／サポート、最後にログアウトとアカウント削除（赤い文字だけ）。
+ * TODO(ui-redesign)：「表示（テーマ・単位）」「プロフィールの公開範囲」「通報・安全ガイド」は
+ * 裏側の実装ができたら追加する（README「7. 設定」：実装がまだないものは非表示）。
+ */
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { signOut, profile, userRole, user } = useAuth();
-  const { locale, setLocale } = useLocale();
+  const c = useAppColors();
   const { t } = useTranslation();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'dark'];
+  const { signOut, user } = useAuth();
+  const { locale, setLocale } = useLocale();
+  const prefs = useResortPreferences();
+  const [homePickerOpen, setHomePickerOpen] = useState(false);
+  const [languageOpen, setLanguageOpen] = useState(false);
 
-  const handleLogout = async () => {
-    Alert.alert(
-      t('settings.logout'),
-      t('settings.logoutConfirm'),
-      [
-        {
-          text: t('common.cancel'),
-          style: 'cancel',
+  const homeResort = useQuery({
+    queryKey: ['resortPrefs', 'homeName', prefs.homeId, locale],
+    queryFn: async () => {
+      const { data } = await supabase.from('resorts').select('name, name_en').eq('id', prefs.homeId!).single();
+      return data ? getResortName(data, locale) : null;
+    },
+    enabled: !!prefs.homeId,
+  });
+
+  const version = Constants.expoConfig?.version ?? '';
+
+  const handleLogout = () => {
+    Alert.alert(t('settings.logout'), t('settings.logoutConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      {
+        text: t('settings.logout'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            // RootLayout の SIGNED_OUT でログイン画面へ移る
+            await signOut();
+          } catch (error) {
+            console.error('Logout error:', error);
+            Alert.alert(t('common.error'), t('settings.logoutError'));
+          }
         },
-        {
-          text: t('settings.logout'),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // サインアウトのみを実行
-              // RootLayoutのSIGNED_OUTイベントが自動的にログイン画面へリダイレクト
-              await signOut();
-            } catch (error) {
-              console.error('Logout error:', error);
-              Alert.alert(t('common.error'), t('settings.logoutError'));
-            }
-          },
-        },
-      ],
-    );
+      },
+    ]);
   };
 
+  const changeLanguage = async (next: 'ja' | 'en') => {
+    setLanguageOpen(false);
+    if (next === locale) return;
+    try {
+      await setLocale(next);
+    } catch {
+      Alert.alert(t('common.error'), t('settings.languageChangeError'));
+    }
+  };
+
+  const Row = ({ icon, label, value, onPress, first, testID }: RowProps) => (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => [
+        styles.row,
+        !first && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.divider },
+        pressed && { opacity: 0.7 },
+      ]}
+      accessibilityRole={onPress ? 'button' : 'text'}
+      accessibilityLabel={value ? `${label}, ${value}` : label}
+      testID={testID}
+    >
+      <Ionicons name={icon} size={20} color={c.tintText} />
+      <Text style={[styles.rowLabel, { color: c.text }]}>{label}</Text>
+      {value ? (
+        <Text style={[styles.rowValue, { color: c.textLabel }]} numberOfLines={1}>
+          {value}
+        </Text>
+      ) : null}
+      {onPress ? <Ionicons name="chevron-forward" size={18} color={c.textLabel} /> : null}
+    </Pressable>
+  );
+
+  const Group = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <View style={styles.group}>
+      <Text style={[styles.groupTitle, { color: c.textLabel }]} accessibilityRole="header">
+        {title}
+      </Text>
+      <View style={[styles.card, { backgroundColor: c.card }]}>{children}</View>
+    </View>
+  );
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <IconSymbol name="chevron.left" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>{t('settings.title')}</Text>
-        <View style={styles.placeholder} />
+    <View style={[styles.container, { backgroundColor: c.background, paddingTop: insets.top }]}>
+      {/* ヘッダー：戻る＋設定 */}
+      <View style={[styles.header, { borderBottomColor: c.divider }]}>
+        <Pressable onPress={() => router.back()} style={styles.back} accessibilityRole="button" accessibilityLabel={t('common.back')}>
+          <Ionicons name="chevron-back" size={24} color={c.text} />
+        </Pressable>
+        <Text style={[styles.headerTitle, { color: c.text }]} accessibilityRole="header">
+          {t('settings.title')}
+        </Text>
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
-        {/* User Info Section */}
-        {profile && (
-          <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.accountInfo')}</Text>
-            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('settings.username')}</Text>
-              <Text style={[styles.infoValue, { color: colors.text }]}>{profile.displayName}</Text>
-            </View>
-            <View style={[styles.infoRow, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.infoLabel, { color: colors.textSecondary }]}>{t('settings.email')}</Text>
-              <Text style={[styles.infoValue, { color: colors.text }]}>{user?.email || t('settings.notSet')}</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Language Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.language')}</Text>
-          <View style={[styles.languageSwitchContainer, { borderBottomColor: colors.border }]}>
-            <TouchableOpacity
-              style={styles.languageOption}
-              onPress={async () => {
-                if (locale !== 'ja') {
-                  try {
-                    await setLocale('ja');
-                  } catch (error) {
-                    Alert.alert(t('common.error'), t('settings.languageChangeError'));
-                  }
-                }
-              }}
-              activeOpacity={0.6}
-            >
-              <Text style={[
-                styles.languageOptionText,
-                { color: locale === 'ja' ? colors.text : colors.textSecondary },
-                locale === 'ja' && styles.languageOptionTextActive
-              ]}>
-                日本語
-              </Text>
-              {locale === 'ja' && (
-                <View style={[styles.languageIndicator, { backgroundColor: colors.accent }]} />
-              )}
-            </TouchableOpacity>
-            <View style={[styles.languageDivider, { backgroundColor: colors.border }]} />
-            <TouchableOpacity
-              style={styles.languageOption}
-              onPress={async () => {
-                if (locale !== 'en') {
-                  try {
-                    await setLocale('en');
-                  } catch (error) {
-                    Alert.alert(t('common.error'), t('settings.languageChangeError'));
-                  }
-                }
-              }}
-              activeOpacity={0.6}
-            >
-              <Text style={[
-                styles.languageOptionText,
-                { color: locale === 'en' ? colors.text : colors.textSecondary },
-                locale === 'en' && styles.languageOptionTextActive
-              ]}>
-                English
-              </Text>
-              {locale === 'en' && (
-                <View style={[styles.languageIndicator, { backgroundColor: colors.accent }]} />
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* General Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.general')}</Text>
-
-          <TouchableOpacity
-            style={[styles.menuItem, { borderBottomColor: colors.border }]}
-            onPress={() => router.push('/blocked-users')}
-          >
-            <View style={styles.menuItemLeft}>
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.blockedUsers')}</Text>
-            </View>
-            <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.menuItem, { borderBottomColor: colors.border }]}
-            onPress={() => router.push('/starred-users')}
-          >
-            <View style={styles.menuItemLeft}>
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.starredUsers')}</Text>
-            </View>
-            <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Settings Options */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.settingsTitle')}</Text>
-
-          <TouchableOpacity
-            style={[styles.menuItem, { borderBottomColor: colors.border }]}
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xl }]}>
+        <Group title={t('settingsGroups.account')}>
+          <Row
+            first
+            icon="home-outline"
+            label={t('settingsGroups.homeResort')}
+            value={homeResort.data ?? t('settings.notSet')}
+            onPress={() => setHomePickerOpen(true)}
+            testID="settings-home-resort"
+          />
+          <Row
+            icon="language-outline"
+            label={t('settings.language')}
+            value={locale === 'ja' ? '日本語' : 'English'}
+            onPress={() => setLanguageOpen(true)}
+          />
+          <Row
+            icon="mail-outline"
+            label={t('settingsGroups.emailPassword')}
+            value={user?.email ?? null}
             onPress={() => router.push('/account-settings')}
-          >
-            <View style={styles.menuItemLeft}>
-              <IconSymbol name="person.circle" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.accountSettings')}</Text>
-            </View>
-            <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
-          </TouchableOpacity>
+          />
+          <Row icon="star-outline" label={t('settings.starredUsers')} onPress={() => router.push('/starred-users')} />
+        </Group>
 
-          <TouchableOpacity
-            style={[styles.menuItem, { borderBottomColor: colors.border }]}
-            onPress={() => router.push('/notification-settings')}
-          >
-            <View style={styles.menuItemLeft}>
-              <IconSymbol name="bell" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.notificationSettings')}</Text>
-            </View>
-            <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
-          </TouchableOpacity>
+        <Group title={t('settingsGroups.notifications')}>
+          <Row first icon="notifications-outline" label={t('settings.notificationSettings')} onPress={() => router.push('/notification-settings')} />
+        </Group>
 
+        <Group title={t('settingsGroups.privacySafety')}>
+          <Row first icon="ban-outline" label={t('settings.blockedUsers')} onPress={() => router.push('/blocked-users')} />
+        </Group>
+
+        <Group title={t('settingsGroups.support')}>
+          <Row first icon="mail-outline" label={t('settingsGroups.helpContact')} onPress={() => router.push('/inquiry' as any)} />
+          <Row icon="document-text-outline" label={t('settings.termsOfService')} onPress={() => router.push('/terms-of-service')} />
+          <Row icon="shield-checkmark-outline" label={t('settings.privacyPolicy')} onPress={() => router.push('/privacy-policy')} />
+          <Row icon="information-circle-outline" label={t('settingsGroups.version')} value={version} />
+        </Group>
+
+        {/* ログアウト／アカウントを削除（赤い文字だけ） */}
+        <View style={[styles.card, styles.bottomCard, { backgroundColor: c.card }]}>
+          <Pressable onPress={handleLogout} style={styles.textButton} accessibilityRole="button">
+            <Text style={[styles.textButtonLabel, { color: c.text }]}>{t('settings.logout')}</Text>
+          </Pressable>
         </View>
-
-        {/* Legal Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>{t('settings.legal')}</Text>
-
-          <TouchableOpacity
-            style={[styles.menuItem, { borderBottomColor: colors.border }]}
-            onPress={() => router.push('/terms-of-service')}
-          >
-            <View style={styles.menuItemLeft}>
-              <IconSymbol name="doc.text" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.termsOfService')}</Text>
-            </View>
-            <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.menuItem, { borderBottomColor: colors.border }]}
-            onPress={() => router.push('/privacy-policy')}
-          >
-            <View style={styles.menuItemLeft}>
-              <IconSymbol name="shield" size={20} color={colors.textSecondary} />
-              <Text style={[styles.menuItemText, { color: colors.textSecondary }]}>{t('settings.privacyPolicy')}</Text>
-            </View>
-            <IconSymbol name="chevron.right" size={16} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Logout Button */}
-        <TouchableOpacity
-          style={[styles.logoutButton, { borderTopColor: colors.border }]}
-          onPress={handleLogout}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name="arrow.right.square" size={20} color={colors.error} />
-          <Text style={[styles.logoutButtonText, { color: colors.error }]}>{t('settings.logout')}</Text>
-        </TouchableOpacity>
-
-        {/* Delete Account Button */}
-        <TouchableOpacity
-          style={[styles.deleteButton]}
-          onPress={() => router.push('/delete-account')}
-          activeOpacity={0.8}
-        >
-          <Text style={[styles.deleteButtonText, { color: colors.error }]}>{t('settings.deleteAccount')}</Text>
-        </TouchableOpacity>
-
-        <Text style={[styles.versionText, { color: colors.textSecondary }]}>Version 0.0.0</Text>
+        <Pressable onPress={() => router.push('/delete-account')} style={styles.textButton} accessibilityRole="button" testID="settings-delete-account">
+          <Text style={[styles.deleteLabel, { color: c.danger }]}>{t('settings.deleteAccount')}</Text>
+        </Pressable>
       </ScrollView>
+
+      {/* ホームゲレンデの変更（選ぶと確認してホームゲレンデにする） */}
+      <Modal visible={homePickerOpen} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setHomePickerOpen(false)}>
+        <ResortSearch
+          title={t('settingsGroups.homeResort')}
+          selectedId={prefs.homeId}
+          isChangingHome
+          onSelectResort={async (id, name) => {
+            setHomePickerOpen(false);
+            const ok = await prefs.setHome(id);
+            Alert.alert(ok ? t('resortPage.homeChanged', { resort: name }) : t('resortPage.homeChangeFailed'));
+          }}
+          onClose={() => setHomePickerOpen(false)}
+        />
+      </Modal>
+
+      {/* 言語 */}
+      <ActionSheet
+        visible={languageOpen}
+        title={t('settings.language')}
+        onClose={() => setLanguageOpen(false)}
+        cancelLabel={t('common.cancel')}
+        actions={[
+          { label: `日本語${locale === 'ja' ? ' ✓' : ''}`, onPress: () => changeLanguage('ja') },
+          { label: `English${locale === 'en' ? ' ✓' : ''}`, onPress: () => changeLanguage('en') },
+        ]}
+      />
     </View>
   );
 }
@@ -250,122 +215,67 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backButton: {
-    width: 40,
-    height: 40,
+  back: {
+    width: touchTarget.min,
+    height: touchTarget.min,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: fontWeight.bold,
   },
-  placeholder: {
-    width: 40,
+  content: {
+    paddingHorizontal: spacing.md,
+    paddingTop: 18,
   },
-  scrollView: {
+  group: {
+    marginBottom: 22,
+  },
+  groupTitle: {
+    fontSize: 13,
+    fontWeight: fontWeight.bold,
+    marginLeft: 4,
+    marginBottom: spacing.sm,
+  },
+  card: {
+    borderRadius: borderRadius.card,
+    overflow: 'hidden',
+  },
+  row: {
+    minHeight: touchTarget.min + 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md - 4,
+    paddingHorizontal: 14,
+  },
+  rowLabel: {
     flex: 1,
+    fontSize: 15,
   },
-  contentContainer: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
+  rowValue: {
+    maxWidth: '45%',
     fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  infoLabel: {
-    fontSize: 16,
-  },
-  infoValue: {
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 0,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  menuItemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  menuItemText: {
-    fontSize: 16,
-  },
-  languageSwitchContainer: {
-    flexDirection: 'row',
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  languageOption: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  languageOptionText: {
-    fontSize: 16,
-  },
-  languageOptionTextActive: {
-    fontWeight: '600',
-  },
-  languageDivider: {
-    width: 1,
-    height: '100%',
-  },
-  languageIndicator: {
-    width: 24,
-    height: 2,
-    borderRadius: 1,
+  bottomCard: {
     marginTop: 4,
   },
-  logoutButton: {
-    flexDirection: 'row',
+  textButton: {
+    minHeight: touchTarget.min + 4,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    marginTop: 24,
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  logoutButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  deleteButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    marginTop: 8,
-  },
-  deleteButtonText: {
+  textButtonLabel: {
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: fontWeight.bold,
   },
-  versionText: {
-    fontSize: 12,
-    textAlign: 'center',
-    marginTop: 24,
+  deleteLabel: {
+    fontSize: 14,
+    marginTop: spacing.sm,
   },
 });

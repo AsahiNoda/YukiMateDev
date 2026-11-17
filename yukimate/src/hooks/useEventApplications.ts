@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase, getAuthUser } from '@/lib/supabase';
 import type { EventApplication } from '@types';
 import { useEffect, useState } from 'react';
 import { notifyEventApplicationApproved, notifyEventApplicationRejected } from '@/services/notificationService';
@@ -42,8 +42,8 @@ export function useEventApplications() {
           table: 'event_applications',
         },
         () => {
-          // 変更があったら再取得
-          fetchApplications();
+          // 変更があったら再取得（ローディング表示は出さずに裏で更新）
+          fetchApplications({ silent: true });
         }
       )
       .subscribe();
@@ -53,76 +53,65 @@ export function useEventApplications() {
     };
   }, []);
 
-  async function fetchApplications() {
+  async function fetchApplications(options: { silent?: boolean } = {}) {
     try {
-      setLoading(true);
+      if (!options.silent) setLoading(true);
       setError(null);
 
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await getAuthUser();
       if (!user) {
         throw new Error('ログインが必要です');
       }
 
-      // 自分がホストのイベントIDを取得
-      const { data: hostEvents, error: hostError } = await supabase
-        .from('posts_events')
-        .select('id')
-        .eq('host_user_id', user.id);
-
-      if (hostError) throw hostError;
-
-      const eventIds = (hostEvents || []).map((e) => e.id);
-
-      if (eventIds.length === 0) {
-        setApplications([]);
-        setLoading(false);
-        return;
-      }
-
-      // pending状態の申請を取得
+      // 自分がホストのイベントへの pending 申請を1クエリで取得
+      // - posts_events!inner + host_user_id フィルタで「自分のイベント」に絞る（以前はイベントID取得で1往復）
+      // - 申請者プロフィールは埋め込み取得（以前は申請ごとに1クエリ）
       const { data: applicationsData, error: applicationsError } = await supabase
         .from('event_applications')
         .select(
           `
           *,
-          posts_events!event_applications_event_id_fkey(
+          posts_events!event_applications_event_id_fkey!inner(
             id,
             title,
             start_at,
+            host_user_id,
             resorts(id, name)
+          ),
+          applicant_user:users!event_applications_applicant_user_id_fkey(
+            id,
+            role,
+            profiles(user_id, display_name, avatar_url, level, country_code)
           )
         `
         )
-        .in('event_id', eventIds)
+        .eq('posts_events.host_user_id', user.id)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
       if (applicationsError) throw applicationsError;
 
-      // 各申請の申請者プロフィールを別途取得
-      const formattedApplications = await Promise.all(
-        (applicationsData || []).map(async (app: any) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('user_id, display_name, avatar_url, level, country_code, users!profiles_user_id_fkey(role)')
-            .eq('user_id', app.applicant_user_id)
-            .single();
-
-          return {
-            ...app,
-            applicant: {
-              id: app.applicant_user_id,
-              profiles: profile ? {
-                ...profile,
-                role: profile.users?.role || 'user',
-              } : null,
-            },
-            event: app.posts_events,
-          };
-        })
-      );
+      const formattedApplications = (applicationsData || []).map((app: any) => {
+        const { applicant_user, ...rest } = app;
+        const profile = applicant_user?.profiles;
+        const role = applicant_user?.role || 'user';
+        return {
+          ...rest,
+          applicant: {
+            id: app.applicant_user_id,
+            profiles: profile
+              ? {
+                  ...profile,
+                  users: { role },
+                  role,
+                }
+              : null,
+          },
+          event: app.posts_events,
+        };
+      });
 
       setApplications(formattedApplications);
     } catch (err: any) {
@@ -225,16 +214,8 @@ export function useEventApplications() {
         const { notifyStarredUsersOfParticipation } = await import('@/hooks/useEventCreation');
         await notifyStarredUsersOfParticipation(applicantUserId, application.event.title, eventId);
 
-        // イベント開始リマインダーをスケジュール
-        if (application.event.start_at) {
-          const { scheduleReminderOnJoin } = await import('@/services/eventNotificationService');
-          await scheduleReminderOnJoin(
-            applicantUserId,
-            eventId,
-            application.event.title,
-            application.event.start_at
-          );
-        }
+        // イベント開始リマインダーは、承認されたユーザー本人の端末が syncEventReminders で予約する
+        // （ここ＝ホストの端末で予約すると、ホストに入ってしまうため）
       }
 
       return { success: true };
@@ -281,6 +262,6 @@ export function useEventApplications() {
     error,
     approveApplication,
     rejectApplication,
-    refetch: fetchApplications,
+    refetch: () => fetchApplications(),
   };
 }

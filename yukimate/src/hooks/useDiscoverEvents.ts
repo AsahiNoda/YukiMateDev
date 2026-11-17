@@ -42,43 +42,8 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
 
         const userId = session.user.id;
 
-        // 2. ユーザープロフィールを取得（パーソナライゼーション用）
-        const { data: userProfile } = await supabase
-          .from('profiles')
-          .select('level, styles, home_resort_id')
-          .eq('user_id', userId)
-          .single();
-
-        // 3. ブロックしたユーザーIDリストを取得
-        const { data: blocks } = await supabase
-          .from('blocks')
-          .select('blocked_user_id')
-          .eq('user_id', userId);
-
-        const blockedUserIds = blocks?.map(b => b.blocked_user_id) || [];
-
-        // 3.5. 自分が参加中のイベントIDリストを取得（approvedまたはevent_participantsに存在）
-        const { data: approvedApplications } = await supabase
-          .from('event_applications')
-          .select('event_id')
-          .eq('applicant_user_id', userId)
-          .eq('status', 'approved');
-
-        const approvedEventIds = approvedApplications?.map(a => a.event_id) || [];
-
-        // 自分が参加中のイベント（left_atがnull）も取得
-        const { data: participatingEvents } = await supabase
-          .from('event_participants')
-          .select('event_id')
-          .eq('user_id', userId)
-          .is('left_at', null);
-
-        const participatingEventIds = participatingEvents?.map(p => p.event_id) || [];
-
-        // 両方のリストを結合して重複を除去
-        const excludedEventIds = [...new Set([...approvedEventIds, ...participatingEventIds])];
-
-        // 4. イベントデータを取得
+        // 2〜7. 互いに依存しないクエリを並列に取得（以前は7回の直列通信 + イベント件数ぶんの通信）
+        // 4. イベントデータ（参加者は埋め込み取得して、イベントごとの追加クエリを無くす）
         let query = supabase
           .from('posts_events')
           .select(`
@@ -92,6 +57,7 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
             level_required,
             price_per_person_jpy,
             meeting_place,
+            solo_ok,
             tags,
             photos,
             host_user_id,
@@ -104,7 +70,8 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
               avatar_url,
               level,
               users!profiles_user_id_fkey(role)
-            )
+            ),
+            event_participants(user_id, left_at)
           `)
           .eq('status', 'open')
           .gte('start_at', new Date().toISOString())
@@ -125,9 +92,33 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
           query = query.eq('level_required', options.level);
         }
 
-        const { data: events, error } = await query
-          .order('start_at', { ascending: true })
-          .limit(options.limit || 50);
+        const [
+          { data: userProfile },
+          { data: blocks },
+          { data: participatingEvents },
+          { data: starredUsers },
+          { data: events, error },
+        ] = await Promise.all([
+          // 2. ユーザープロフィール（パーソナライゼーション用）
+          supabase
+            .from('profiles')
+            .select('level, styles, home_resort_id')
+            .eq('user_id', userId)
+            .single(),
+          // 3. ブロックしたユーザー
+          supabase.from('blocks').select('blocked_user_id').eq('user_id', userId),
+          // 3.5. 参加中のイベント（left_atがnull）。
+          // event_applications の approved は退会後も残ることがあるため除外条件に使わない
+          supabase
+            .from('event_participants')
+            .select('event_id')
+            .eq('user_id', userId)
+            .is('left_at', null),
+          // 6. ★登録したユーザー
+          supabase.from('stars').select('target_user_id').eq('user_id', userId),
+          // 4. イベント
+          query.order('start_at', { ascending: true }).limit(options.limit || 50),
+        ]);
 
         if (error) {
           throw error;
@@ -135,39 +126,31 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
 
         if (!isMounted) return;
 
-        // 5. ブロックユーザーのイベントと参加中のイベントを除外
-        const filteredEvents = events?.filter(
-          event => !blockedUserIds.includes(event.host_user_id) && !excludedEventIds.includes(event.id)
-        ) || [];
+        const blockedUserIds = new Set(blocks?.map(b => b.blocked_user_id) || []);
 
-        // 6. ★登録したユーザーIDリストを取得
-        const { data: starredUsers } = await supabase
-          .from('stars')
-          .select('target_user_id')
-          .eq('user_id', userId);
+        // 参加中（left_at が null）のイベントだけを除外。退会したイベントは再び表示する
+        const excludedEventIds = new Set(participatingEvents?.map(p => p.event_id) || []);
+
+        // 5. ブロックユーザーのイベントと参加中のイベントを除外
+        const filteredEvents = ((events || []) as any[]).filter(
+          event => !blockedUserIds.has(event.host_user_id) && !excludedEventIds.has(event.id)
+        );
 
         const starredUserIds = starredUsers?.map(s => s.target_user_id) || [];
+        const starredUserIdSet = new Set(starredUserIds);
 
-        // 7. 参加者数と★登録された参加者を取得
-        const eventsWithParticipants = await Promise.all(
-          filteredEvents.map(async (event) => {
-            const { count, data: participants } = await supabase
-              .from('event_participants')
-              .select('user_id', { count: 'exact' })
-              .eq('event_id', event.id)
-              .is('left_at', null);
+        // 7. 参加者数と★登録された参加者（埋め込み取得した参加者から計算）
+        const eventsWithParticipants = filteredEvents.map((event) => {
+          const activeParticipantIds: string[] = (event.event_participants || [])
+            .filter((p: any) => p.left_at === null)
+            .map((p: any) => p.user_id);
 
-            // ★登録された参加者をフィルター
-            const participantUserIds = participants?.map(p => p.user_id) || [];
-            const starredParticipants = participantUserIds.filter(id => starredUserIds.includes(id));
-
-            return {
-              ...event,
-              spotsTaken: count || 0,
-              starredParticipants,
-            };
-          })
-        );
+          return {
+            ...event,
+            spotsTaken: activeParticipantIds.length,
+            starredParticipants: activeParticipantIds.filter(id => starredUserIdSet.has(id)),
+          };
+        });
 
         // 7.5. 満員のイベントを除外
         const availableEvents = eventsWithParticipants.filter(
@@ -266,6 +249,7 @@ export function useDiscoverEvents(options: EventFilterOptions = {}): DiscoverEve
             levelRequired: event.level_required,
             pricePerPersonJpy: event.price_per_person_jpy,
             meetingPlace: event.meeting_place,
+            soloOk: !!event.solo_ok,
             tags: event.tags || [],
             photoUrl: photoUrls[0] || null, // 下位互換性のため最初の画像
             photoUrls, // 全画像
@@ -340,27 +324,61 @@ export async function applyToEvent(
     // 既に申請済みかチェック
     const { data: existingApplication } = await supabase
       .from('event_applications')
-      .select('id')
+      .select('id, status')
       .eq('event_id', eventId)
       .eq('applicant_user_id', session.user.id)
-      .single();
+      .maybeSingle();
 
-    if (existingApplication) {
+    if (existingApplication && existingApplication.status !== 'approved') {
       return { success: false, error: '既に申請済みです' };
     }
 
-    // 申請を作成
-    const { error } = await supabase
-      .from('event_applications')
-      .insert({
-        event_id: eventId,
-        applicant_user_id: session.user.id,
-        status: 'pending',
-        message: message || null,
-      });
+    if (existingApplication) {
+      // approved の申請が残っている場合：今も参加中なら申請不要。
+      // 退会済み（event_participants の left_at が入っている）なら、古い申請を pending に戻して再申請として扱う
+      const { data: activeParticipation } = await supabase
+        .from('event_participants')
+        .select('id')
+        .eq('event_id', eventId)
+        .eq('user_id', session.user.id)
+        .is('left_at', null)
+        .maybeSingle();
 
-    if (error) {
-      throw error;
+      if (activeParticipation) {
+        return { success: false, error: '既に参加しています' };
+      }
+
+      const { data: reopened, error: reopenError } = await supabase
+        .from('event_applications')
+        .update({
+          status: 'pending',
+          message: message || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingApplication.id)
+        .select('id');
+
+      if (reopenError) {
+        throw reopenError;
+      }
+      if (!reopened || reopened.length === 0) {
+        // RLS で更新できなかった場合（エラーにならず0件になる）
+        throw new Error('再申請に失敗しました');
+      }
+    } else {
+      // 申請を作成
+      const { error } = await supabase
+        .from('event_applications')
+        .insert({
+          event_id: eventId,
+          applicant_user_id: session.user.id,
+          status: 'pending',
+          message: message || null,
+        });
+
+      if (error) {
+        throw error;
+      }
     }
 
     // ホストに新規申請通知を送信
@@ -424,7 +442,8 @@ export async function saveEvent(
       .single();
 
     if (existingSave) {
-      return { success: false, error: '既に保存済みです' };
+      // 右スワイプ＝保存なので、保存済みなら成功として扱う（スワイプのたびにエラーにしない）
+      return { success: true };
     }
 
     // 保存を作成

@@ -15,6 +15,8 @@ export type UserGear = {
 // User statistics
 export type UserStats = {
   eventsJoined: number;
+  /** 主催したイベントの数 */
+  eventsHosted: number;
   postsCount: number;
   starsReceived: number;
 };
@@ -78,4 +80,6 @@ export type ProfileData = {
   recentPosts: RecentPost[];
   headerUrl: string | null;
   role: UserRole;
+  /** ホームゲレンデ（表示名は画面側で getResortName） */
+  homeResort: { name: string; name_en: string | null } | null;
 };

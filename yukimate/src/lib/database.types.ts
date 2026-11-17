@@ -101,6 +101,7 @@ export interface Event {
   tags: string[] | null;
   price_per_person_jpy: number | null;
   meeting_place: string | null;
+  solo_ok: boolean; // 一人参加OK（migrations/20261117000000_add_solo_ok_to_posts_events.sql）
   created_at: string;
   updated_at: string | null;
 }

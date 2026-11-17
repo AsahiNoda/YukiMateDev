@@ -6,7 +6,9 @@ import { Platform } from 'react-native';
 // 通知の表示方法を設定
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    // shouldShowAlert は非推奨。バナーと通知一覧の両方に出す
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
@@ -93,7 +95,9 @@ export async function scheduleLocalNotification(
       data: data || {},
       sound: true,
     },
+    // 今の expo-notifications は trigger に type が必要
     trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds,
     },
   });
@@ -117,7 +121,11 @@ export async function scheduleNotificationAtTime(
       data: data || {},
       sound: true,
     },
-    trigger: date,
+    // 今の expo-notifications は Date をそのまま渡せない（type: DATE が必要）
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
+      date,
+    },
   });
 
   return notificationId;

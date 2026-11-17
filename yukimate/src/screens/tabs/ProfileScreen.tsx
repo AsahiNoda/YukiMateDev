@@ -1,23 +1,27 @@
 import { OfficialBadge } from '@/components/OfficialBadge';
-import { ProfilePostCreateModal } from '@/components/profile/ProfilePostCreateModal';
 import { getFlagSource } from '@/constants/countries';
+import { Chip } from '@/components/ui/Chip';
+import { PillButton } from '@/components/ui/PillButton';
+import { borderRadius } from '@/constants/spacing';
+import { levelLabel } from '@/utils/eventDisplay';
+import { getResortName } from '@/utils/resort-helpers';
 import { Colors } from '@/constants/theme';
+import { useTranslation } from '@/hooks/useTranslation';
 import { getAvatarGradientColors, getBadgeColor } from '@/utils/avatar-utils';
 import { useAuth } from '@contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@hooks/use-color-scheme';
 import { useProfile } from '@hooks/useProfile';
-import { useProfilePosts } from '@hooks/useProfilePosts';
 import { useUserRating } from '@hooks/useUserRating';
-import type { ReactionKind } from '@lib/database.types';
 import { supabase } from '@lib/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
+import { Image } from 'expo-image';
 import {
   ActivityIndicator,
   Dimensions,
-  Image,
+  Alert,
   Linking,
   ScrollView,
   StyleSheet,
@@ -31,14 +35,6 @@ const { width } = Dimensions.get('window');
 
 const POST_GRID_SIZE = (width - 40 - 8) / 3; // padding 20*2, gaps
 
-const REACTIONS: { kind: ReactionKind; emoji: string }[] = [
-  { kind: 'super_happy', emoji: '😍' },
-  { kind: 'happy', emoji: '🙂' },
-  { kind: 'neutral', emoji: '😐' },
-  { kind: 'unhappy', emoji: '🙁' },
-  { kind: 'super_unhappy', emoji: '😣' },
-];
-
 // SNSハンドル/URL からタップ時に開くURLを生成
 const buildSocialUrl = (platform: string, value: string): string => {
   const v = value.trim();
@@ -50,11 +46,21 @@ const buildSocialUrl = (platform: string, value: string): string => {
     case 'x':
       return `https://x.com/${handle}`;
     case 'youtube':
-      return `https://youtube.com/${handle}`;
+      return `https://www.youtube.com/@${handle}`;
     case 'tiktok':
       return `https://tiktok.com/@${handle}`;
     default:
       return v;
+  }
+};
+
+/** SNS を開く。開けないときは知らせる */
+const openSocial = async (platform: string, value: string) => {
+  const url = buildSocialUrl(platform, value);
+  try {
+    await Linking.openURL(url);
+  } catch {
+    Alert.alert(url);
   }
 };
 
@@ -79,17 +85,18 @@ const EditIcon = ({ color, size = 24 }: { color: string; size?: number }) => (
 );
 
 
+/** マイページ／ほかのユーザーのプロフィール（docs/ui-redesign/mockups/New-Profile.html） */
 function ProfileScreen({ userId }: { userId?: string }) {
   const { user: currentUser } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const profileState = useProfile(userId, refreshKey);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { t, locale } = useTranslation();
 
   // 評価・投稿（表示対象ユーザー）
   const targetUserId = userId ?? currentUser?.id;
   const rating = useUserRating(targetUserId);
-  const profilePosts = useProfilePosts(targetUserId);
   // MVP: Gear showcase is disabled
   // const [gearImages, setGearImages] = useState<{ board: string | null; binding: string | null; boots: string | null }>({
   //   board: null,
@@ -100,7 +107,6 @@ function ProfileScreen({ userId }: { userId?: string }) {
   const [headerUrl, setHeaderUrl] = useState<string | null>(null);
   const [isStarred, setIsStarred] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
-  const [showPostModal, setShowPostModal] = useState(false);
   // const [currentGearIndex, setCurrentGearIndex] = useState(0);
 
   // 画面がフォーカスされた時にプロフィールをリフレッシュ
@@ -120,41 +126,16 @@ function ProfileScreen({ userId }: { userId?: string }) {
 
       const profile = profileState.data;
 
-      // Load avatar image
-      if (profile.avatarUrl) {
-        // avatarUrlがフルパスの場合はそのまま使用、そうでない場合はストレージから取得
-        if (profile.avatarUrl.startsWith('http')) {
-          // URLにキャッシュバスターが既に含まれている場合はそのまま使用
-          // 含まれていない場合は追加（例: 古いデータの場合）
-          const url = profile.avatarUrl.includes('?t=')
-            ? profile.avatarUrl
-            : `${profile.avatarUrl}?t=${Date.now()}`;
-          setAvatarUrl(url);
-        } else {
-          const { data } = supabase.storage.from('profile_avatar').getPublicUrl(profile.avatarUrl);
-          setAvatarUrl(`${data.publicUrl}?t=${Date.now()}`);
-        }
-      } else {
-        setAvatarUrl(null);
-      }
-
-      // Load header image
-      if (profile.headerUrl) {
-        // headerUrlがフルパスの場合はそのまま使用、そうでない場合はストレージから取得
-        if (profile.headerUrl.startsWith('http')) {
-          // URLにキャッシュバスターが既に含まれている場合はそのまま使用
-          // 含まれていない場合は追加（例: 古いデータの場合）
-          const url = profile.headerUrl.includes('?t=')
-            ? profile.headerUrl
-            : `${profile.headerUrl}?t=${Date.now()}`;
-          setHeaderUrl(url);
-        } else {
-          const { data } = supabase.storage.from('profile_header').getPublicUrl(profile.headerUrl);
-          setHeaderUrl(`${data.publicUrl}?t=${Date.now()}`);
-        }
-      } else {
-        setHeaderUrl(null);
-      }
+      // 画像URL
+      // アップロード時に ?t=<更新時刻> 付きのURLがDBに保存されるため、そのまま使えば
+      // 画像更新時だけURLが変わりキャッシュが効く（以前は表示のたびに Date.now() を付けて毎回再ダウンロードしていた）
+      const resolveUrl = (value: string | null | undefined, bucket: string) => {
+        if (!value) return null;
+        if (value.startsWith('http')) return value;
+        return supabase.storage.from(bucket).getPublicUrl(value).data.publicUrl;
+      };
+      setAvatarUrl(resolveUrl(profile.avatarUrl, 'profile_avatar'));
+      setHeaderUrl(resolveUrl(profile.headerUrl, 'profile_header'));
 
       // MVP: Gear images loading is disabled
       // // Load gear images
@@ -345,8 +326,20 @@ function ProfileScreen({ userId }: { userId?: string }) {
 
   const profile = profileState.data;
 
-  // 自分のプロフィールかどうかを判定
-  const isOwnProfile = currentUser?.id === profile.userId;
+  // 自分のプロフィールかどうか
+  const isSelf = currentUser?.id === profile.userId;
+  const isOwnProfile = isSelf;
+  const homeResortName = profile.homeResort ? getResortName(profile.homeResort, locale) : null;
+  const languageLabel = (lang: string) =>
+    lang === 'ja' || lang === 'Japanese' || lang === '日本語'
+      ? t('profileSetup.japanese')
+      : lang === 'en' || lang === 'English'
+        ? t('profileSetup.english')
+        : lang;
+  const styleLabel = (style: string) => {
+    const label = t(`ridingStyles.${style}`);
+    return label === `ridingStyles.${style}` ? style : label;
+  };
 
   // MVP: Gear showcase is disabled
   // const gearItems = profile.gear
@@ -405,13 +398,23 @@ function ProfileScreen({ userId }: { userId?: string }) {
 
 
           {isOwnProfile ? (
-            // 自分のプロフィール - 編集ボタンを表示
-            <TouchableOpacity
-              style={styles.headerActionButton}
-              onPress={() => router.push('/edit-profile')}
-            >
-              <EditIcon color="#fff" size={24} />
-            </TouchableOpacity>
+            // 自分のプロフィール - 設定（プロフィールの編集はプロフィールの下のボタン）
+            <>
+              {/* 設定は別画面（スタック遷移）。ホーム右上の歯車はやめた */}
+              <TouchableOpacity
+                style={[styles.settingsPillButton, { backgroundColor: colors.photoOverlayBackground }]}
+                onPress={() => router.push('/settings')}
+                hitSlop={{ top: 2, bottom: 2 }}
+                accessibilityRole="button"
+                accessibilityLabel={t('actions.settings')}
+                testID="profile-settings-button"
+              >
+                <Ionicons name="settings-outline" size={18} color={colors.photoOverlayText} />
+                <Text style={[styles.settingsPillText, { color: colors.photoOverlayText }]}>
+                  {t('actions.settings')}
+                </Text>
+              </TouchableOpacity>
+            </>
           ) : (
             // 他のユーザーのプロフィール - 星とブロックボタンを表示
             <>
@@ -470,7 +473,14 @@ function ProfileScreen({ userId }: { userId?: string }) {
           {/* User Info on the right */}
           <View style={styles.userInfoContainer}>
             {/* Username */}
-            <Text style={[styles.userName, { color: colors.text }]}>{profile.displayName || 'NO NAME'}</Text>
+            <Text style={[styles.userName, { color: colors.text }]} numberOfLines={2}>
+              {profile.displayName || t('common.unknown')}
+            </Text>
+            {homeResortName ? (
+              <Text style={[styles.homeResortLine, { color: colors.textMuted }]} numberOfLines={1}>
+                {t('myPage.homeResortLabel', { resort: homeResortName })}
+              </Text>
+            ) : null}
 
             {/* Country Flag */}
             {profile.countryCode && (
@@ -483,21 +493,6 @@ function ProfileScreen({ userId }: { userId?: string }) {
               </View>
             )}
 
-            {/* Tags Row */}
-            <View style={styles.tagsRow}>
-              {profile.favoriteResorts.slice(0, 2).map((resort) => (
-                <Text key={resort.id} style={[styles.tag, { color: colors.textSecondary }]}>#{resort.name}</Text>
-              ))}
-              {profile.level && (
-                <Text style={[styles.tag, { color: colors.textSecondary }]}>#{profile.level.toUpperCase()}</Text>
-              )}
-              {profile.styles && profile.styles.length > 0 && profile.styles.slice(0, 2).map((style, index) => (
-                <Text key={index} style={[styles.tag, { color: colors.textSecondary }]}>#{style.toUpperCase()}</Text>
-              ))}
-              {profile.languages && profile.languages.length > 0 && profile.languages.map((lang, index) => (
-                <Text key={`lang-${index}`} style={[styles.tag, { color: colors.textSecondary }]}>#{lang.toUpperCase()}</Text>
-              ))}
-            </View>
           </View>
         </View>
       </View>
@@ -505,51 +500,71 @@ function ProfileScreen({ userId }: { userId?: string }) {
       {/* オーバーレイを避けるためのスペーサー */}
       <View style={{ height: 150 }} />
 
-      {/* 評価 Section */}
-      <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>評価</Text>
-        <View style={[styles.ratingCard, { backgroundColor: colors.backgroundSecondary }]}>
-          {rating.total > 0 ? (
-            <Text style={[styles.ratingValue, { color: colors.text }]}>
-              高評価 <Text style={{ color: colors.tint }}>{rating.highPct}%</Text>
-              <Text style={[styles.ratingSub, { color: colors.textSecondary }]}>　（{rating.total}件中{rating.high}件）</Text>
-            </Text>
-          ) : (
-            <Text style={[styles.ratingSub, { color: colors.textSecondary }]}>まだ評価がありません</Text>
-          )}
-
-          {/* 他ユーザーのプロフィールではリアクションを付けられる */}
-          {!isOwnProfile && (
-            <View style={styles.reactionRow}>
-              {REACTIONS.map((r) => (
-                <TouchableOpacity
-                  key={r.kind}
-                  style={[
-                    styles.reactionButton,
-                    rating.myReaction === r.kind && { backgroundColor: colors.tint + '33', borderColor: colors.tint },
-                  ]}
-                  onPress={() => rating.setReaction(r.kind)}
-                >
-                  <Text style={styles.reactionEmoji}>{r.emoji}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
-      </View>
-
-      {/* Bio Section */}
-      {profile.bio && (
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>自己紹介</Text>
-          <Text style={[styles.bioText, { color: colors.textSecondary }]}>{profile.bio}</Text>
+      {/* タグ：レベル・スタイル・言語（生の値の大文字化をやめ、日本語のチップに） */}
+      {(profile.level || profile.styles.length > 0 || profile.languages.length > 0) && (
+        <View style={styles.profileChips}>
+          {levelLabel(profile.level, t) ? <Chip label={levelLabel(profile.level, t)!} tone="neutral" /> : null}
+          {profile.styles.map((style) => (
+            <Chip key={style} label={styleLabel(style)} tone="neutral" />
+          ))}
+          {profile.languages.length > 0 ? (
+            <Chip label={profile.languages.map(languageLabel).join('・')} tone="neutral" />
+          ) : null}
         </View>
       )}
+
+      {/* 自己紹介 */}
+      {profile.bio ? <Text style={[styles.bioLead, { color: colors.textSecondary }]}>{profile.bio}</Text> : null}
+
+      {/* プロフィールを編集 */}
+      {isOwnProfile ? (
+        <View style={styles.ownButtons}>
+          <PillButton title={t('actions.editProfile')} variant="secondary" icon="create-outline" onPress={() => router.push('/edit-profile')} fill />
+        </View>
+      ) : null}
+
+      {/* 実績：参加／主催／「また滑りたい」（高評価%を上で目立たせない） */}
+      <View style={[styles.statsRow, { borderColor: colors.divider }]}>
+        {[
+          { label: t('myPage.statsJoined'), value: String(profile.stats.eventsJoined) },
+          { label: t('myPage.statsHosted'), value: String(profile.stats.eventsHosted) },
+          { label: t('myPage.statsWantAgain'), value: t('myPage.countUnit', { count: rating.high }) },
+        ].map((stat) => (
+          <View key={stat.label} style={styles.statItem} accessible accessibilityLabel={`${stat.label} ${stat.value}`}>
+            <Text style={[styles.statValue, { color: colors.text }]}>{stat.value}</Text>
+            <Text style={[styles.statLabel, { color: colors.textLabel }]}>{stat.label}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* 保存したイベント・主催したイベント（ホームのクイックアクションから移動。未決定事項の決定どおりプロフィールの下に2行） */}
+      {isOwnProfile && (
+        <View style={[styles.myListRows, { backgroundColor: colors.card }]}>
+          {[
+            { key: 'saved', icon: 'bookmark-outline' as const, label: t('myPage.savedEvents'), href: '/saved-posts' },
+            { key: 'hosted', icon: 'calendar-outline' as const, label: t('myPage.hostedEvents'), href: '/my-posts' },
+          ].map((row, i) => (
+            <TouchableOpacity
+              key={row.key}
+              style={[styles.myListRow, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider }]}
+              onPress={() => router.push(row.href as any)}
+              accessibilityRole="button"
+              testID={`profile-row-${row.key}`}
+            >
+              <Ionicons name={row.icon} size={20} color={colors.tintText} />
+              <Text style={[styles.myListRowText, { color: colors.text }]}>{row.label}</Text>
+              <Ionicons name="chevron-forward" size={18} color={colors.textLabel} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* ユーザーの評価はイベント終了後の評価タイム（PostEventActionScreen）だけで行う。プロフィールからは付けない */}
 
       {/* お気に入りスキー場 */}
       {profile.favoriteResorts.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>お気に入りスキー場</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('resortPage.favoriteResorts')}</Text>
           <View style={styles.chipWrap}>
             {profile.favoriteResorts.map((resort) => (
               <View key={resort.id} style={[styles.chip, { backgroundColor: colors.backgroundSecondary }]}>
@@ -564,105 +579,69 @@ function ProfileScreen({ userId }: { userId?: string }) {
       {/* よく行くゲレンデ Top3 */}
       {profile.topResorts.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>よく行くゲレンデ</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('myPage.frequentResorts')}</Text>
           {profile.topResorts.map((resort, index) => (
             <View key={resort.id} style={styles.topResortRow}>
-              <Text style={styles.topResortMedal}>{['🥇', '🥈', '🥉'][index] || '•'}</Text>
+              {/* メダル絵文字をやめて 1・2・3 の数字に */}
+              <View style={[styles.rankBadge, { backgroundColor: colors.chipBackground }]}>
+                <Text style={[styles.rankText, { color: colors.tintText }]}>{index + 1}</Text>
+              </View>
               <Text style={[styles.topResortName, { color: colors.text }]} numberOfLines={1}>{resort.name}</Text>
-              <Text style={[styles.topResortCount, { color: colors.textSecondary }]}>{resort.count}回</Text>
+              <Text style={[styles.topResortCount, { color: colors.textSecondary }]}>{t('myPage.visitCount', { count: resort.count })}</Text>
             </View>
           ))}
         </View>
       )}
 
-      {/* ギア */}
+      {/* ギア（名前だけ） */}
       {profile.gear && (profile.gear.board || profile.gear.binding || profile.gear.boots) && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>ギア</Text>
-          {profile.gear.board ? (
-            <View style={styles.gearRow}>
-              <Text style={[styles.gearType, { color: colors.textSecondary }]}>BOARD</Text>
-              <Text style={[styles.gearName, { color: colors.text }]}>{profile.gear.board}</Text>
-            </View>
-          ) : null}
-          {profile.gear.binding ? (
-            <View style={styles.gearRow}>
-              <Text style={[styles.gearType, { color: colors.textSecondary }]}>BINDING</Text>
-              <Text style={[styles.gearName, { color: colors.text }]}>{profile.gear.binding}</Text>
-            </View>
-          ) : null}
-          {profile.gear.boots ? (
-            <View style={styles.gearRow}>
-              <Text style={[styles.gearType, { color: colors.textSecondary }]}>BOOTS</Text>
-              <Text style={[styles.gearName, { color: colors.text }]}>{profile.gear.boots}</Text>
-            </View>
-          ) : null}
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('myPage.gear')}</Text>
+          {([
+            ['profileForm.gearBoard', profile.gear.board],
+            ['profileForm.gearBinding', profile.gear.binding],
+            ['profileForm.gearBoots', profile.gear.boots],
+          ] as [string, string | null][])
+            .filter(([, name]) => !!name)
+            .map(([key, name]) => (
+              <View key={key} style={styles.gearRow}>
+                <Text style={[styles.gearType, { color: colors.textLabel }]}>{t(key)}</Text>
+                <Text style={[styles.gearName, { color: colors.text }]}>{name}</Text>
+              </View>
+            ))}
         </View>
       )}
 
-      {/* SNSリンク */}
+      {/* SNSリンク（プロフィールの一番下）。タップでアプリまたはブラウザで開く */}
       {(() => {
         const links = profile.socialLinks;
-        const items: { platform: string; icon: any; value: string }[] = [];
+        const items: { platform: string; icon: keyof typeof Ionicons.glyphMap; value: string }[] = [];
         if (links.instagram) items.push({ platform: 'instagram', icon: 'logo-instagram', value: links.instagram });
         if (links.x) items.push({ platform: 'x', icon: 'logo-twitter', value: links.x });
         if (links.youtube) items.push({ platform: 'youtube', icon: 'logo-youtube', value: links.youtube });
-        if (links.tiktok) items.push({ platform: 'tiktok', icon: 'musical-notes', value: links.tiktok });
+        if (links.tiktok) items.push({ platform: 'tiktok', icon: 'logo-tiktok', value: links.tiktok });
         if (items.length === 0) return null;
         return (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>SNS</Text>
-            <View style={styles.snsIconRow}>
-              {items.map((item) => (
-                <TouchableOpacity
-                  key={item.platform}
-                  style={[styles.snsCircle, { backgroundColor: colors.backgroundSecondary }]}
-                  onPress={() => Linking.openURL(buildSocialUrl(item.platform, item.value))}
-                >
-                  <Ionicons name={item.icon} size={24} color={colors.text} />
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        );
-      })()}
-
-      {/* 投稿グリッド */}
-      <View style={styles.section}>
-        <View style={styles.postsHeaderRow}>
-          <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: 0 }]}>投稿</Text>
-          {isOwnProfile && (
-            <TouchableOpacity
-              style={[styles.addPostButton, { backgroundColor: colors.tint }]}
-              onPress={() => setShowPostModal(true)}
-            >
-              <Ionicons name="add" size={20} color="#fff" />
-            </TouchableOpacity>
-          )}
-        </View>
-        {profilePosts.loading ? (
-          <ActivityIndicator color={colors.tint} style={{ marginTop: 12 }} />
-        ) : profilePosts.posts.length === 0 ? (
-          <Text style={[styles.ratingSub, { color: colors.textSecondary }]}>まだ投稿がありません</Text>
-        ) : (
-          <View style={styles.postGrid}>
-            {profilePosts.posts.map((post) => (
-              <TouchableOpacity key={post.id} style={styles.postThumbWrap} activeOpacity={0.85}>
-                {post.photos[0] ? (
-                  <Image source={{ uri: post.photos[0] }} style={styles.postThumb} />
-                ) : (
-                  <View style={[styles.postThumb, { backgroundColor: colors.backgroundSecondary }]} />
-                )}
-                {post.resortName && (
-                  <View style={styles.postOverlay}>
-                    <Text style={styles.postOverlayText} numberOfLines={1}>{post.resortName}</Text>
-                  </View>
-                )}
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('profileForm.social')}</Text>
+            {items.map((item) => (
+              <TouchableOpacity
+                key={item.platform}
+                style={[styles.snsLinkRow, { backgroundColor: colors.card }]}
+                onPress={() => openSocial(item.platform, item.value)}
+                accessibilityRole="link"
+                accessibilityLabel={`${item.platform} ${item.value}`}
+              >
+                <Ionicons name={item.icon} size={22} color={colors.text} />
+                <Text style={[styles.snsLinkText, { color: colors.tintText }]} numberOfLines={1}>
+                  {item.value.startsWith('http') ? item.value.replace(/^https?:\/\//, '') : `@${item.value.replace(/^@/, '')}`}
+                </Text>
+                <Ionicons name="open-outline" size={16} color={colors.textLabel} />
               </TouchableOpacity>
             ))}
           </View>
-        )}
-      </View>
+        );
+      })()}
 
       {/* MVP: Gear Showcase is disabled */}
       {/* {gearItems.length > 0 && (
@@ -706,13 +685,6 @@ function ProfileScreen({ userId }: { userId?: string }) {
 
       <View style={{ height: 100 }} />
 
-      {isOwnProfile && (
-        <ProfilePostCreateModal
-          visible={showPostModal}
-          onClose={() => setShowPostModal(false)}
-          onCreated={() => profilePosts.refetch()}
-        />
-      )}
     </ScrollView>
   );
 }
@@ -778,6 +750,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
+  },
+  settingsPillButton: {
+    height: 40,
+    paddingLeft: 10,
+    paddingRight: 14,
+    borderRadius: borderRadius.pill,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  settingsPillText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
   settingsButton: {
     position: 'absolute',
@@ -861,12 +846,10 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   userName: {
-    fontSize: 26,
-    fontWeight: '900',
+    fontSize: 22,
+    fontWeight: '700',
     // color is set dynamically in the component
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 1.5,
+    marginBottom: 2,
     textShadowColor: 'rgba(0, 0, 0, 0.3)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -898,6 +881,93 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginTop: 24,
     marginBottom: 24,
+  },
+  homeResortLine: {
+    fontSize: 13,
+    marginBottom: 4,
+  },
+  profileChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  bioLead: {
+    fontSize: 14,
+    lineHeight: 22,
+    paddingHorizontal: 20,
+    marginBottom: 14,
+  },
+  ownButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 20,
+    marginBottom: 16,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 8,
+    paddingVertical: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 2,
+  },
+  statValue: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  statLabel: {
+    fontSize: 12,
+  },
+  rankBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  rankText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  snsLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderRadius: borderRadius.card,
+    marginBottom: 8,
+  },
+  snsLinkText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  myListRows: {
+    marginHorizontal: 20,
+    marginTop: 8,
+    borderRadius: borderRadius.card,
+    overflow: 'hidden',
+  },
+  myListRow: {
+    minHeight: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+  },
+  myListRowText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
   },
   sectionTitle: {
     fontSize: 14,

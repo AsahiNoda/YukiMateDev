@@ -34,9 +34,26 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 
+/** 通常のリクエスト（DB・認証）のタイムアウト */
+const DEFAULT_TIMEOUT_MS = 15000;
+/** 画像などのアップロード（Storage への送信）のタイムアウト。回線が遅いと15秒では足りない */
+const UPLOAD_TIMEOUT_MS = 120000;
+
+function requestUrl(url: RequestInfo | URL): string {
+  if (typeof url === 'string') return url;
+  if (url instanceof URL) return url.toString();
+  return (url as Request).url ?? '';
+}
+
+function timeoutFor(url: RequestInfo | URL, options: RequestInit): number {
+  const method = (options.method || 'GET').toUpperCase();
+  const isUpload = requestUrl(url).includes('/storage/v1/object') && (method === 'POST' || method === 'PUT');
+  return isUpload ? UPLOAD_TIMEOUT_MS : DEFAULT_TIMEOUT_MS;
+}
+
 // カスタムfetch関数でタイムアウトを実装
 const fetchWithTimeout = async (url: RequestInfo | URL, options: RequestInit = {}) => {
-  const timeout = 15000; // 15秒タイムアウト
+  const timeout = timeoutFor(url, options);
 
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
@@ -75,3 +92,18 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     schema: 'public',
   },
 });
+
+/**
+ * 現在ログイン中のユーザーを取得（ローカルのセッションから読むだけ・サーバー通信なし）
+ *
+ * supabase.auth.getUser() は呼ぶたびに Auth サーバーへ問い合わせるため、
+ * 画面表示用途でユーザーIDが欲しいだけの場合はこちらを使う。
+ * （データへのアクセス権限は RLS がサーバー側で検証する）
+ * 戻り値は getUser() と同じ形 { data: { user } }。
+ */
+export async function getAuthUser() {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return { data: { user: session?.user ?? null } };
+}

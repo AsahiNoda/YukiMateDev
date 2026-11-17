@@ -1,26 +1,38 @@
+import {
+  CountryField,
+  CountryPickerModal,
+  FormInput,
+  FormSection,
+  GearFields,
+  LevelSelector,
+  PhotoFields,
+  SocialFields,
+  StyleSelector,
+} from '@/components/profile/ProfileFormParts';
+import { PillButton } from '@/components/ui/PillButton';
 import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
 import type { SkillLevel } from '@/types/common';
 import type { SocialLinks } from '@/types';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { useAuth } from '@contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import { updateFavoriteResorts, updateGear, updateProfile, useProfile } from '@hooks/useProfile';
+import { updateGear, updateProfile, useProfile } from '@hooks/useProfile';
 import { useResorts } from '@hooks/useResorts';
 import { pickAndUploadImage } from '@lib/imageUpload';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import { Image } from 'expo-image';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
   Modal,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -106,25 +118,15 @@ export default function EditProfileScreen() {
       setAvatarUrl(prev => {
         // 既に値がセットされている場合（アップロード直後）はそれを維持
         if (prev && prev.includes('?t=')) return prev;
-        // そうでない場合はプロフィールから取得し、キャッシュバスターを追加
-        if (profile.avatarUrl) {
-          // 既にキャッシュバスターが含まれている場合はそのまま、なければ追加
-          return profile.avatarUrl.includes('?t=')
-            ? profile.avatarUrl
-            : `${profile.avatarUrl}?t=${Date.now()}`;
-        }
+        // そうでない場合はプロフィールから取得
+        // URLはアップロード時に ?t=<更新時刻> 付きで保存されているのでそのまま使う（画像キャッシュを効かせる）
         return profile.avatarUrl;
       });
       setHeaderUrl(prev => {
         // 既に値がセットされている場合（アップロード直後）はそれを維持
         if (prev && prev.includes('?t=')) return prev;
-        // そうでない場合はプロフィールから取得し、キャッシュバスターを追加
-        if (profile.headerUrl) {
-          // 既にキャッシュバスターが含まれている場合はそのまま、なければ追加
-          return profile.headerUrl.includes('?t=')
-            ? profile.headerUrl
-            : `${profile.headerUrl}?t=${Date.now()}`;
-        }
+        // そうでない場合はプロフィールから取得
+        // URLはアップロード時に ?t=<更新時刻> 付きで保存されているのでそのまま使う（画像キャッシュを効かせる）
         return profile.headerUrl;
       });
     }
@@ -229,8 +231,8 @@ export default function EditProfileScreen() {
       if (yt) socialLinks.youtube = yt;
       if (tt) socialLinks.tiktok = tt;
 
-      // プロフィール本体・ギア・お気に入りを並行更新
-      const [result, gearResult, favResult] = await Promise.all([
+      // プロフィール本体・ギアを並行更新（お気に入りスキー場はゲレンデページの ♡ で管理するのでここでは保存しない）
+      const [result, gearResult] = await Promise.all([
         updateProfile({
           displayName: displayName.trim(),
           bio: bio.trim() || undefined,
@@ -247,16 +249,13 @@ export default function EditProfileScreen() {
           binding: binding.trim(),
           boots: boots.trim(),
         }),
-        updateFavoriteResorts(favoriteResortIds),
       ]);
 
       const firstError = !result.success
         ? result.error
         : !gearResult.success
           ? gearResult.error
-          : !favResult.success
-            ? favResult.error
-            : null;
+          : null;
 
       if (!firstError) {
         Alert.alert(t('editProfileScreen.updateSuccessTitle'), t('editProfileScreen.updateSuccessMessage'), [
@@ -294,412 +293,85 @@ export default function EditProfileScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border }]}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <IconSymbol name="chevron.left" size={24} color={colors.text} />
+      {/* ヘッダー：戻る／プロフィールを編集／保存 */}
+      <View style={[styles.header, { borderBottomColor: colors.divider }]}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t('common.back')}>
+          <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>{t('editProfileScreen.title')}</Text>
-        <TouchableOpacity
-          style={styles.saveButton}
-          onPress={handleSave}
-          disabled={isSaving}
-        >
-          <Text style={[styles.saveButtonText, { color: colors.tint }, isSaving && { color: colors.icon }]}>
-            {isSaving ? t('editProfileScreen.saving') : t('editProfileScreen.save')}
-          </Text>
-        </TouchableOpacity>
+        <PillButton title={t('editProfileScreen.save')} size="sm" onPress={handleSave} loading={isSaving} />
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
-        {/* ヘッダー画像 */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('editProfileScreen.headerLabel')}</Text>
-          <TouchableOpacity
-            style={styles.headerImageContainer}
-            onPress={handleHeaderUpload}
-            disabled={uploadingHeader}
-          >
-            {headerUrl ? (
-              <Image source={{ uri: headerUrl }} style={styles.headerImage} />
-            ) : (
-              <View style={styles.headerImagePlaceholder}>
-                {uploadingHeader ? (
-                  <ActivityIndicator color={colors.tint} />
-                ) : (
-                  <>
-                    <Ionicons name="image-outline" size={32} color={colors.icon} />
-                    <Text style={[styles.placeholderText, { color: colors.icon }]}>{t('editProfileScreen.headerPlaceholder')}</Text>
-                  </>
-                )}
-              </View>
-            )}
-          </TouchableOpacity>
-        </View>
+      <ScrollView
+        contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <PhotoFields
+          headerUrl={headerUrl}
+          avatarUrl={avatarUrl}
+          role={profileState.status === 'success' ? profileState.data.role : 'user'}
+          uploadingHeader={uploadingHeader}
+          uploadingAvatar={uploadingAvatar}
+          onPickHeader={handleHeaderUpload}
+          onPickAvatar={handleAvatarUpload}
+        />
 
-        {/* アバター画像 */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('editProfileScreen.avatarLabel')}</Text>
-          <TouchableOpacity
-            onPress={handleAvatarUpload}
-            disabled={uploadingAvatar}
-            style={{ alignSelf: 'center', marginBottom: 8 }}
-          >
-            <RoleBasedAvatar
-              avatarUrl={avatarUrl}
-              role={profileState.status === 'success' ? profileState.data.role : 'user'}
-              size={120}
-              showBadge={true}
-            />
-            {uploadingAvatar && (
-              <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: 60 }]}>
-                <ActivityIndicator color={colors.tint} />
-              </View>
-            )}
-          </TouchableOpacity>
-          <Text style={[styles.avatarHint, { color: colors.icon }]}>{t('editProfileScreen.avatarHint')}</Text>
-        </View>
-
-        {/* Display Name */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('editProfileScreen.displayNameLabel')}</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+        <FormSection title={t('profileForm.basic')}>
+          <FormInput
+            label={t('editProfileScreen.displayNameLabel')}
+            required
             value={displayName}
             onChangeText={setDisplayName}
             placeholder={t('editProfileScreen.displayNamePlaceholder')}
-            placeholderTextColor={colors.textSecondary}
             maxLength={50}
           />
-        </View>
-
-        {/* Bio */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('editProfileScreen.bioLabel')}</Text>
-          <TextInput
-            style={[styles.input, styles.textArea, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
+          <CountryField code={countryCode} onPress={() => setShowCountryPicker(true)} label={t('editProfileScreen.nationalityLabel')} />
+          <FormInput
+            label={t('editProfileScreen.bioLabel')}
             value={bio}
             onChangeText={setBio}
             placeholder={t('editProfileScreen.bioPlaceholder')}
-            placeholderTextColor={colors.textSecondary}
             multiline
-            numberOfLines={4}
             maxLength={500}
-            textAlignVertical="top"
+            showCounter
           />
-          <Text style={[styles.charCount, { color: colors.icon }]}>{bio.length}/500</Text>
-        </View>
+        </FormSection>
 
-        {/* 国籍 */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('editProfileScreen.nationalityLabel')}</Text>
-          <TouchableOpacity
-            style={[styles.countrySelector, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-            onPress={() => setShowCountryPicker(true)}
-          >
-            <Image source={getFlagSource(countryCode)} style={styles.selectedFlag} />
-            <Text style={[styles.selectedCountryText, { color: colors.text }]}>
-              {(() => {
-                const country = COUNTRIES.find(c => c.code === countryCode);
-                if (!country) return t('common.notSpecified');
-                return locale === 'en' ? country.nameEn : country.nameJa;
-              })()}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color={colors.icon} />
-          </TouchableOpacity>
+        <FormSection title={t('profileForm.riding')}>
+          <LevelSelector value={level} onChange={setLevel} label={t('editProfileScreen.skillLevelLabel')} />
+          <StyleSelector options={RIDING_STYLES} values={ridingStyle} onToggle={toggleRidingStyle} label={t('editProfileScreen.ridingStyleLabel')} />
+        </FormSection>
 
-          {/* Country Picker Modal */}
-          <Modal
-            visible={showCountryPicker}
-            transparent={true}
-            animationType="slide"
-            onRequestClose={() => setShowCountryPicker(false)}
-          >
-            <TouchableOpacity
-              style={styles.modalOverlay}
-              activeOpacity={1}
-              onPress={() => setShowCountryPicker(false)}
-            >
-              <View style={[styles.pickerModal, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, paddingBottom: insets.bottom }]}>
-                <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.pickerTitle, { color: colors.text }]}>{t('editProfileScreen.selectNationality')}</Text>
-                  <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
-                    <Ionicons name="close" size={24} color={colors.text} />
-                  </TouchableOpacity>
-                </View>
-                <FlatList
-                  data={COUNTRIES}
-                  style={{ flex: 1 }}
-                  keyExtractor={(item) => item.code}
-                  initialNumToRender={20}
-                  getItemLayout={(data, index) => ({ length: 55, offset: 55 * index, index })}
-                  renderItem={({ item: country }) => (
-                      <TouchableOpacity
-                        style={[
-                          styles.pickerItem,
-                          { borderBottomColor: colors.border },
-                          countryCode === country.code && { backgroundColor: colors.backgroundSecondary },
-                        ]}
-                        onPress={() => {
-                          setCountryCode(country.code);
-                          setShowCountryPicker(false);
-                        }}
-                      >
-                        <Image source={getFlagSource(country.code)} style={styles.pickerFlag} />
-                        <Text
-                          style={[
-                            styles.pickerItemText,
-                            { color: colors.textSecondary },
-                            countryCode === country.code && { color: colors.text, fontWeight: '600' },
-                          ]}
-                        >
-                          {locale === 'en' ? country.nameEn : country.nameJa}
-                        </Text>
-                        {countryCode === country.code && (
-                          <Ionicons name="checkmark" size={20} color={colors.tint} />
-                        )}
-                      </TouchableOpacity>
-                    )}
-                  />
-              </View>
-            </TouchableOpacity>
-          </Modal>
-        </View>
-
-        {/* Language Selection Removed */}
-        {/* 
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>言語 * (複数選択可)</Text>
-          ...
-        </View> 
-        */}
-
-        {/* Skill Level */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('editProfileScreen.skillLevelLabel')}</Text>
-          <View style={styles.buttonGroup}>
-            {SKILL_LEVELS.map((lvl) => (
-              <TouchableOpacity
-                key={lvl}
-                style={[
-                  styles.levelButton,
-                  { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
-                  level === lvl && { backgroundColor: colors.tint, borderColor: colors.tint },
-                ]}
-                onPress={() => setLevel(lvl)}
-              >
-                <Text style={[
-                  styles.levelButtonText,
-                  { color: colors.icon },
-                  level === lvl && { color: colors.text },
-                ]}>
-                  {lvl === 'beginner' ? t('profileSetup.beginner') : lvl === 'intermediate' ? t('profileSetup.intermediate') : t('profileSetup.advanced')}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* ライディングスタイル */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('editProfileScreen.ridingStyleLabel')}</Text>
-          <View style={styles.styleGrid}>
-            {RIDING_STYLES.map((style) => (
-              <TouchableOpacity
-                key={style}
-                style={[
-                  styles.styleButton,
-                  { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
-                  ridingStyle.includes(style) && { backgroundColor: colors.tint, borderColor: colors.tint },
-                ]}
-                onPress={() => toggleRidingStyle(style)}
-              >
-                <Text
-                  style={[
-                    styles.styleText,
-                    { color: colors.icon },
-                    ridingStyle.includes(style) && { color: colors.text, fontWeight: '600' },
-                  ]}
-                >
-                  {style}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* お気に入りスキー場（複数選択） */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('editProfileScreen.favoriteResortsLabel')}</Text>
-          <TouchableOpacity
-            style={[styles.countrySelector, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-            onPress={() => setShowResortPicker(true)}
-          >
-            <Ionicons name="snow-outline" size={20} color={colors.icon} />
-            <Text style={[styles.selectedCountryText, { color: colors.text }]}>
-              {favoriteResortIds.length > 0
-                ? `${favoriteResortIds.length} ${t('editProfileScreen.favoriteResortsSelected')}`
-                : t('editProfileScreen.favoriteResortsPlaceholder')}
-            </Text>
-            <Ionicons name="chevron-down" size={20} color={colors.icon} />
-          </TouchableOpacity>
-
-          {/* 選択中のチップ */}
-          {resortsState.status === 'success' && favoriteResortIds.length > 0 && (
-            <View style={[styles.styleGrid, { marginTop: 12 }]}>
-              {favoriteResortIds.map((id) => {
-                const resort = resortsState.resorts.find((r) => r.id === id);
-                if (!resort) return null;
-                return (
-                  <TouchableOpacity
-                    key={id}
-                    style={[styles.styleButton, { backgroundColor: colors.tint }]}
-                    onPress={() => toggleFavoriteResort(id)}
-                  >
-                    <Text style={[styles.styleText, { color: '#fff', fontWeight: '600' }]}>
-                      {resort.name}  ✕
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          )}
-
-          {/* Resort Picker Modal（複数選択） */}
-          <Modal
-            visible={showResortPicker}
-            transparent
-            animationType="slide"
-            onRequestClose={() => setShowResortPicker(false)}
-          >
-            <TouchableOpacity
-              style={styles.modalOverlay}
-              activeOpacity={1}
-              onPress={() => setShowResortPicker(false)}
-            >
-              <View style={[styles.pickerModal, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, paddingBottom: insets.bottom }]}>
-                <View style={[styles.pickerHeader, { borderBottomColor: colors.border }]}>
-                  <Text style={[styles.pickerTitle, { color: colors.text }]}>{t('editProfileScreen.favoriteResortsLabel')}</Text>
-                  <TouchableOpacity onPress={() => setShowResortPicker(false)}>
-                    <Ionicons name="close" size={24} color={colors.text} />
-                  </TouchableOpacity>
-                </View>
-                {resortsState.status === 'success' ? (
-                  <FlatList
-                    data={resortsState.resorts}
-                    style={{ flex: 1 }}
-                    keyExtractor={(item) => item.id}
-                    initialNumToRender={20}
-                    renderItem={({ item: resort }) => {
-                      const selected = favoriteResortIds.includes(resort.id);
-                      return (
-                        <TouchableOpacity
-                          style={[styles.pickerItem, { borderBottomColor: colors.border }]}
-                          onPress={() => toggleFavoriteResort(resort.id)}
-                        >
-                          <Text style={[styles.pickerItemText, { color: selected ? colors.text : colors.textSecondary, fontWeight: selected ? '600' : '400' }]}>
-                            {resort.name}
-                          </Text>
-                          {selected && <Ionicons name="checkmark" size={20} color={colors.tint} />}
-                        </TouchableOpacity>
-                      );
-                    }}
-                  />
-                ) : (
-                  <ActivityIndicator color={colors.tint} style={{ marginTop: 24 }} />
-                )}
-              </View>
-            </TouchableOpacity>
-          </Modal>
-        </View>
-
-        {/* ギア */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('editProfileScreen.gearLabel')}</Text>
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text, marginBottom: 8 }]}
-            value={board}
-            onChangeText={setBoard}
-            placeholder={t('editProfileScreen.gearBoardPlaceholder')}
-            placeholderTextColor={colors.textSecondary}
-            maxLength={60}
+        {/* ギアは名前だけ */}
+        <FormSection title={t('profileForm.gear')}>
+          <GearFields
+            board={board}
+            binding={binding}
+            boots={boots}
+            onChange={(key, value) => (key === 'board' ? setBoard(value) : key === 'binding' ? setBinding(value) : setBoots(value))}
           />
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text, marginBottom: 8 }]}
-            value={binding}
-            onChangeText={setBinding}
-            placeholder={t('editProfileScreen.gearBindingPlaceholder')}
-            placeholderTextColor={colors.textSecondary}
-            maxLength={60}
-          />
-          <TextInput
-            style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-            value={boots}
-            onChangeText={setBoots}
-            placeholder={t('editProfileScreen.gearBootsPlaceholder')}
-            placeholderTextColor={colors.textSecondary}
-            maxLength={60}
-          />
-        </View>
+        </FormSection>
 
-        {/* SNSリンク */}
-        <View style={styles.section}>
-          <Text style={[styles.label, { color: colors.textSecondary }]}>{t('editProfileScreen.socialLinksLabel')}</Text>
-          <View style={styles.snsRow}>
-            <Ionicons name="logo-instagram" size={22} color={colors.icon} style={styles.snsIcon} />
-            <TextInput
-              style={[styles.input, styles.snsInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-              value={instagram}
-              onChangeText={setInstagram}
-              placeholder="instagram (@なし)"
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="none"
-              maxLength={60}
-            />
-          </View>
-          <View style={styles.snsRow}>
-            <Ionicons name="logo-twitter" size={22} color={colors.icon} style={styles.snsIcon} />
-            <TextInput
-              style={[styles.input, styles.snsInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-              value={twitterX}
-              onChangeText={setTwitterX}
-              placeholder="X / Twitter (@なし)"
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="none"
-              maxLength={60}
-            />
-          </View>
-          <View style={styles.snsRow}>
-            <Ionicons name="logo-youtube" size={22} color={colors.icon} style={styles.snsIcon} />
-            <TextInput
-              style={[styles.input, styles.snsInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-              value={youtube}
-              onChangeText={setYoutube}
-              placeholder="YouTube (URL)"
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="none"
-              maxLength={120}
-            />
-          </View>
-          <View style={styles.snsRow}>
-            <Ionicons name="musical-notes" size={22} color={colors.icon} style={styles.snsIcon} />
-            <TextInput
-              style={[styles.input, styles.snsInput, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-              value={tiktok}
-              onChangeText={setTiktok}
-              placeholder="TikTok (@なし)"
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="none"
-              maxLength={60}
-            />
-          </View>
-        </View>
-
-        <View style={{ height: 40 }} />
+        <FormSection title={t('profileForm.social')}>
+          <SocialFields
+            values={{ instagram, x: twitterX, youtube, tiktok }}
+            onChange={(key, value) =>
+              key === 'instagram' ? setInstagram(value) : key === 'x' ? setTwitterX(value) : key === 'youtube' ? setYoutube(value) : setTiktok(value)
+            }
+          />
+        </FormSection>
+        {/* 保存はヘッダー右上のボタンだけ（スクロールしても常に見える） */}
       </ScrollView>
+
+      <CountryPickerModal
+        visible={showCountryPicker}
+        selected={countryCode}
+        onSelect={(code) => {
+          setCountryCode(code);
+          setShowCountryPicker(false);
+        }}
+        onClose={() => setShowCountryPicker(false)}
+      />
     </View>
   );
 }

@@ -4,16 +4,21 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Event, EventMessageWithSender, Profile } from '@/lib/database.types';
-import { supabase } from '@/lib/supabase';
+import { supabase, getAuthUser } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { format } from 'date-fns';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
+import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Chip } from '@/components/ui/Chip';
+import { formatEventDate } from '@/utils/formatEventDate';
+import { Ionicons } from '@expo/vector-icons';
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Image,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -56,6 +61,37 @@ export default function EventChatScreen() {
   const [sending, setSending] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
+  // リアルタイム受信時に送信者情報を参照するための最新イベント情報
+  const eventRef = useRef<EventDetail | null>(null);
+  eventRef.current = event;
+
+  // 入力欄をキーボードの真上に付けるための状態
+  // - iOS：KeyboardAvoidingView（padding）。この画面はスタックのヘッダーを出さず、ヘッダーも中に描いているので
+  //   keyboardVerticalOffset は 0 が正しい（以前の固定値 90 が隙間の原因だった）
+  // - Android：edge-to-edge のため adjustResize で画面が縮まない。KeyboardAvoidingView の height は
+  //   キーボードを閉じたあとも縮んだ高さが残って下に余白ができるので使わず、キーボードの高さを下の余白に入れる
+  const insets = useSafeAreaInsets();
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardVisible(true);
+      if (Platform.OS === 'android') setAndroidKeyboardHeight(e.endCoordinates.height);
+      // キーボードが出たら最新のメッセージが見えるようにする
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardVisible(false);
+      setAndroidKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   useEffect(() => {
     initializeChat();
@@ -109,12 +145,22 @@ export default function EventChatScreen() {
             return;
           }
 
-          // 送信者情報を取得
-          const { data: senderProfile } = await supabase
-            .from('profiles')
-            .select('user_id, display_name, avatar_url')
-            .eq('user_id', newMessage.sender_user_id)
-            .single();
+          // 送信者情報: 参加者一覧に居ればそれを使い（通信なしで即表示）、居なければ取得
+          const knownSender = eventRef.current?.participants.find(
+            (p) => p.user.id === newMessage.sender_user_id
+          )?.user.profiles ?? (eventRef.current?.host?.id === newMessage.sender_user_id
+            ? eventRef.current?.host?.profiles
+            : undefined);
+
+          let senderProfile: any = knownSender ?? null;
+          if (!senderProfile) {
+            const { data } = await supabase
+              .from('profiles')
+              .select('user_id, display_name, avatar_url')
+              .eq('user_id', newMessage.sender_user_id)
+              .single();
+            senderProfile = data;
+          }
 
           console.log('👤 Sender profile:', senderProfile);
 
@@ -160,7 +206,7 @@ export default function EventChatScreen() {
 
       const {
         data: { user },
-      } = await supabase.auth.getUser();
+      } = await getAuthUser();
       if (!user) throw new Error(t('eventChat.loginRequired'));
 
       console.log('[EventChatScreen] 👤 Current user:', user.id);
@@ -581,26 +627,26 @@ export default function EventChatScreen() {
       setMessages((prev) => prev.map((msg) => (msg.id === tempId ? sentMessage as any : msg)));
 
       // 他の参加者に通知を送信
-      try {
-        if (event && currentUserProfile) {
-          const { notifyNewChatMessage } = await import('@/services/notificationService');
-          const senderName = currentUserProfile.display_name || 'Someone';
-
-          // イベントの全参加者に通知（送信者以外）
-          for (const participant of event.participants) {
-            if (participant.user.id !== currentUserId) {
-              await notifyNewChatMessage(
-                participant.user.id,
-                senderName,
-                event.title,
-                params.eventId
-              );
-            }
-          }
-        }
-      } catch (notifyError) {
-        console.error('Failed to send chat notification:', notifyError);
-        // 通知失敗してもメッセージ送信は成功として扱う
+      // 送信ボタンの解除を待たせないよう、完了を待たずに並列で送る（以前は参加者ごとに直列で待っていた）
+      if (event && currentUserProfile) {
+        const senderName = currentUserProfile.display_name || 'Someone';
+        const recipients = event.participants.filter(
+          (participant: any) => participant.user.id !== currentUserId
+        );
+        import('@/services/notificationService')
+          .then(({ notifyNewChatMessage }) =>
+            Promise.all(
+              recipients.map((participant: any) =>
+                notifyNewChatMessage(participant.user.id, senderName, event.title, params.eventId).catch(
+                  (notifyError: any) => console.error('Failed to send chat notification:', notifyError)
+                )
+              )
+            )
+          )
+          .catch((notifyError) => {
+            console.error('Failed to send chat notification:', notifyError);
+            // 通知失敗してもメッセージ送信は成功として扱う
+          });
       }
 
       // PostgreSQL changesで自動的に他のユーザーに通知されます
@@ -664,26 +710,25 @@ export default function EventChatScreen() {
         <View style={styles.messageContent}>
           {!isOwnMessage && (
             <View style={styles.senderNameContainer}>
-              <Text style={[styles.senderName, { color: isHost ? '#22c55e' : colors.text }]}>
-                {item.sender?.profiles?.display_name || 'Unknown'}
+              <Text style={[styles.senderName, { color: colors.text }]}>
+                {item.sender?.profiles?.display_name || t('common.unknown')}
               </Text>
-              {isHost && (
-                <Text style={[styles.hostBadge, { color: '#22c55e' }]}>
-                  {t('eventChat.hostBadge')}
-                </Text>
-              )}
+              {/* ホストは名前の横にチップ（開発者バッジと同じ緑はやめた） */}
+              {isHost && <Chip label={t('chips.host')} tone="tint" />}
             </View>
           )}
           <View
             style={[
               styles.bubble,
-              isOwnMessage ? styles.ownBubble : styles.otherBubble,
+              isOwnMessage
+                ? [styles.ownBubble, { backgroundColor: colors.primaryButton }]
+                : [styles.otherBubble, { backgroundColor: colors.chipBackground }],
             ]}
           >
             <Text
               style={[
                 styles.text,
-                { color: isOwnMessage ? '#ffffff' : colors.text },
+                { color: isOwnMessage ? colors.primaryButtonText : colors.text },
               ]}
             >
               {item.content_text}
@@ -709,87 +754,53 @@ export default function EventChatScreen() {
   function renderHeader() {
     if (!event) return null;
 
+    const memberCount = new Set([
+      ...(event.participants || []).map((p) => p.user.id),
+      ...(event.host?.id ? [event.host.id] : []),
+    ]).size;
+    const meta = t('chatRoom.headerMeta', {
+      date: formatEventDate(event.start_at, t),
+      resort: event.resorts?.name || t('common.unknown'),
+      count: memberCount,
+    });
+    const openDetails = () =>
+      router.push({ pathname: '/event-detail', params: { eventId: params.eventId } } as any);
+
     return (
-      <View style={[styles.header, { backgroundColor: colors.card }]}>
-        {/* Header top bar with back button */}
-        <View style={styles.headerTopBar}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <IconSymbol name="chevron.left" size={24} color={colors.text} />
+      <View style={{ backgroundColor: colors.background }}>
+        {/* 1行に圧縮したヘッダー：戻る／タイトル＋日時・ゲレンデ・人数／ⓘ（詳細へ） */}
+        <View style={[styles.compactHeader, { paddingTop: insets.top, borderBottomColor: colors.divider }]}>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel={t('common.back')}
+          >
+            <Ionicons name="chevron-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerTitleArea} onPress={openDetails} accessibilityRole="button">
+            <Text style={[styles.compactTitle, { color: colors.text }]} numberOfLines={1}>
+              {event.title}
+            </Text>
+            <Text style={[styles.compactMeta, { color: colors.textLabel }]} numberOfLines={1}>
+              {meta}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerIconButton}
+            onPress={openDetails}
+            accessibilityRole="button"
+            accessibilityLabel={t('chatRoom.openDetails')}
+          >
+            <Ionicons name="information-circle-outline" size={24} color={colors.text} />
           </TouchableOpacity>
         </View>
 
-        {/* Top row: Image + Title/Info */}
-        <View style={styles.headerTopRow}>
-          {/* Event image */}
-          {event.photos && event.photos.length > 0 && event.photos[0] ? (
-            <Image
-              source={{ uri: event.photos[0] }}
-              style={styles.headerImage}
-              resizeMode="cover"
-              onError={(error) => {
-                console.log('Image load error:', error.nativeEvent.error);
-              }}
-
-            />
-          ) : (
-            <View style={styles.headerImagePlaceholder}>
-              <Text style={styles.headerImageEmoji}>🏔️</Text>
-            </View>
-          )}
-
-          {/* Event info */}
-          <View style={styles.headerInfo}>
-            <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>
-              {event.title}
-            </Text>
-
-            <View style={styles.infoRow}>
-              <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                {format(new Date(event.start_at), 'MMM d')}
-              </Text>
-              <Text style={[styles.infoSeparator, { color: colors.textSecondary }]}> • </Text>
-              <Text style={[styles.infoText, { color: colors.textSecondary }]} numberOfLines={1}>
-                {event.resorts?.name || 'Unknown Resort'}
-              </Text>
-            </View>
-
-            {/* Participants */}
-            {event.participants && event.participants.length > 0 && (
-              <View style={styles.participantsAvatars}>
-                {event.participants.slice(0, 3).map((p, idx) => (
-                  <Image
-                    key={p.user.id}
-                    source={{ uri: p.user.profiles?.avatar_url || undefined }}
-                    style={[
-                      styles.participantAvatar,
-                      { marginLeft: idx > 0 ? -12 : 0, borderColor: colors.card },
-                    ]}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
+        {/* 削除の予告は控えめなバーで1か所だけ */}
+        <View style={[styles.noticeBar, { backgroundColor: colors.chipBackground }]}>
+          <Ionicons name="time-outline" size={14} color={colors.textLabel} />
+          <Text style={[styles.noticeText, { color: colors.textMuted }]}>{t('chatRoom.deletionNotice')}</Text>
         </View>
-
-        {/* Description */}
-        {event.description && (
-          <View style={styles.descriptionContainer}>
-            <Text style={[styles.description, { color: colors.textSecondary }]} numberOfLines={2}>
-              {event.description}
-            </Text>
-          </View>
-        )}
-
-        {/* Details link */}
-        <TouchableOpacity
-          style={styles.detailsLink}
-          onPress={() => router.push({
-            pathname: '/event-detail',
-            params: { eventId: params.eventId },
-          } as any)}
-        >
-          <Text style={styles.detailsLinkText}>{t('eventChat.viewDetails')}</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -821,9 +832,13 @@ export default function EventChatScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[
+        styles.container,
+        { backgroundColor: colors.background, paddingBottom: androidKeyboardHeight },
+      ]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      enabled={Platform.OS === 'ios'}
+      keyboardVerticalOffset={0}
     >
       {/* Fixed Header */}
       {renderHeader()}
@@ -839,7 +854,16 @@ export default function EventChatScreen() {
       />
 
       {/* Input Container */}
-      <View style={[styles.inputContainer, { backgroundColor: colors.card }]}>
+      <View
+        style={[
+          styles.inputContainer,
+          {
+            backgroundColor: colors.card,
+            // キーボードが出ていないときだけホームインジケーター／ナビゲーションバーの分を空ける
+            paddingBottom: spacing.md + (keyboardVisible ? 0 : insets.bottom),
+          },
+        ]}
+      >
         <TextInput
           value={inputText}
           onChangeText={setInputText}
@@ -874,6 +898,42 @@ export default function EventChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  compactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xs,
+    paddingBottom: spacing.xs,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  headerIconButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitleArea: {
+    flex: 1,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  compactTitle: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.bold,
+  },
+  compactMeta: {
+    fontSize: 12,
+    marginTop: 1,
+  },
+  noticeBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  noticeText: {
+    fontSize: 12,
   },
   loadingContainer: {
     flex: 1,
@@ -917,11 +977,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   ownBubble: {
-    backgroundColor: '#1890ff',
     borderBottomRightRadius: 6,
   },
   otherBubble: {
-    backgroundColor: '#808080',
     borderBottomLeftRadius: 6,
   },
   senderNameContainer: {

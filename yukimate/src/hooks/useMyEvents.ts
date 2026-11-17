@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase, getAuthUser } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
 
 export interface MyEvent {
@@ -37,7 +37,7 @@ export function useMyEvents(): MyEventsHookReturn {
 
             const {
                 data: { user },
-            } = await supabase.auth.getUser();
+            } = await getAuthUser();
 
             if (!user) {
                 throw new Error('ログインが必要です');
@@ -54,7 +54,8 @@ export function useMyEvents(): MyEventsHookReturn {
           end_at,
           capacity_total,
           photos,
-          resorts(id, name)
+          resorts(id, name),
+          event_participants(left_at)
         `)
                 .eq('host_user_id', user.id)
                 .order('start_at', { ascending: false });
@@ -67,15 +68,11 @@ export function useMyEvents(): MyEventsHookReturn {
                 return;
             }
 
-            // 各イベントの参加者数を取得してマッピング
+            // 各イベントの参加者数をマッピング
+            // （参加者は埋め込み取得済み。以前はイベントごとに1クエリ発行していた）
             const eventsWithDetails = await Promise.all(
                 eventsData.map(async (event: any) => {
-                    // 参加者数を取得
-                    const { count } = await supabase
-                        .from('event_participants')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('event_id', event.id)
-                        .is('left_at', null);
+                    const count = (event.event_participants || []).filter((p: any) => p.left_at === null).length;
 
                     // 画像URLを生成
                     const photoUrls: string[] = [];

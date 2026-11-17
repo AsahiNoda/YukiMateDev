@@ -22,21 +22,23 @@ export async function checkPendingEventActions(
     userId: string
 ): Promise<PendingEventAction | null> {
     try {
-        // ホストしているイベントを取得
-        const { data: hostedEvents, error: hostedError } = await supabase
-            .from('posts_events')
-            .select('id, start_at, host_user_id')
-            .eq('host_user_id', userId);
+        // 開始から6時間以上経過したイベントだけが対象なので、DB側で絞り込む
+        const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
 
-        if (hostedError) {
-            console.error('[EventChecker] Error fetching hosted events:', hostedError);
-        }
-
-        // 参加しているイベントを取得
-        const { data: participations, error: participationsError } = await supabase
-            .from('event_participants')
-            .select(
-                `
+        // ホストしているイベント と 参加しているイベント を並列で取得
+        const [
+            { data: hostedEvents, error: hostedError },
+            { data: participations, error: participationsError },
+        ] = await Promise.all([
+            supabase
+                .from('posts_events')
+                .select('id, start_at, host_user_id')
+                .eq('host_user_id', userId)
+                .lte('start_at', sixHoursAgo),
+            supabase
+                .from('event_participants')
+                .select(
+                    `
         event_id,
         posts_events!inner(
           id,
@@ -44,9 +46,15 @@ export async function checkPendingEventActions(
           host_user_id
         )
       `
-            )
-            .eq('user_id', userId)
-            .is('left_at', null);
+                )
+                .eq('user_id', userId)
+                .is('left_at', null)
+                .lte('posts_events.start_at', sixHoursAgo),
+        ]);
+
+        if (hostedError) {
+            console.error('[EventChecker] Error fetching hosted events:', hostedError);
+        }
 
         if (participationsError) {
             console.error('[EventChecker] Error fetching participations:', participationsError);
@@ -78,6 +86,10 @@ export async function checkPendingEventActions(
 
         const now = new Date();
 
+        // post-action 完了済みフラグをまとめて読み込む（以前はイベントごとに直列で読んでいた）
+        const storageKeys = allEvents.map((event) => `post_action_completed_${event.id}`);
+        const completedFlags = new Map(await AsyncStorage.multiGet(storageKeys));
+
         // 各イベントをチェック
         for (const event of allEvents) {
             const eventId = event.id;
@@ -87,15 +99,18 @@ export async function checkPendingEventActions(
             // イベント開始から6時間経過しているかチェック
             if (hoursSinceStart >= 6) {
                 // AsyncStorageでpost-action完了済みかチェック
-                const storageKey = `post_action_completed_${eventId}`;
-                const hasCompletedPostAction = await AsyncStorage.getItem(storageKey);
+                const hasCompletedPostAction = completedFlags.get(`post_action_completed_${eventId}`);
 
                 if (!hasCompletedPostAction) {
-                    // イベントの全参加者を取得
-                    const { data: allParticipantsData, error: participantsError } = await supabase
-                        .from('event_participants')
-                        .select(
-                            `
+                    // イベントの全参加者 と ホスト情報 を並列で取得
+                    const [
+                        { data: allParticipantsData, error: participantsError },
+                        { data: hostProfile, error: hostError },
+                    ] = await Promise.all([
+                        supabase
+                            .from('event_participants')
+                            .select(
+                                `
               user_id,
               users!event_participants_user_id_fkey(
                 id,
@@ -107,21 +122,20 @@ export async function checkPendingEventActions(
                 )
               )
             `
-                        )
-                        .eq('event_id', eventId)
-                        .is('left_at', null);
+                            )
+                            .eq('event_id', eventId)
+                            .is('left_at', null),
+                        supabase
+                            .from('profiles')
+                            .select('user_id, display_name, avatar_url, level')
+                            .eq('user_id', event.host_user_id)
+                            .single(),
+                    ]);
 
                     if (participantsError) {
                         console.error('[EventChecker] Error fetching participants:', participantsError);
                         continue;
                     }
-
-                    // ホスト情報を取得
-                    const { data: hostProfile, error: hostError } = await supabase
-                        .from('profiles')
-                        .select('user_id, display_name, avatar_url, level')
-                        .eq('user_id', event.host_user_id)
-                        .single();
 
                     if (hostError) {
                         console.error('[EventChecker] Error fetching host profile:', hostError);

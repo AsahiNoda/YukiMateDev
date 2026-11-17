@@ -12,7 +12,7 @@ import { initAnalytics } from '@lib/analytics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Linking, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, InteractionManager, Linking, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 // import * as Sentry from '@sentry/react-native'; // 一時的に無効化
 
@@ -102,14 +102,23 @@ let isRecoverySession = false;
 // パスワード設定セッション中フラグ
 let isSetPasswordSession = false;
 
-export default function RootLayout() {
-  console.log('📱 RootLayout: Component rendering...');
+// プロフィール存在確認済みフラグ（AsyncStorage）
+// 一度確認できたユーザーは次回起動時にネットワーク確認を待たずに画面を表示する
+const PROFILE_EXISTS_KEY_PREFIX = '@slopelink_profile_exists_';
+const markProfileExists = (userId: string) =>
+  AsyncStorage.setItem(PROFILE_EXISTS_KEY_PREFIX + userId, '1').catch(() => {});
+const hasCachedProfile = async (userId: string) => {
+  try {
+    return (await AsyncStorage.getItem(PROFILE_EXISTS_KEY_PREFIX + userId)) === '1';
+  } catch {
+    return false;
+  }
+};
 
+export default function RootLayout() {
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
   const initRef = useRef(false);
-
-  console.log('📱 RootLayout: Hooks initialized, isReady:', isReady);
 
   // 通知機能を初期化
   useNotifications();
@@ -315,50 +324,86 @@ export default function RootLayout() {
               return;
             }
 
-            console.log('🔍 Checking profile existence...');
-            const { data: profile, error } = await supabase
-              .from('profiles')
-              .select('user_id')
-              .eq('user_id', session.user.id)
-              .single();
+            const userId = session.user.id;
 
-            if (error && error.code === 'PGRST116') {
-              // プロフィールが存在しない場合、プロフィール作成画面へ
-              console.log('⚠️  Profile not found, redirecting to setup...');
-              if (mounted) {
-                setIsReady(true);
-                router.replace('/profile-setup');
-              }
-              // returnを削除 - リスナー登録を必ず実行するため
-            } else if (profile) {
-              console.log('✅ Profile exists');
-
-              // ペンディング中のイベントアクションをバックグラウンドでチェック
-              // アプリ起動を遅らせないように、先にローディング解除してから非同期で実行
-              if (mounted) {
-                setIsReady(true);
-              }
-
-              // バックグラウンドでチェック（起動時間に影響しない）
-              checkPendingEventActions(session.user.id).then((pendingEvent) => {
-                if (pendingEvent && mounted) {
-                  console.log('🚀 Found pending event action, redirecting to post-event-action');
-                  // 少し遅延させてからナビゲーション（ホーム画面が表示された後）
-                  setTimeout(() => {
-                    router.push({
-                      pathname: '/post-event-action/[eventId]',
-                      params: {
-                        eventId: pendingEvent.eventId,
-                        participants: JSON.stringify(pendingEvent.participants),
-                      },
-                    } as any);
-                  }, 1000);
-                }
-              }).catch((error) => {
-                console.error('❌ Error checking pending event actions:', error);
+            // ペンディング中のイベントアクションをバックグラウンドでチェック
+            // 初回描画・ホーム画面のデータ取得が終わってから実行（起動直後の通信競合を避ける）
+            const schedulePendingEventCheck = () => {
+              InteractionManager.runAfterInteractions(() => {
+                checkPendingEventActions(userId).then((pendingEvent) => {
+                  if (pendingEvent && mounted) {
+                    console.log('🚀 Found pending event action, redirecting to post-event-action');
+                    // 少し遅延させてからナビゲーション（ホーム画面が表示された後）
+                    setTimeout(() => {
+                      router.push({
+                        pathname: '/post-event-action/[eventId]',
+                        params: {
+                          eventId: pendingEvent.eventId,
+                          participants: JSON.stringify(pendingEvent.participants),
+                        },
+                      } as any);
+                    }, 1000);
+                  }
+                }).catch((error) => {
+                  console.error('❌ Error checking pending event actions:', error);
+                });
               });
+            };
 
-              // returnを削除 - リスナー登録を必ず実行するため
+            const checkProfileOnServer = async () => {
+              const { data: profile, error } = await supabase
+                .from('profiles')
+                .select('user_id')
+                .eq('user_id', userId)
+                .maybeSingle();
+              if (error) {
+                console.error('❌ Error checking profile:', error);
+                return 'unknown' as const;
+              }
+              if (profile) {
+                markProfileExists(userId);
+                return 'exists' as const;
+              }
+              AsyncStorage.removeItem(PROFILE_EXISTS_KEY_PREFIX + userId).catch(() => {});
+              return 'missing' as const;
+            };
+
+            if (await hasCachedProfile(userId)) {
+              // 確認済みユーザー: 即座に表示し、サーバー確認は裏で行う
+              console.log('✅ Profile exists (cached), showing app immediately');
+              if (mounted) {
+                setIsReady(true);
+              }
+              schedulePendingEventCheck();
+              checkProfileOnServer().then((result) => {
+                if (result === 'missing' && mounted) {
+                  console.log('⚠️  Profile not found on server, redirecting to setup...');
+                  router.replace('/profile-setup');
+                }
+              });
+            } else {
+              console.log('🔍 Checking profile existence...');
+              const result = await checkProfileOnServer();
+
+              if (result === 'missing') {
+                // プロフィールが存在しない場合、プロフィール作成画面へ
+                console.log('⚠️  Profile not found, redirecting to setup...');
+                if (mounted) {
+                  setIsReady(true);
+                  router.replace('/profile-setup');
+                }
+                // returnしない - リスナー登録を必ず実行するため
+              } else {
+                if (result === 'exists') {
+                  console.log('✅ Profile exists');
+                }
+                if (mounted) {
+                  setIsReady(true);
+                }
+                if (result === 'exists') {
+                  schedulePendingEventCheck();
+                }
+              }
             }
           }
 
@@ -370,7 +415,7 @@ export default function RootLayout() {
 
         // 認証状態の変化を監視（セッションチェックをスキップした場合も必ず実行）
         console.log('📡 Registering auth state change listener...');
-        const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+        const { data: listener } = supabase.auth.onAuthStateChange((event: string, session: any) => {
           console.log(`🔔 RootLayout: Auth event: ${event}, Has session: ${!!session}`);
 
           if (!mounted) {
@@ -451,6 +496,7 @@ export default function RootLayout() {
                   router.replace('/profile-setup');
                 } else if (profile) {
                   // プロフィールが存在する場合
+                  markProfileExists(session.user.id);
                   console.log('✅ Profile exists, redirecting to home...');
                   router.replace('/(tabs)/home');
                 } else {
@@ -595,7 +641,7 @@ export default function RootLayout() {
           }
         };
 
-        const linkingSubscription = Linking.addEventListener('url', handleDeepLink);
+        linkingSubscription = Linking.addEventListener('url', handleDeepLink);
 
       } catch (error) {
         console.error('❌ Init error:', error);
@@ -641,8 +687,17 @@ export default function RootLayout() {
                   <Stack.Screen name="(auth)/sign-in" options={{ headerShown: false }} />
                   <Stack.Screen name="(auth)/reset-password" options={{ headerShown: false }} />
                   <Stack.Screen name="(auth)/set-password" options={{ headerShown: false }} />
-                  <Stack.Screen name="event-detail" options={{ presentation: 'card' }} />
-                  <Stack.Screen name="event-chat/[eventId]" options={{ presentation: 'card' }} />
+                  {/* 同じイベントの画面を重ねて開かない（連続タップなどで同じ詳細が2枚積まれ、戻るときに2回通るのを防ぐ） */}
+                  <Stack.Screen
+                    name="event-detail"
+                    options={{ presentation: 'card' }}
+                    dangerouslySingular={(_name, params) => (params?.eventId ? String(params.eventId) : undefined)}
+                  />
+                  <Stack.Screen
+                    name="event-chat/[eventId]"
+                    options={{ presentation: 'card' }}
+                    dangerouslySingular={(_name, params) => (params?.eventId ? String(params.eventId) : undefined)}
+                  />
                   <Stack.Screen name="post-event-action/[eventId]" options={{ presentation: 'card' }} />
                   <Stack.Screen name="profile-setup" options={{ headerShown: false }} />
                 </Stack>

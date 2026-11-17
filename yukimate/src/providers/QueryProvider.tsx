@@ -1,6 +1,20 @@
 import React from 'react';
-import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, focusManager, onlineManager } from '@tanstack/react-query';
 import NetInfo from '@react-native-community/netinfo';
+import { AppState, Platform } from 'react-native';
+
+/**
+ * React Native ではブラウザの focus イベントが無いため、AppState を focusManager に接続する。
+ * これによりアプリがフォアグラウンドに戻ったとき、古くなった（stale）クエリだけが再取得される。
+ */
+if (Platform.OS !== 'web') {
+  focusManager.setEventListener((handleFocus) => {
+    const subscription = AppState.addEventListener('change', (status) => {
+      handleFocus(status === 'active');
+    });
+    return () => subscription.remove();
+  });
+}
 
 /**
  * React QueryのQueryClientを設定
@@ -28,9 +42,9 @@ const queryClient = new QueryClient({
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000), // 指数バックオフ
 
       // 自動リフレッシュ設定
-      refetchOnWindowFocus: true, // アプリがフォアグラウンドに戻ったときに再フェッチ
-      refetchOnReconnect: true, // ネットワーク再接続時に再フェッチ
-      refetchOnMount: true, // コンポーネントマウント時に再フェッチ
+      refetchOnWindowFocus: true, // アプリがフォアグラウンドに戻ったときに再フェッチ（staleなもののみ）
+      refetchOnReconnect: true, // ネットワーク再接続時に再フェッチ（staleなもののみ）
+      refetchOnMount: true, // コンポーネントマウント時に再フェッチ（staleなもののみ）
     },
     mutations: {
       // ミューテーションのネットワークモード
@@ -55,17 +69,14 @@ export const setupNetworkListener = () => {
 
   // ネットワーク状態の変化を監視
   unsubscribe = NetInfo.addEventListener((state) => {
-    const isOnline = state.isConnected && state.isInternetReachable !== false;
-
-    console.log(`🌐 Network status: ${isOnline ? 'Online' : 'Offline'}`);
+    const isOnline = !!state.isConnected && state.isInternetReachable !== false;
 
     // React Queryにオンライン状態を通知
-    onlineManager.setOnline(isOnline);
-
-    // オンラインに復帰したら、すべてのクエリを再フェッチ
-    if (isOnline) {
-      console.log('🔄 Network reconnected, refetching queries...');
-      queryClient.refetchQueries();
+    // オンライン復帰時は refetchOnReconnect により「表示中」のクエリだけが自動で再取得される。
+    // （以前は queryClient.refetchQueries() で非表示のクエリまで全件再取得していたため削除）
+    if (onlineManager.isOnline() !== isOnline) {
+      console.log(`🌐 Network status: ${isOnline ? 'Online' : 'Offline'}`);
+      onlineManager.setOnline(isOnline);
     }
   });
 };

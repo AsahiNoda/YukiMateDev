@@ -12,9 +12,9 @@ export async function notifyStarredUsersOfNewEvent(
   try {
     // このホストを★登録しているユーザーを取得
     const { data: stars, error } = await supabase
-      .from('starred_users')
+      .from('stars') // ★登録は stars テーブル（user_id が★を付けた人、target_user_id が付けられた人）
       .select('user_id')
-      .eq('starred_user_id', hostUserId);
+      .eq('target_user_id', hostUserId);
 
     if (error) {
       console.error('Failed to fetch starred users:', error);
@@ -63,9 +63,9 @@ export async function notifyStarredUsersOfParticipation(
   try {
     // この参加者を★登録しているユーザーを取得（イベントの参加者のみ）
     const { data: stars, error: starsError } = await supabase
-      .from('starred_users')
+      .from('stars')
       .select('user_id')
-      .eq('starred_user_id', participantUserId);
+      .eq('target_user_id', participantUserId);
 
     if (starsError) {
       console.error('Failed to fetch starred users:', starsError);

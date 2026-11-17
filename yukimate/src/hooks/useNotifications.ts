@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase, getAuthUser } from '@/lib/supabase';
 import { saveNotificationToken } from '@/services/notificationService';
 import { registerForPushNotificationsAsync } from '@/utils/notifications';
 import * as Notifications from 'expo-notifications';
@@ -29,7 +29,7 @@ export function useNotifications() {
         setExpoPushToken(token);
 
         // 現在のユーザーを取得してトークンを保存
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await getAuthUser();
         if (user) {
           const deviceType = Platform.OS === 'ios' ? 'ios' : 'android';
           await saveNotificationToken(user.id, token, deviceType);

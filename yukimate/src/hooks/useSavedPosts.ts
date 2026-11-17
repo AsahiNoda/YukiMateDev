@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase';
+import { supabase, getAuthUser } from '@/lib/supabase';
 import { getResortName } from '@/utils/resort-helpers';
 import { useEffect, useState } from 'react';
 import { useTranslation } from './useTranslation';
@@ -40,7 +40,7 @@ export function useSavedPosts(): SavedPostsHookReturn {
 
             const {
                 data: { user },
-            } = await supabase.auth.getUser();
+            } = await getAuthUser();
 
             if (!user) {
                 throw new Error('ログインが必要です');
@@ -60,7 +60,8 @@ export function useSavedPosts(): SavedPostsHookReturn {
             capacity_total,
             photos,
             status,
-            resorts(id, name, name_en)
+            resorts(id, name, name_en),
+            event_participants(left_at)
           )
         `)
                 .eq('user_id', user.id)
@@ -84,12 +85,8 @@ export function useSavedPosts(): SavedPostsHookReturn {
                 openEvents.map(async (bookmark: any) => {
                     const event = bookmark.posts_events;
 
-                    // 参加者数を取得
-                    const { count } = await supabase
-                        .from('event_participants')
-                        .select('*', { count: 'exact', head: true })
-                        .eq('event_id', event.id)
-                        .is('left_at', null);
+                    // 参加者数（埋め込み取得済み。以前はイベントごとに1クエリ発行していた）
+                    const count = (event.event_participants || []).filter((p: any) => p.left_at === null).length;
 
                     // 画像URLを生成
                     const photoUrls: string[] = [];

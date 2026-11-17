@@ -18,6 +18,7 @@ export interface ExploreFilters {
   };
   languages?: string[];
   hasAvailability?: boolean; // 空きがあるもののみ
+  soloOnly?: boolean; // 一人参加OK（posts_events.solo_ok）のみ
 }
 
 /**
@@ -61,34 +62,26 @@ export function useExplore(
 
       const userId = session.user.id;
 
-      // ブロックしたユーザーIDリストを取得
-      const { data: blocks } = await supabase
-        .from('blocks')
-        .select('blocked_user_id')
-        .eq('user_id', userId);
+      // ブロック・参加済みイベント・★登録ユーザーを並列で取得（以前は直列で4回）
+      const [
+        { data: blocks },
+        { data: participatingEvents },
+        { data: starredUsers },
+      ] = await Promise.all([
+        supabase.from('blocks').select('blocked_user_id').eq('user_id', userId),
+        // 自分が参加中のイベント（left_atがnull）だけを除外する。
+        // event_applications の approved は退会後も残ることがあるため除外条件に使わない
+        // （退会したイベントが一覧に再表示されない不具合の修正）
+        supabase
+          .from('event_participants')
+          .select('event_id')
+          .eq('user_id', userId)
+          .is('left_at', null),
+        supabase.from('stars').select('target_user_id').eq('user_id', userId),
+      ]);
 
       const blockedUserIds = blocks?.map(b => b.blocked_user_id) || [];
-
-      // 自分が参加中のイベントIDリストを取得（approvedまたはevent_participantsに存在）
-      const { data: approvedApplications } = await supabase
-        .from('event_applications')
-        .select('event_id')
-        .eq('applicant_user_id', userId)
-        .eq('status', 'approved');
-
-      const approvedEventIds = approvedApplications?.map(a => a.event_id) || [];
-
-      // 自分が参加中のイベント（left_atがnull）も取得
-      const { data: participatingEvents } = await supabase
-        .from('event_participants')
-        .select('event_id')
-        .eq('user_id', userId)
-        .is('left_at', null);
-
-      const participatingEventIds = participatingEvents?.map(p => p.event_id) || [];
-
-      // 両方のリストを結合して重複を除去
-      const excludedEventIds = [...new Set([...approvedEventIds, ...participatingEventIds])];
+      const excludedEventIds = [...new Set(participatingEvents?.map(p => p.event_id) || [])];
 
       // ベースクエリ
       let query = supabase
@@ -104,6 +97,7 @@ export function useExplore(
           level_required,
           price_per_person_jpy,
           meeting_place,
+          solo_ok,
           tags,
           photos,
           host_user_id,
@@ -118,7 +112,8 @@ export function useExplore(
             level,
             languages,
             users!profiles_user_id_fkey(role)
-          )
+          ),
+          event_participants(user_id, left_at)
         `)
         .eq('status', 'open')
         .gte('start_at', new Date().toISOString())
@@ -153,6 +148,11 @@ export function useExplore(
         query = query.in('resort_id', filters.resortIds);
       }
 
+      // 一人参加OKのみ
+      if (filters.soloOnly) {
+        query = query.eq('solo_ok', true);
+      }
+
       // レベルフィルター
       if (filters.skillLevel) {
         query = query.eq('level_required', filters.skillLevel);
@@ -184,34 +184,21 @@ export function useExplore(
 
       let results = data || [];
 
-      // ★登録したユーザーIDリストを取得
-      const { data: starredUsers } = await supabase
-        .from('stars')
-        .select('target_user_id')
-        .eq('user_id', userId);
-
       const starredUserIds = starredUsers?.map(s => s.target_user_id) || [];
+      const starredUserIdSet = new Set(starredUserIds);
 
-      // 参加者数と★登録された参加者を取得
-      const eventsWithParticipants = await Promise.all(
-        results.map(async (event) => {
-          const { count, data: participants } = await supabase
-            .from('event_participants')
-            .select('user_id', { count: 'exact' })
-            .eq('event_id', event.id)
-            .is('left_at', null);
+      // 参加者数と★登録された参加者（埋め込み取得した参加者から計算。以前はイベントごとに1クエリ）
+      const eventsWithParticipants = results.map((event: any) => {
+        const activeParticipantIds: string[] = (event.event_participants || [])
+          .filter((p: any) => p.left_at === null)
+          .map((p: any) => p.user_id);
 
-          // ★登録された参加者をフィルター
-          const participantUserIds = participants?.map(p => p.user_id) || [];
-          const starredParticipants = participantUserIds.filter(id => starredUserIds.includes(id));
-
-          return {
-            ...event,
-            spotsTaken: count || 0,
-            starredParticipants,
-          };
-        })
-      );
+        return {
+          ...event,
+          spotsTaken: activeParticipantIds.length,
+          starredParticipants: activeParticipantIds.filter(id => starredUserIdSet.has(id)),
+        };
+      });
 
       results = eventsWithParticipants;
 
@@ -294,6 +281,7 @@ export function useExplore(
           levelRequired: event.level_required,
           pricePerPersonJpy: event.price_per_person_jpy,
           meetingPlace: event.meeting_place,
+          soloOk: !!event.solo_ok,
           tags: event.tags || [],
           photoUrl: photoUrls[0] || null,
           photoUrls,
@@ -328,6 +316,7 @@ export function useExplore(
     filters.dateRange,
     filters.languages,
     filters.hasAvailability,
+    filters.soloOnly,
     sort.sortBy,
     sort.order,
   ]);

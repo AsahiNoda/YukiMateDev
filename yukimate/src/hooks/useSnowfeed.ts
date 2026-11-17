@@ -24,15 +24,73 @@ export function useSnowfeed(resortId: string | null, refreshKey?: number): Snowf
 
     const load = async () => {
       try {
-        // 0. リゾート情報を取得（名前、座標、都道府県）
-        const { data: resortData, error: resortError } = await supabase
-          .from('resorts')
-          .select('name, name_en, latitude, longitude, area, region')
-          .eq('id', resortId)
-          .single();
+        // 0〜4. 互いに依存しないクエリを並列に取得（以前は最大7回の直列通信）
+        // 投稿者情報・いいね数・コメント数は投稿クエリに埋め込んで1クエリにまとめる
+        const [
+          { data: resortData, error: resortError },
+          { data: ratingData, error: ratingError },
+          { data: weatherData, error: weatherError },
+          { data: postsData, error: postsError },
+        ] = await Promise.all([
+          // 0. リゾート情報（名前、座標、都道府県）
+          supabase
+            .from('resorts')
+            .select('name, name_en, latitude, longitude, area, region')
+            .eq('id', resortId)
+            .single(),
+          // 1. レーティングサマリー
+          supabase
+            .from('resort_rating_summary')
+            .select('*')
+            .eq('resort_id', resortId)
+            .single(),
+          // 2. 天気データ（DBキャッシュ）
+          supabase
+            .from('weather_daily_cache')
+            .select('*')
+            .eq('resort_id', resortId)
+            .order('date', { ascending: false })
+            .limit(1)
+            .single(),
+          // 3〜4. 投稿 + 投稿者プロフィール・ロール + いいね数・コメント数
+          supabase
+            .from('feed_posts')
+            .select(
+              `
+              id,
+              user_id,
+              resort_id,
+              type,
+              text,
+              tags,
+              photos,
+              created_at,
+              resorts(name, name_en),
+              author:users!feed_posts_user_id_fkey(
+                role,
+                profiles(display_name, avatar_url)
+              ),
+              feed_reactions(count),
+              feed_comments(count)
+            `
+            )
+            .eq('resort_id', resortId)
+            .order('created_at', { ascending: false })
+            .limit(20),
+        ]);
 
         if (resortError) {
           console.warn('リゾート情報取得エラー:', resortError);
+        }
+        if (ratingError && ratingError.code !== 'PGRST116') {
+          // PGRST116は「行が見つからない」エラー（許容）
+          console.warn('レーティング取得エラー:', ratingError);
+        }
+        if (weatherError && weatherError.code !== 'PGRST116') {
+          console.warn('天気データ取得エラー:', weatherError);
+        }
+        if (postsError) {
+          throw new Error(`投稿取得エラー: ${postsError.message}`);
         }
 
         const resortName = resortData ? getResortName(resortData, locale) : resortId;
@@ -42,58 +100,23 @@ export function useSnowfeed(resortId: string | null, refreshKey?: number): Snowf
         // areaは常に使用（天気APIは日本語の県名が必要）
         const resortPrefecture = resortData?.area;
 
-        console.log(`[useSnowfeed] Resort: ${resortName} (ID: ${resortId})`, {
-          coords: resortCoords || 'no coordinates',
-          prefecture: resortPrefecture || 'no prefecture'
-        });
-
-        // 1. レーティングサマリーを取得
-        const { data: ratingData, error: ratingError } = await supabase
-          .from('resort_rating_summary')
-          .select('*')
-          .eq('resort_id', resortId)
-          .single();
-
-        if (ratingError && ratingError.code !== 'PGRST116') {
-          // PGRST116は「行が見つからない」エラー（許容）
-          console.warn('レーティング取得エラー:', ratingError);
-        }
-
-        // 2. 天気データを取得（DBから）
-        const { data: weatherData, error: weatherError } = await supabase
-          .from('weather_daily_cache')
-          .select('*')
-          .eq('resort_id', resortId)
-          .order('date', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (weatherError && weatherError.code !== 'PGRST116') {
-          console.warn('天気データ取得エラー:', weatherError);
-        }
-
         // 2.5. DBに天気データがない、または古い場合、APIから取得
         let apiWeatherData = null;
         const today = new Date().toISOString().split('T')[0];
         const isDataStale = !weatherData || weatherData.date !== today;
 
         if (isDataStale) {
-          console.log(
-            weatherData
-              ? `天気データが古い（${weatherData.date}）ため、APIから最新データを取得します...`
-              : 'DBに天気データがないため、APIから取得します...'
-          );
           try {
             // リゾート名、座標、都道府県を使用して天気データを取得
-            apiWeatherData = await fetchWeatherData(resortName, resortCoords, resortPrefecture);
+            apiWeatherData = await fetchWeatherData(resortName, resortCoords, resortPrefecture ?? undefined);
 
             if (apiWeatherData) {
-              // APIから取得したデータをDBに保存（既存データがあればUPSERT）
-              const { error: upsertError } = await supabase
+              // APIから取得したデータをDBに保存（画面表示を待たせないよう完了を待たない）
+              supabase
                 .from('weather_daily_cache')
                 .upsert({
                   resort_id: resortId,
-                  date: new Date().toISOString().split('T')[0],
+                  date: today,
                   temp_c: apiWeatherData.tempC,
                   new_snow_cm: apiWeatherData.newSnowCm,
                   base_depth_cm: apiWeatherData.baseDepthCm,
@@ -103,11 +126,12 @@ export function useSnowfeed(resortId: string | null, refreshKey?: number): Snowf
                   weather_code: apiWeatherData.weatherCode,
                 }, {
                   onConflict: 'resort_id,date'
+                })
+                .then(({ error: upsertError }) => {
+                  if (upsertError) {
+                    console.warn('天気データのDB保存エラー:', upsertError);
+                  }
                 });
-
-              if (upsertError) {
-                console.warn('天気データのDB保存エラー:', upsertError);
-              }
             } else {
               console.warn('天気APIからデータを取得できませんでした（nullが返されました）');
             }
@@ -116,87 +140,27 @@ export function useSnowfeed(resortId: string | null, refreshKey?: number): Snowf
           }
         }
 
-        // 3. 投稿を取得
-        const { data: postsData, error: postsError } = await supabase
-          .from('feed_posts')
-          .select(
-            `
-            id,
-            user_id,
-            resort_id,
-            type,
-            text,
-            tags,
-            photos,
-            created_at,
-            resorts(name, name_en)
-          `
-          )
-          .eq('resort_id', resortId)
-          .order('created_at', { ascending: false })
-          .limit(20);
-
-        if (postsError) {
-          throw new Error(`投稿取得エラー: ${postsError.message}`);
-        }
-
-        // 3.5. ユーザープロフィールとロールを取得
-        const userIds = postsData?.map((p: any) => p.user_id) || [];
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select(`
-            user_id,
-            display_name,
-            avatar_url,
-            users!profiles_user_id_fkey(role)
-          `)
-          .in('user_id', userIds);
-
-        if (profilesError) {
-          console.warn('プロフィール取得エラー:', profilesError);
-        }
-
-        // プロフィールをMapに変換
-        const profilesMap = new Map();
-        if (profilesData) {
-          profilesData.forEach((profile: any) => {
-            profilesMap.set(profile.user_id, {
-              display_name: profile.display_name,
-              avatar_url: profile.avatar_url,
-              role: profile.users?.role || 'user',
+        // 投稿者プロフィール（埋め込み取得した author から）
+        const profilesMap = new Map<string, { display_name: string | null; avatar_url: string | null; role: string }>();
+        ((postsData || []) as any[]).forEach((post: any) => {
+          const author = Array.isArray(post.author) ? post.author[0] : post.author;
+          const profile = Array.isArray(author?.profiles) ? author.profiles[0] : author?.profiles;
+          if (author || profile) {
+            profilesMap.set(post.user_id, {
+              display_name: profile?.display_name ?? null,
+              avatar_url: profile?.avatar_url ?? null,
+              role: author?.role || 'user',
             });
-          });
-        }
+          }
+        });
 
-        // 4. いいね数とコメント数を取得
-        const postIds = postsData?.map((p: any) => p.id) || [];
-        const [reactionsResult, commentsResult] = await Promise.all([
-          supabase
-            .from('feed_reactions')
-            .select('post_id')
-            .in('post_id', postIds),
-          supabase
-            .from('feed_comments')
-            .select('post_id')
-            .in('post_id', postIds),
-        ]);
-
-        // いいね数とコメント数を集計
+        // いいね数とコメント数（埋め込みの count 集計から）
         const likeCountByPost = new Map<string, number>();
-        if (reactionsResult.data) {
-          reactionsResult.data.forEach((r: any) => {
-            const count = likeCountByPost.get(r.post_id) || 0;
-            likeCountByPost.set(r.post_id, count + 1);
-          });
-        }
-
         const commentCountByPost = new Map<string, number>();
-        if (commentsResult.data) {
-          commentsResult.data.forEach((c: any) => {
-            const count = commentCountByPost.get(c.post_id) || 0;
-            commentCountByPost.set(c.post_id, count + 1);
-          });
-        }
+        ((postsData || []) as any[]).forEach((post: any) => {
+          likeCountByPost.set(post.id, post.feed_reactions?.[0]?.count || 0);
+          commentCountByPost.set(post.id, post.feed_comments?.[0]?.count || 0);
+        });
 
         // 5. データを変換
         const rating: ResortRating | null = ratingData

@@ -1,7 +1,7 @@
 import React from 'react';
+import { Image } from 'expo-image';
 import {
   Dimensions,
-  Image,
   Modal,
   StyleSheet,
   TouchableOpacity,

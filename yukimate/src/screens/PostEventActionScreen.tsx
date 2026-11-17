@@ -3,13 +3,13 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { Profile } from '@/lib/database.types';
-import { supabase } from '@/lib/supabase';
+import { supabase, getAuthUser } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
 import React, { useState } from 'react';
+import { Image } from 'expo-image';
 import {
   Alert,
-  Image,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -88,7 +88,7 @@ export default function PostEventActionScreen() {
     console.log('[PostEventActionScreen] 🔍 Fetching current user...');
     const {
       data: { user },
-    } = await supabase.auth.getUser();
+    } = await getAuthUser();
     if (user) {
       console.log('[PostEventActionScreen] ✅ Current user found:', user.id);
       setCurrentUserId(user.id);
@@ -147,19 +147,21 @@ export default function PostEventActionScreen() {
 
       console.log('[PostEventActionScreen] ✅ Successfully left event_participants');
 
-      // event_applicationsのステータスをleftに変更
+      // 申請を削除（イベント詳細画面の退会と同じ扱い）。
+      // 以前は status='left' に更新していたが、DBの制約が pending/approved/rejected しか許さず常に失敗していた。
+      // 一覧の除外は event_participants の left_at で判定するので、削除できなくても表示には影響しない
       const { error: applicationsError } = await supabase
         .from('event_applications')
-        .update({ status: 'left' })
+        .delete()
         .eq('event_id', params.eventId)
         .eq('applicant_user_id', currentUserId)
-        .in('status', ['approved', 'pending']); // approved または pending のものを left に変更
+        .in('status', ['approved', 'pending']);
 
       if (applicationsError) {
         console.error('[PostEventActionScreen] ❌ Leave event_applications error:', applicationsError);
-        // 申請の更新は必須ではないので、エラーでも続行
+        // 申請の削除は必須ではないので、エラーでも続行
       } else {
-        console.log('[PostEventActionScreen] ✅ Successfully updated event_applications to left');
+        console.log('[PostEventActionScreen] ✅ Removed event_applications on leave');
       }
 
       return { success: true };
@@ -221,18 +223,23 @@ export default function PostEventActionScreen() {
     console.log('[PostEventActionScreen] ⏳ Processing all selections...');
 
     try {
-      // ユーザー評価（5段階絵文字リアクション）を upsert
+      // ユーザー評価（5段階絵文字リアクション）と ★/ブロック を並列で登録
+      // （以前は1件ずつ直列で待っていた。各リクエストは独立しているので結果は同じ）
+      const now = new Date().toISOString();
+      const requests: PromiseLike<unknown>[] = [];
+
       for (const [userId, kind] of Object.entries(reactions)) {
         if (!kind) continue;
-        console.log('[PostEventActionScreen] 😊 Upserting reaction for user:', userId, kind);
-        await supabase.from('user_reactions').upsert(
-          {
-            reactor_user_id: currentUserId,
-            target_user_id: userId,
-            reaction: kind,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'reactor_user_id,target_user_id' }
+        requests.push(
+          supabase.from('user_reactions').upsert(
+            {
+              reactor_user_id: currentUserId,
+              target_user_id: userId,
+              reaction: kind,
+              updated_at: now,
+            },
+            { onConflict: 'reactor_user_id,target_user_id' }
+          )
         );
       }
 
@@ -241,21 +248,23 @@ export default function PostEventActionScreen() {
         if (!action) continue;
 
         if (action === 'star') {
-          console.log('[PostEventActionScreen] ⭐ Inserting star for user:', userId);
-          await supabase.from('stars').insert({
-            user_id: currentUserId,
-            target_user_id: userId,
-          });
-          console.log('[PostEventActionScreen] ✅ Star inserted successfully');
+          requests.push(
+            supabase.from('stars').insert({
+              user_id: currentUserId,
+              target_user_id: userId,
+            })
+          );
         } else if (action === 'block') {
-          console.log('[PostEventActionScreen] 🚫 Inserting block for user:', userId);
-          await supabase.from('blocks').insert({
-            user_id: currentUserId,
-            blocked_user_id: userId,
-          });
-          console.log('[PostEventActionScreen] ✅ Block inserted successfully');
+          requests.push(
+            supabase.from('blocks').insert({
+              user_id: currentUserId,
+              blocked_user_id: userId,
+            })
+          );
         }
       }
+
+      await Promise.all(requests);
 
       console.log('[PostEventActionScreen] 🏁 All actions processed, marking as completed');
 
