@@ -1,4 +1,5 @@
 import { ResortSearch } from '@/components/snowfeed/ResortSearch';
+import { showTutorialAgain } from '@/components/AppTutorial';
 import { ActionSheet } from '@/components/ui/ActionSheet';
 import { borderRadius, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAuth } from '@/contexts/AuthContext';
@@ -162,6 +163,14 @@ export default function SettingsScreen() {
 
         <Group title={t('settingsGroups.support')}>
           <Row first icon="mail-outline" label={t('settingsGroups.helpContact')} onPress={() => router.push('/inquiry' as any)} />
+          <Row
+            icon="school-outline"
+            label={t('tutorial.showAgain')}
+            onPress={() => {
+              router.replace('/(tabs)/home' as any);
+              showTutorialAgain();
+            }}
+          />
           <Row icon="document-text-outline" label={t('settings.termsOfService')} onPress={() => router.push('/terms-of-service')} />
           <Row icon="shield-checkmark-outline" label={t('settings.privacyPolicy')} onPress={() => router.push('/privacy-policy')} />
           <Row icon="information-circle-outline" label={t('settingsGroups.version')} value={version} />

@@ -19,6 +19,7 @@ export interface ExploreFilters {
   languages?: string[];
   hasAvailability?: boolean; // 空きがあるもののみ
   soloOnly?: boolean; // 一人参加OK（posts_events.solo_ok）のみ
+  activities?: string[]; // どれかのアクティビティを含むもの（posts_events.activities）
 }
 
 /**
@@ -98,6 +99,7 @@ export function useExplore(
           price_per_person_jpy,
           meeting_place,
           solo_ok,
+          activities,
           tags,
           photos,
           host_user_id,
@@ -151,6 +153,11 @@ export function useExplore(
       // 一人参加OKのみ
       if (filters.soloOnly) {
         query = query.eq('solo_ok', true);
+      }
+
+      // アクティビティ（どれか1つでも含む）
+      if (filters.activities && filters.activities.length > 0) {
+        query = query.overlaps('activities', filters.activities);
       }
 
       // レベルフィルター
@@ -282,6 +289,7 @@ export function useExplore(
           pricePerPersonJpy: event.price_per_person_jpy,
           meetingPlace: event.meeting_place,
           soloOk: !!event.solo_ok,
+          activities: event.activities || [],
           tags: event.tags || [],
           photoUrl: photoUrls[0] || null,
           photoUrls,
@@ -317,6 +325,7 @@ export function useExplore(
     filters.languages,
     filters.hasAvailability,
     filters.soloOnly,
+    filters.activities?.join(','),
     sort.sortBy,
     sort.order,
   ]);

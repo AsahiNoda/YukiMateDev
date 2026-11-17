@@ -46,6 +46,7 @@ export type DiscoverEvent = {
   isHostStarred?: boolean; // ホストが★登録されているか
   starredParticipants?: string[]; // ★登録された参加者のユーザーID配列
   soloOk?: boolean; // 一人参加OK（posts_events.solo_ok）
+  activities?: string[]; // アクティビティ（posts_events.activities：ski / snowboard / backcountry など）
 };
 
 // Event filter options

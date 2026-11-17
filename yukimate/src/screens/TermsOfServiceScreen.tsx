@@ -33,7 +33,7 @@ export default function TermsOfServiceScreen() {
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.contentContainer}>
         <Text style={[styles.updateDate, { color: colors.textSecondary }]}>
-          最終更新日: 2025年12月11日
+          最終更新日: 2026年11月19日
         </Text>
 
         {/* Section 1 */}
@@ -96,6 +96,23 @@ export default function TermsOfServiceScreen() {
             (10) 他のユーザーに成りすます行為{'\n'}
             (11) 当社が許諾しない本アプリ上での宣伝、広告、勧誘、または営業行為{'\n'}
             (12) その他、当社が不適切と判断する行為
+          </Text>
+        </View>
+
+        {/* Section 4-2：ユーザー投稿と迷惑行為（Apple App Store Review Guideline 1.2） */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>第4条の2（不適切なコンテンツと迷惑行為への対応）</Text>
+          <Text style={[styles.sectionText, { color: colors.textSecondary }]}>
+            1. 当社は、不適切なコンテンツ（わいせつ・暴力的・差別的・誹謗中傷・違法な内容、危険行為を助長する内容、スパムを含みますがこれらに限りません）および他のユーザーへの迷惑行為（嫌がらせ、つきまとい、脅迫、なりすまし、執拗な勧誘等）を一切容認しません（ゼロトレランス）。
+          </Text>
+          <Text style={[styles.sectionText, { color: colors.textSecondary }]}>
+            2. ユーザーは、本アプリ内の通報機能により、不適切なコンテンツまたは迷惑行為を行うユーザーを当社に通報することができます。また、ブロック機能により、特定のユーザーのコンテンツを表示しないようにすることができます。
+          </Text>
+          <Text style={[styles.sectionText, { color: colors.textSecondary }]}>
+            3. 当社は、通報を受けた内容を原則として24時間以内に確認し、本規約に違反すると判断した場合は、当該コンテンツを削除し、違反したユーザーに対して利用停止または登録抹消等の措置を講じます。
+          </Text>
+          <Text style={[styles.sectionText, { color: colors.textSecondary }]}>
+            4. ユーザーは、利用登録にあたり本規約（本条を含む）に同意したものとみなされます。
           </Text>
         </View>
 

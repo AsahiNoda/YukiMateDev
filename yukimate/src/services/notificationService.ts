@@ -280,6 +280,29 @@ export async function notifyEventApplicationRejected(
 }
 
 /**
+ * 主催者がメンバーをイベントから外した時の通知（外された本人へ）
+ */
+export async function notifyEventMemberRemoved(
+  removedUserId: string,
+  eventTitle: string,
+  eventId: string
+) {
+  const locale = await getCurrentLocale();
+  const title = getNotificationText(locale, 'notifications.eventMemberRemoved.title');
+  const body = getNotificationText(locale, 'notifications.eventMemberRemoved.body', { eventTitle });
+
+  return await sendPushNotification(
+    removedUserId,
+    title,
+    body,
+    {
+      type: 'event_member_removed',
+      eventId,
+    }
+  );
+}
+
+/**
  * イベント開始のリマインダー通知
  */
 export async function notifyEventStarting(

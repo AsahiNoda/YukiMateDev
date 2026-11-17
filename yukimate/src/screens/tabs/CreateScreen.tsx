@@ -11,6 +11,8 @@ import { getResortName, getResortPrefecture } from '@/utils/resort-helpers';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { DatePickerSheet } from '@/components/ui/DatePickerSheet';
 import { ResortSearch } from '@/components/snowfeed/ResortSearch';
+import { Chip } from '@/components/ui/Chip';
+import { ACTIVITY_ICONS, ACTIVITY_TYPES, MAX_ACTIVITIES, normalizeActivities, type ActivityType } from '@/constants/activities';
 import * as FileSystem from 'expo-file-system/legacy';
 import { decode } from 'base64-arraybuffer';
 import { syncEventReminders } from '@/services/eventNotificationService';
@@ -104,6 +106,8 @@ export default function CreateEventScreen() {
   const [price, setPrice] = useState('');
   // 一人参加OK（posts_events.solo_ok）
   const [soloOk, setSoloOk] = useState(false);
+  // アクティビティ（posts_events.activities）
+  const [activities, setActivities] = useState<ActivityType[]>([]);
 
   // 入力済みで開く（新規作成のときだけ）
   React.useEffect(() => {
@@ -184,6 +188,7 @@ export default function CreateEventScreen() {
       setLevel(eventData.level_required || '');
       setPrice(eventData.price_per_person_jpy ? String(eventData.price_per_person_jpy) : '');
       setSoloOk(!!eventData.solo_ok);
+      setActivities(normalizeActivities(eventData.activities));
       setMeetingPlace(eventData.meeting_place || '');
       setTags(eventData.tags || []);
 
@@ -307,6 +312,7 @@ export default function CreateEventScreen() {
     setLevel('');
     setPrice('');
     setSoloOk(false);
+    setActivities([]);
     setMeetingPlace('');
     setTagInput('');
     setTags([]);
@@ -529,6 +535,7 @@ export default function CreateEventScreen() {
         level_required: level || null,
         price_per_person_jpy: priceNum,
         solo_ok: soloOk,
+        activities,
         meeting_place: (meetingPlace || '').trim() || null,
         tags: tags.length > 0 ? tags : null,
       };
@@ -947,6 +954,35 @@ export default function CreateEventScreen() {
           />
         </View>
 
+        {/* アクティビティ（複数選択・{MAX_ACTIVITIES}つまで） */}
+        <View style={styles.section}>
+          <Text style={styles.label}>{t('activities.label')}</Text>
+          <Text style={styles.switchHint}>{t('activities.hint', { max: MAX_ACTIVITIES })}</Text>
+          <View style={styles.activityChips}>
+            {ACTIVITY_TYPES.map((key) => {
+              const on = activities.includes(key);
+              return (
+                <Chip
+                  key={key}
+                  label={t(`activities.${key}`)}
+                  icon={on ? 'checkmark' : ACTIVITY_ICONS[key]}
+                  selected={on}
+                  onPress={() => {
+                    if (on) {
+                      setActivities((prev) => prev.filter((a) => a !== key));
+                    } else if (activities.length >= MAX_ACTIVITIES) {
+                      Alert.alert(t('activities.tooMany', { max: MAX_ACTIVITIES }));
+                    } else {
+                      setActivities((prev) => ACTIVITY_TYPES.filter((a) => a === key || prev.includes(a)));
+                    }
+                  }}
+                  testID={`activity-${key}`}
+                />
+              );
+            })}
+          </View>
+        </View>
+
         {/* Meeting Place */}
         <View style={styles.section}>
           <Text style={styles.label}>{t('create.meetingPlaceLabel')}</Text>
@@ -1096,6 +1132,12 @@ function createStyles(colors: typeof Colors.light) {
     },
     section: {
       marginBottom: 20,
+    },
+    activityChips: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginTop: 8,
     },
     switchRow: {
       flexDirection: 'row',

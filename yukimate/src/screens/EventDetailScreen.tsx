@@ -1,4 +1,10 @@
 import { ImageViewer } from '@/components/ImageViewer';
+import { ReportSheet } from '@/components/ReportSheet';
+import { Chip } from '@/components/ui/Chip';
+import { ACTIVITY_ICONS, normalizeActivities, type ActivityType } from '@/constants/activities';
+import { ActionSheet } from '@/components/ui/ActionSheet';
+import { notifyEventMemberRemoved } from '@/services/notificationService';
+import { Ionicons } from '@expo/vector-icons';
 import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { getFlagSource } from '@/constants/countries';
@@ -47,6 +53,8 @@ interface EventDetail {
   pricePerPersonJpy: number | null;
   meetingPlace: string | null;
   tags: string[];
+  /** posts_events.activities（ski / snowboard / backcountry など） */
+  activities: ActivityType[];
   photos: string[];
   category: string;
   resortName: string;
@@ -79,9 +87,20 @@ function createStyles(colors: typeof Colors.light) {
       backgroundColor: colors.background,
       zIndex: 10,
     },
+    activityRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 6,
+      marginTop: 8,
+      marginBottom: 4,
+    },
+    headerRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
     headerButton: {
-      width: 40,
-      height: 40,
+      width: 44,
+      height: 44,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -421,6 +440,9 @@ export default function EventDetailScreen() {
   const [error, setError] = useState<string | null>(null);
   const [imageViewerVisible, setImageViewerVisible] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState<string>('');
+  const [reportVisible, setReportVisible] = useState(false);
+  // 主催者がメンバーを操作するメニュー（対象の参加者）
+  const [memberMenuTarget, setMemberMenuTarget] = useState<Participant | null>(null);
 
   // ブックマークフックを使用
   const { isBookmarked, loading: bookmarkLoading, toggleBookmark: handleToggleBookmark } = useBookmark(params.eventId || '');
@@ -453,6 +475,7 @@ export default function EventDetailScreen() {
           price_per_person_jpy,
           meeting_place,
           tags,
+          activities,
           photos,
           type,
           host_user_id,
@@ -575,6 +598,7 @@ export default function EventDetailScreen() {
         pricePerPersonJpy: eventData.price_per_person_jpy,
         meetingPlace: eventData.meeting_place,
         tags: eventData.tags || [],
+        activities: normalizeActivities((eventData as any).activities),
         photos: photoUrls,
         category: eventData.type,
         resortName: eventData.resorts ? getResortName(eventData.resorts, locale) : t('common.unknown'),
@@ -681,6 +705,55 @@ export default function EventDetailScreen() {
     );
   };
 
+  /**
+   * 主催者がメンバーをイベントから外す。
+   * 参加（event_participants）に left_at を入れ、申請は rejected にして同じイベントへの再申請を止める。
+   * 他人の行の更新は RLS の主催者用ポリシーが必要（supabase/migrations/20261120000000_event_host_manage_members.sql）
+   */
+  const confirmRemoveMember = (participant: Participant) => {
+    if (!event) return;
+    Alert.alert(
+      t('eventDetail.removeMemberConfirmTitle', { name: participant.displayName }),
+      t('eventDetail.removeMemberConfirmMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('eventDetail.removeMemberAction'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const { data: updated, error: participantError } = await supabase
+                .from('event_participants')
+                .update({ left_at: new Date().toISOString() })
+                .eq('event_id', event.id)
+                .eq('user_id', participant.userId)
+                .is('left_at', null)
+                .select('id');
+              if (participantError) throw participantError;
+              // RLS で更新できないとエラーにならず 0 件になる
+              if (!updated || updated.length === 0) throw new Error('no participant row updated');
+
+              const { error: applicationError } = await supabase
+                .from('event_applications')
+                .update({ status: 'rejected', updated_at: new Date().toISOString() })
+                .eq('event_id', event.id)
+                .eq('applicant_user_id', participant.userId);
+              if (applicationError) console.warn('[removeMember] application update failed', applicationError.message);
+
+              setParticipants((prev) => prev.filter((p) => p.userId !== participant.userId));
+              setEvent((prev) => (prev ? { ...prev, spotsTaken: Math.max(0, prev.spotsTaken - 1) } : prev));
+              notifyEventMemberRemoved(participant.userId, event.title, event.id).catch(() => {});
+              Alert.alert(t('eventDetail.removeMemberDone'));
+            } catch (err) {
+              console.warn('[removeMember] failed', err);
+              Alert.alert(t('common.error'), t('eventDetail.removeMemberFailed'));
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const toggleBookmark = async () => {
     const success = await handleToggleBookmark();
     if (!success) {
@@ -760,8 +833,19 @@ export default function EventDetailScreen() {
           <IconSymbol name="chevron.left" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
 
-        {/* ブックマークボタン（自分の投稿以外のみ表示） */}
+        {/* 通報・ブックマーク（自分の投稿以外のみ表示） */}
         {!event.isHost && (
+          <View style={styles.headerRight}>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => setReportVisible(true)}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={t('resortPage.reportEvent')}
+            testID="event-report-button"
+          >
+            <Ionicons name="flag-outline" size={22} color={colors.textSecondary} />
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerButton}
             onPress={toggleBookmark}
@@ -774,8 +858,32 @@ export default function EventDetailScreen() {
               color={isBookmarked ? colors.warning : colors.textSecondary}
             />
           </TouchableOpacity>
+          </View>
         )}
       </View>
+      <ActionSheet
+        visible={!!memberMenuTarget}
+        title={memberMenuTarget ? t('eventDetail.memberActions', { name: memberMenuTarget.displayName }) : undefined}
+        onClose={() => setMemberMenuTarget(null)}
+        cancelLabel={t('common.cancel')}
+        actions={[
+          {
+            label: t('eventDetail.removeMember'),
+            destructive: true,
+            onPress: () => {
+              const target = memberMenuTarget;
+              setMemberMenuTarget(null);
+              if (target) confirmRemoveMember(target);
+            },
+          },
+        ]}
+      />
+      <ReportSheet
+        visible={reportVisible}
+        targetType="event"
+        targetId={event.id}
+        onClose={() => setReportVisible(false)}
+      />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
         {/* ヘッダー画像 */}
@@ -818,6 +926,15 @@ export default function EventDetailScreen() {
         <View style={[styles.contentCard, { backgroundColor: colors.background }]}>
           {/* タイトル */}
           <Text style={[styles.title, { color: colors.text }]}>{event.title}</Text>
+
+          {/* アクティビティ */}
+          {event.activities.length > 0 && (
+            <View style={styles.activityRow} accessibilityLabel={t('activities.label')}>
+              {event.activities.map((a) => (
+                <Chip key={a} label={t(`activities.${a}`)} icon={ACTIVITY_ICONS[a]} tone="tint" />
+              ))}
+            </View>
+          )}
 
           {/* 詳細説明 */}
           {event.description && (
@@ -972,6 +1089,19 @@ export default function EventDetailScreen() {
                       </View>
                     )}
                   </View>
+
+                  {/* 主催者だけ：メンバーのメニュー（イベントから外す） */}
+                  {event.isHost && participant.userId !== event.hostUserId && (
+                    <TouchableOpacity
+                      style={styles.headerButton}
+                      onPress={() => setMemberMenuTarget(participant)}
+                      accessibilityRole="button"
+                      accessibilityLabel={t('eventDetail.memberMenuA11y', { name: participant.displayName })}
+                      testID={`member-menu-${participant.userId}`}
+                    >
+                      <Ionicons name="ellipsis-horizontal" size={20} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  )}
                 </TouchableOpacity>
               ))}
             </View>

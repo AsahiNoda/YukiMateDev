@@ -2,6 +2,7 @@ import { OfficialBadge } from '@/components/OfficialBadge';
 import { getFlagSource } from '@/constants/countries';
 import { Chip } from '@/components/ui/Chip';
 import { PillButton } from '@/components/ui/PillButton';
+import { ReportSheet } from '@/components/ReportSheet';
 import { borderRadius } from '@/constants/spacing';
 import { levelLabel } from '@/utils/eventDisplay';
 import { getResortName } from '@/utils/resort-helpers';
@@ -107,6 +108,8 @@ function ProfileScreen({ userId }: { userId?: string }) {
   const [headerUrl, setHeaderUrl] = useState<string | null>(null);
   const [isStarred, setIsStarred] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
+  // 通報シート（他のユーザーのプロフィールのみ）
+  const [reportVisible, setReportVisible] = useState(false);
   // const [currentGearIndex, setCurrentGearIndex] = useState(0);
 
   // 画面がフォーカスされた時にプロフィールをリフレッシュ
@@ -430,6 +433,15 @@ function ProfileScreen({ userId }: { userId?: string }) {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.headerActionButton}
+                onPress={() => setReportVisible(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t('resortPage.reportUser')}
+                testID="profile-report-button"
+              >
+                <Ionicons name="flag-outline" size={22} color="#fff" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerActionButton}
                 onPress={handleBlockToggle}
               >
                 <Ionicons
@@ -685,6 +697,14 @@ function ProfileScreen({ userId }: { userId?: string }) {
 
       <View style={{ height: 100 }} />
 
+      {!isOwnProfile && (
+        <ReportSheet
+          visible={reportVisible}
+          targetType="user"
+          targetId={targetUserId ?? null}
+          onClose={() => setReportVisible(false)}
+        />
+      )}
     </ScrollView>
   );
 }

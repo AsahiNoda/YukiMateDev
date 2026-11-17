@@ -6,6 +6,7 @@ import { PillButton } from '@/components/ui/PillButton';
 import { borderRadius, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { deleteOwnPost, reportPost, useResortPage, type ResortRef } from '@/hooks/useResortPage';
+import { REPORT_REASON_KEYS } from '@/components/ReportSheet';
 import type { ResortPageOptions, ResortPageTab } from '@/navigation/resortPage';
 import { buildTodayColumns } from '@/utils/hourlyWeather';
 import { getResortName } from '@/utils/resort-helpers';
@@ -34,12 +35,6 @@ const TAB_LABEL_KEYS: Record<ResortPageTab, string> = {
   forecast: 'resortPage.tabForecast',
   ratings: 'resortPage.tabRatings',
 };
-const REPORT_REASON_KEYS = [
-  'resortPage.reasonInappropriate',
-  'resortPage.reasonSpam',
-  'resortPage.reasonDangerous',
-  'resortPage.reasonOther',
-];
 
 /**
  * ゲレンデページ（旧 Snowfeed タブ）。app/resort から開くスタック画面。

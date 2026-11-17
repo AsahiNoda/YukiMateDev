@@ -238,6 +238,20 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
+      {/* お気に入りゲレンデの天気（ホーム＋♡のゲレンデを見比べる） */}
+      {resort ? (
+        <Pressable
+          onPress={() => router.push('/favorite-weather' as any)}
+          style={styles.favWeatherLink}
+          accessibilityRole="link"
+          testID="home-favorite-weather"
+        >
+          <Ionicons name="heart-outline" size={16} color={c.tintText} />
+          <Text style={[styles.favWeatherText, { color: c.tintText }]}>{t('favoriteWeather.open')}</Text>
+          <Ionicons name="chevron-forward" size={14} color={c.tintText} />
+        </Pressable>
+      ) : null}
+
       {/* 予定がないとき：次の予定の位置に入口カード */}
       {resort && feed.nextPlanLoaded && !feed.nextPlan ? (
         <View style={styles.block}>
@@ -454,6 +468,18 @@ const styles = StyleSheet.create({
   },
   sliderBlock: {
     marginBottom: 6,
+  },
+  favWeatherLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-end',
+    gap: 4,
+    minHeight: 44,
+    paddingHorizontal: 16,
+  },
+  favWeatherText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   block: {
     marginTop: spacing.sm,

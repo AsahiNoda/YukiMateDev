@@ -98,6 +98,21 @@ export const translations = {
     },
 
     // チップ・バッジ
+    // イベントのアクティビティ（posts_events.activities）
+    activities: {
+      label: 'アクティビティ',
+      hint: '当てはまるものを選んでください（{max}つまで）',
+      any: 'すべてのアクティビティ',
+      ski: 'スキー',
+      snowboard: 'スノーボード',
+      backcountry: 'バックカントリー',
+      park: 'パーク',
+      powder: 'パウダー',
+      groomed: 'ゲレンデクルーズ',
+      splitboard: 'スプリットボード',
+      tooMany: 'アクティビティは{max}つまで選べます',
+    },
+
     chips: {
       soloOk: '一人参加OK',
       spotsLeft: '残り{count}人',
@@ -172,6 +187,54 @@ export const translations = {
     },
 
     // ホーム（リデザイン）
+    // はじめて使うときのチュートリアル
+    tutorial: {
+      skip: 'スキップ',
+      next: '次へ',
+      start: 'はじめる',
+      progress: '{total}枚中{current}枚目',
+      showAgain: '使い方をもう一度見る',
+      home: {
+        title: 'ゲレンデの今がひと目でわかる',
+        body: 'ホームには、ホームゲレンデの天気と次の予定。♡を付けたゲレンデの天気もまとめて見比べられます',
+      },
+      search: {
+        title: 'スワイプで一緒に滑る人をさがす',
+        body: '「さがす」でイベントを右にスワイプすると保存、左でスキップ。気になったら参加申請を送りましょう',
+      },
+      create: {
+        title: 'イベントやゲレンデの投稿をつくる',
+        body: '「作成」から、一緒に滑るイベントや、ゲレンデの今を伝える投稿をつくれます',
+      },
+      chat: {
+        title: '承認されたらグループチャットへ',
+        body: '主催者が参加を承認すると、イベントのチャットで集合場所や時間を相談できます',
+      },
+      safety: {
+        title: '安心して使うために',
+        body: '不適切な投稿や迷惑行為は禁止です。困ったときは、投稿・プロフィール・イベントの通報（旗のマーク）やブロックを使ってください',
+      },
+    },
+
+    // お気に入りゲレンデの天気（ホームの天気の下から）
+    favoriteWeather: {
+      title: 'お気に入りゲレンデの天気',
+      open: 'お気に入りゲレンデの天気',
+      add: 'ゲレンデを追加（♡）',
+      home: 'ホーム',
+      sortLabel: '並び順',
+      sortDefault: 'ホーム → お気に入り',
+      sortSnow: '雪が多い順',
+      newSnow: '新雪',
+      tomorrow: '明日の降雪',
+      next3Days: '3日間の降雪',
+      wind: '風',
+      emptyTitle: 'お気に入りのゲレンデがありません',
+      emptyText: 'ゲレンデの一覧で名前の横の ♡ を押すと、ここで天気を見比べられます',
+      footnote: '下に引っ張ると更新します。タップでゲレンデの予報へ',
+      rowA11y: '{name}、{condition}、{temp}度、新雪{snow}センチ',
+    },
+
     homeFeed: {
       homeResort: 'ホームゲレンデ',
       slideWeather: '天気',
@@ -266,6 +329,9 @@ export const translations = {
       reportTitle: '通報の理由',
       reasonInappropriate: '不適切な内容',
       reasonSpam: 'スパム・宣伝',
+      reasonHarassment: '嫌がらせ・迷惑行為',
+      reportUser: 'このユーザーを通報',
+      reportEvent: 'この投稿を通報',
       reasonDangerous: '危険な行為・情報',
       reasonOther: 'その他',
       reportThanks: '通報を受け付けました',
@@ -399,6 +465,10 @@ export const translations = {
 
     // Auth Screens
     auth: {
+      mustAgreeToTerms: '利用規約とプライバシーポリシーに同意してください',
+      agreeToTermsA11y: '利用規約とプライバシーポリシーに同意する',
+      and: 'と',
+      agreeToTermsSuffix: 'に同意します（不適切な投稿・迷惑行為は禁止です）',
       signIn: 'ログイン',
       signUp: '新規登録',
       email: 'メールアドレス',
@@ -810,6 +880,14 @@ export const translations = {
       withdraw: '退会する',
       withdrawComplete: '退会完了',
       withdrawSuccess: '退会しました',
+      memberActions: '{name} さん',
+      removeMember: 'このイベントから外す',
+      removeMemberConfirmTitle: '{name} さんをイベントから外しますか？',
+      removeMemberConfirmMessage: 'グループチャットからも外れ、このイベントには再申請できなくなります。本人には通知が届きます',
+      removeMemberAction: '外す',
+      removeMemberDone: 'イベントから外しました',
+      removeMemberFailed: 'メンバーを外せませんでした',
+      memberMenuA11y: '{name} さんのメニュー',
       withdrawFailed: 'イベントからの退会に失敗しました',
       bookmarkFailed: 'ブックマークの更新に失敗しました',
       details: '詳細:',
@@ -1035,6 +1113,10 @@ export const translations = {
         title: 'イベント申請が却下されました',
         body: '「{eventTitle}」への参加申請が却下されました。',
       },
+      eventMemberRemoved: {
+        title: 'イベントの参加が取り消されました',
+        body: '主催者により「{eventTitle}」の参加メンバーから外されました。',
+      },
       eventStarting: {
         title: 'イベント開始まであと少し',
         body: '「{eventTitle}」が{minutes}分後に始まります。',
@@ -1165,6 +1247,21 @@ export const translations = {
     },
 
     // Chips & badges
+    // Event activities (posts_events.activities)
+    activities: {
+      label: 'Activities',
+      hint: 'Pick what applies (up to {max})',
+      any: 'All activities',
+      ski: 'Ski',
+      snowboard: 'Snowboard',
+      backcountry: 'Backcountry',
+      park: 'Park',
+      powder: 'Powder',
+      groomed: 'Groomed runs',
+      splitboard: 'Splitboard',
+      tooMany: 'You can pick up to {max} activities',
+    },
+
     chips: {
       soloOk: 'Solo OK',
       spotsLeft: '{count} spots left',
@@ -1239,6 +1336,54 @@ export const translations = {
     },
 
     // Home (redesign)
+    // First-run tutorial
+    tutorial: {
+      skip: 'Skip',
+      next: 'Next',
+      start: 'Get started',
+      progress: '{current} of {total}',
+      showAgain: 'Show the tutorial again',
+      home: {
+        title: 'See conditions at a glance',
+        body: "Home shows your home resort's weather and your next plan. Compare weather at resorts you've ♡'d, too",
+      },
+      search: {
+        title: 'Swipe to find people to ride with',
+        body: 'In Search, swipe right to save an event and left to skip. Send a request when one looks good',
+      },
+      create: {
+        title: 'Create events and resort posts',
+        body: 'Use Create to set up an event to ride together, or post what the resort is like right now',
+      },
+      chat: {
+        title: 'Join the group chat once approved',
+        body: 'When the host approves you, plan the meeting spot and time in the event chat',
+      },
+      safety: {
+        title: 'Staying safe',
+        body: 'Objectionable content and abusive behavior are not allowed. Use Report (the flag) on posts, profiles and events, or Block, whenever you need to',
+      },
+    },
+
+    // Favorite resorts weather (from below the Home weather)
+    favoriteWeather: {
+      title: 'Favorite resorts weather',
+      open: 'Weather at your favorites',
+      add: 'Add resorts (♡)',
+      home: 'Home',
+      sortLabel: 'Sort',
+      sortDefault: 'Home → favorites',
+      sortSnow: 'Most snow',
+      newSnow: 'New snow',
+      tomorrow: 'Tomorrow',
+      next3Days: 'Next 3 days',
+      wind: 'Wind',
+      emptyTitle: 'No favorite resorts yet',
+      emptyText: 'Tap ♡ next to a resort name in the resort list to compare weather here',
+      footnote: 'Pull down to refresh. Tap a resort for its forecast',
+      rowA11y: '{name}, {condition}, {temp} degrees, {snow} cm new snow',
+    },
+
     homeFeed: {
       homeResort: 'Home resort',
       slideWeather: 'Weather',
@@ -1333,6 +1478,9 @@ export const translations = {
       reportTitle: 'Reason for report',
       reasonInappropriate: 'Inappropriate content',
       reasonSpam: 'Spam or advertising',
+      reasonHarassment: 'Harassment or abuse',
+      reportUser: 'Report this user',
+      reportEvent: 'Report this post',
       reasonDangerous: 'Dangerous behavior or info',
       reasonOther: 'Other',
       reportThanks: 'Report received',
@@ -1466,6 +1614,10 @@ export const translations = {
 
     // Auth Screens
     auth: {
+      mustAgreeToTerms: 'Please agree to the Terms of Service and Privacy Policy',
+      agreeToTermsA11y: 'Agree to the Terms of Service and Privacy Policy',
+      and: ' and ',
+      agreeToTermsSuffix: ' — I agree (objectionable content and abusive behavior are not allowed)',
       signIn: 'Sign In',
       signUp: 'Sign Up',
       email: 'Email',
@@ -1877,6 +2029,14 @@ export const translations = {
       withdraw: 'Withdraw',
       withdrawComplete: 'Withdrawal Complete',
       withdrawSuccess: 'Withdrew from event',
+      memberActions: '{name}',
+      removeMember: 'Remove from this event',
+      removeMemberConfirmTitle: 'Remove {name} from the event?',
+      removeMemberConfirmMessage: "They'll also leave the group chat and can't re-apply to this event. They will be notified",
+      removeMemberAction: 'Remove',
+      removeMemberDone: 'Removed from the event',
+      removeMemberFailed: "Couldn't remove the member",
+      memberMenuA11y: 'Menu for {name}',
       withdrawFailed: 'Failed to withdraw from event',
       bookmarkFailed: 'Failed to update bookmark',
       details: 'Details:',
@@ -2101,6 +2261,10 @@ export const translations = {
       eventApplicationRejected: {
         title: 'Event Application Rejected',
         body: 'Your application to "{eventTitle}" has been rejected.',
+      },
+      eventMemberRemoved: {
+        title: 'Removed from an event',
+        body: 'The host removed you from "{eventTitle}".',
       },
       eventStarting: {
         title: 'Event Starting Soon',

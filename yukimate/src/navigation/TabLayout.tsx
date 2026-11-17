@@ -9,6 +9,7 @@ import { IconSymbol } from '@components/ui/icon-symbol';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useEventReminderSync } from '@/hooks/useEventReminderSync';
+import { AppTutorial } from '@/components/AppTutorial';
 import { usePendingRequestCount } from '@/hooks/usePendingRequestCount';
 import { useTranslation } from '@/hooks/useTranslation';
 
@@ -53,6 +54,9 @@ function AuthedTabs({ labels }: { labels: Record<'home' | 'search' | 'create' | 
   useEventReminderSync();
 
   return (
+    <>
+    {/* はじめて使うときのチュートリアル（1回だけ） */}
+    <AppTutorial />
     <Tabs
       tabBar={(props) => <AppTabBar {...props} badges={{ chat: pendingRequests }} />}
       screenOptions={{
@@ -93,5 +97,6 @@ function AuthedTabs({ labels }: { labels: Record<'home' | 'search' | 'create' | 
         }}
       />
     </Tabs>
+    </>
   );
 }

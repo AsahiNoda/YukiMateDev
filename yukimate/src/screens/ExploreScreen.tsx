@@ -5,6 +5,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { DatePickerSheet } from '@/components/ui/DatePickerSheet';
 import { OptionSheet } from '@/components/ui/OptionSheet';
 import { spacing } from '@/constants/spacing';
+import { ACTIVITY_TYPES, type ActivityType } from '@/constants/activities';
 import { getAreaOrder } from '@/constants/areas';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -72,6 +73,7 @@ export default function ExploreScreen({ header, initialFilters }: ExploreScreenP
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ExploreFilters['category'] | null>(null);
+  const [activityFilter, setActivityFilter] = useState<ActivityType | null>(null);
   const [sortOption, setSortOption] = useState<SortOptions>({
     sortBy: 'date',
     order: 'asc',
@@ -86,7 +88,7 @@ export default function ExploreScreen({ header, initialFilters }: ExploreScreenP
 
   // UI状態
   const [showSortModal, setShowSortModal] = useState(false);
-  const [openSheet, setOpenSheet] = useState<'date' | 'category' | 'level' | null>(null);
+  const [openSheet, setOpenSheet] = useState<'date' | 'category' | 'level' | 'activity' | null>(null);
   const [selectedResort, setSelectedResort] = useState<string | null>(null);
 
   // 外から渡された条件を付ける（同じ条件で開き直したときも付け直す）
@@ -169,6 +171,7 @@ export default function ExploreScreen({ header, initialFilters }: ExploreScreenP
     skillLevel: levelFilter ?? undefined,
     dateRange,
     soloOnly: soloOnly || undefined,
+    activities: activityFilter ? [activityFilter] : undefined,
   };
 
   const selectedResortName =
@@ -255,6 +258,13 @@ export default function ExploreScreen({ header, initialFilters }: ExploreScreenP
           showCaret
           onPress={() => setOpenSheet('category')}
           testID="filter-category"
+        />
+        <Chip
+          label={activityFilter ? t(`activities.${activityFilter}`) : t('activities.label')}
+          selected={!!activityFilter}
+          showCaret
+          onPress={() => setOpenSheet('activity')}
+          testID="filter-activity"
         />
         <Chip
           label={levelFilter ? levelLabel(levelFilter, t) ?? t('search.filterLevel') : t('search.filterLevel')}
@@ -449,6 +459,23 @@ export default function ExploreScreen({ header, initialFilters }: ExploreScreenP
         ]}
         onSelect={(value) => {
           setSelectedCategory(value);
+          setOpenSheet(null);
+        }}
+        onClose={() => setOpenSheet(null)}
+        closeLabel={t('common.cancel')}
+      />
+
+      {/* アクティビティ */}
+      <OptionSheet<ActivityType | null>
+        visible={openSheet === 'activity'}
+        title={t('activities.label')}
+        selected={activityFilter}
+        options={[
+          { value: null, label: t('activities.any') },
+          ...ACTIVITY_TYPES.map((key) => ({ value: key, label: t(`activities.${key}`) })),
+        ]}
+        onSelect={(value) => {
+          setActivityFilter(value);
           setOpenSheet(null);
         }}
         onClose={() => setOpenSheet(null)}

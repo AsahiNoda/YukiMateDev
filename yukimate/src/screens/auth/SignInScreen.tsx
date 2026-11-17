@@ -3,6 +3,7 @@ import { Image } from 'expo-image';
 import {
   Alert,
   KeyboardAvoidingView,
+  Pressable,
   Platform,
   ScrollView,
   StyleSheet,
@@ -18,6 +19,11 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { useLocale } from '@/contexts/LocaleContext';
 import { supabase } from '@lib/supabase';
 import { validateEmail, validatePassword } from '@/utils/validation';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+
+/** 利用規約の版（規約を改定したら更新する。サインアップ時にアカウントへ記録） */
+const TERMS_VERSION = '2026-11-19';
 
 export default function SignInScreen() {
   const colorScheme = useColorScheme();
@@ -28,6 +34,8 @@ export default function SignInScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  // 新規登録時の利用規約・プライバシーポリシーへの同意（Apple Guideline 1.2）
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleEmailPasswordAuth = async () => {
     console.log('🔐 [SignIn] Starting authentication...', { mode, email });
@@ -37,6 +45,12 @@ export default function SignInScreen() {
     if (!emailValidation.isValid) {
       console.log('❌ [SignIn] Email validation failed:', emailValidation.error);
       Alert.alert(t('common.error'), emailValidation.error);
+      return;
+    }
+
+    // 新規登録は利用規約への同意が必須
+    if (mode === 'signup' && !agreedToTerms) {
+      Alert.alert(t('common.error'), t('auth.mustAgreeToTerms'));
       return;
     }
 
@@ -66,6 +80,11 @@ export default function SignInScreen() {
           password: dummyPassword,
           options: {
             emailRedirectTo: 'slopelink://set-password',
+            // 同意した日時と規約の版をアカウントに記録する
+            data: {
+              terms_accepted_at: new Date().toISOString(),
+              terms_version: TERMS_VERSION,
+            },
           },
         });
 
@@ -375,13 +394,49 @@ export default function SignInScreen() {
               </TouchableOpacity>
             )}
 
+            {/* 新規登録：利用規約・プライバシーポリシーへの同意（必須） */}
+            {mode === 'signup' && (
+              <View style={styles.termsRow}>
+                <Pressable
+                  onPress={() => setAgreedToTerms((v) => !v)}
+                  style={styles.checkboxHit}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: agreedToTerms }}
+                  accessibilityLabel={t('auth.agreeToTermsA11y')}
+                  testID="signup-terms-checkbox"
+                >
+                  <Ionicons
+                    name={agreedToTerms ? 'checkbox' : 'square-outline'}
+                    size={24}
+                    color={agreedToTerms ? colors.tintText : colors.textLabel}
+                  />
+                </Pressable>
+                <Text style={[styles.termsText, { color: colors.textSecondary }]}>
+                  <Text style={[styles.termsLink, { color: colors.tintText }]} onPress={() => router.push('/terms-of-service' as any)}>
+                    {t('settings.termsOfService')}
+                  </Text>
+                  {t('auth.and')}
+                  <Text style={[styles.termsLink, { color: colors.tintText }]} onPress={() => router.push('/privacy-policy' as any)}>
+                    {t('settings.privacyPolicy')}
+                  </Text>
+                  {t('auth.agreeToTermsSuffix')}
+                </Text>
+              </View>
+            )}
+
             {/* メインボタン */}
             <TouchableOpacity
-              style={[styles.button, styles.primaryButton, { backgroundColor: colors.tint }, loading && styles.buttonDisabled]}
+              style={[
+                styles.button,
+                styles.primaryButton,
+                { backgroundColor: colors.primaryButton },
+                (loading || (mode === 'signup' && !agreedToTerms)) && styles.buttonDisabled,
+              ]}
               onPress={handleEmailPasswordAuth}
-              disabled={loading}
+              disabled={loading || (mode === 'signup' && !agreedToTerms)}
+              accessibilityState={{ disabled: loading || (mode === 'signup' && !agreedToTerms) }}
             >
-              <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>
+              <Text style={[styles.buttonText, { color: colors.primaryButtonText }]}>
                 {loading ? t('common.processing') : mode === 'signin' ? t('auth.signIn') : t('auth.signUp')}
               </Text>
             </TouchableOpacity>
@@ -485,6 +540,28 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     letterSpacing: 0.3,
+  },
+  termsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 12,
+  },
+  checkboxHit: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -10,
+  },
+  termsText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  termsLink: {
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   switchModeContainer: {
     flexDirection: 'row',
