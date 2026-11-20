@@ -31,10 +31,17 @@ export interface NextPlan {
   id: string;
   title: string;
   startAt: string;
+  endAt: string | null;
   meetingPlace: string | null;
   resortName: string;
+  /** 主催者の表示名（自分が主催なら isHost） */
+  hostName: string;
+  isHost: boolean;
+  levelRequired: string | null;
   /** 自分以外の参加者（ホストを含む）の数 */
   otherMembers: number;
+  /** 自分以外のメンバーの写真（最大4人） */
+  memberAvatars: (string | null)[];
 }
 
 export interface ResortPostThumb {
@@ -108,7 +115,9 @@ async function fetchNextPlan(userId: string, locale: string): Promise<NextPlan |
 
   const { data, error } = await supabase
     .from('posts_events')
-    .select('id, title, start_at, meeting_place, host_user_id, status, resorts(name, name_en), event_participants(user_id, left_at)')
+    .select(
+      'id, title, start_at, end_at, meeting_place, level_required, host_user_id, status, resorts(name, name_en), profiles!posts_events_host_user_id_fkey(display_name), event_participants(user_id, left_at)'
+    )
     .in('id', ids)
     .gte('start_at', nowIso)
     .neq('status', 'cancelled')
@@ -125,13 +134,28 @@ async function fetchNextPlan(userId: string, locale: string): Promise<NextPlan |
   activeIds.add(e.host_user_id);
   activeIds.delete(userId);
 
+  // メンバーの写真（主催者を先に、最大4人）
+  const memberIds = [...activeIds].sort((a, b) => (a === e.host_user_id ? -1 : b === e.host_user_id ? 1 : 0)).slice(0, 4);
+  let memberAvatars: (string | null)[] = [];
+  if (memberIds.length > 0) {
+    const { data: profiles } = await supabase.from('profiles').select('user_id, avatar_url').in('user_id', memberIds);
+    const byId = new Map((profiles || []).map((p: any) => [p.user_id as string, (p.avatar_url as string | null) ?? null]));
+    memberAvatars = memberIds.map((id) => byId.get(id) ?? null);
+  }
+  const host = Array.isArray(e.profiles) ? e.profiles[0] : e.profiles;
+
   return {
     id: e.id,
     title: e.title,
     startAt: e.start_at,
+    endAt: e.end_at ?? null,
     meetingPlace: e.meeting_place ?? null,
     resortName: resort ? getResortName(resort, locale) : '',
+    hostName: host?.display_name || '',
+    isHost: e.host_user_id === userId,
+    levelRequired: e.level_required ?? null,
     otherMembers: activeIds.size,
+    memberAvatars,
   };
 }
 

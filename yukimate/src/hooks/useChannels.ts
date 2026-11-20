@@ -1,9 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { IMAGE_MAX_SIZE, resizeImageForUpload } from '@/lib/imageResize';
+import { uploadChatImage } from '@/lib/chatImageUpload';
 import { supabase } from '@/lib/supabase';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { decode } from 'base64-arraybuffer';
-import * as FileSystem from 'expo-file-system/legacy';
 import { useEffect, useRef } from 'react';
 
 /**
@@ -29,12 +27,6 @@ export const CHANNEL_MEDIA_MAX = 4;
 
 export const channelKindLabelKey = (kind: ChannelKind) =>
   kind === 'media_only' ? 'channels.kindMediaOnly' : kind === 'reaction_only' ? 'channels.kindReactionOnly' : 'channels.kindChat';
-export const channelKindDescKey = (kind: ChannelKind) =>
-  kind === 'media_only'
-    ? 'channels.kindMediaOnlyDesc'
-    : kind === 'reaction_only'
-      ? 'channels.kindReactionOnlyDesc'
-      : 'channels.kindChatDesc';
 
 export interface Channel {
   id: string;
@@ -425,24 +417,13 @@ export function useChannelMembers(channelId: string | undefined) {
 
 // ---------- 操作 ----------
 
-/** チャンネルの写真のバケット（supabase/migrations/20261123000000_channel_media_bucket.sql） */
-const CHANNEL_MEDIA_BUCKET = 'channel_media';
-
 /** 写真を縮小して channel_media の「自分のユーザーID/チャンネルID/」の下に置く */
 export async function uploadChannelImage(
   userId: string,
   channelId: string,
   asset: { uri: string; width?: number; height?: number }
 ): Promise<ChannelMedia> {
-  const resized = await resizeImageForUpload(asset.uri, IMAGE_MAX_SIZE.post, { width: asset.width, height: asset.height });
-  const path = `${userId}/${channelId}/${Date.now()}_${Math.random().toString(36).slice(2, 9)}.${resized.ext}`;
-  const base64 = await FileSystem.readAsStringAsync(resized.uri, { encoding: 'base64' });
-  const { error } = await supabase.storage
-    .from(CHANNEL_MEDIA_BUCKET)
-    .upload(path, decode(base64), { contentType: resized.mimeType, upsert: false });
-  if (error) throw error;
-  const { data } = supabase.storage.from(CHANNEL_MEDIA_BUCKET).getPublicUrl(path);
-  return { url: data.publicUrl, width: resized.width, height: resized.height };
+  return uploadChatImage('channel_media', userId, channelId, asset);
 }
 
 /** 書き込みのあとにチャンネル関係のキャッシュを取り直すための関数一式 */

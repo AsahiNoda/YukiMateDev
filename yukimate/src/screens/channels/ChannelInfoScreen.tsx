@@ -6,7 +6,6 @@ import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/cons
 import { useAppColors } from '@/hooks/useAppColors';
 import {
   channelErrorKey,
-  channelKindDescKey,
   channelKindLabelKey,
   useChannel,
   useChannelActions,
@@ -189,7 +188,6 @@ export default function ChannelInfoScreen() {
           </View>
           <View style={[styles.kindBox, { backgroundColor: c.backgroundSecondary }]}>
             <Text style={[styles.kindTitle, { color: c.text }]}>{t(channelKindLabelKey(channel.kind))}</Text>
-            <Text style={[styles.kindDesc, { color: c.textMuted }]}>{t(channelKindDescKey(channel.kind))}</Text>
           </View>
 
           {isArchived ? <Text style={[styles.archived, { color: c.textMuted }]}>{t('channels.archived')}</Text> : null}

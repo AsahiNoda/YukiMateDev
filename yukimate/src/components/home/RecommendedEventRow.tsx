@@ -23,7 +23,8 @@ export function RecommendedEventRow({ event, matchedStyles, onPress }: Recommend
   const { t } = useTranslation();
   const level = levelLabel(event.levelRequired, t);
   const spots = spotsLeftChip(event.capacityTotal, event.participants, t);
-  const place = event.meetingPlace || event.resortName;
+  // 一覧では「どこのゲレンデか」を出す（集合場所はイベント詳細で見る）
+  const place = event.resortName;
 
   return (
     <Pressable

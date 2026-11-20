@@ -1,5 +1,7 @@
 import { supabase } from '@lib/supabase';
 import type { ProfilePost } from '@lib/database.types';
+import { useTranslation } from '@/hooks/useTranslation';
+import { getResortName } from '@/utils/resort-helpers';
 import { useCallback, useEffect, useState } from 'react';
 
 export type ProfilePostItem = ProfilePost & {
@@ -16,6 +18,7 @@ type ProfilePostsState = {
  * 対象ユーザーのプロフィール投稿（インスタ風グリッド用）を取得。
  */
 export function useProfilePosts(targetUserId?: string) {
+  const { locale } = useTranslation();
   const [state, setState] = useState<ProfilePostsState>({
     posts: [],
     loading: true,
@@ -39,7 +42,7 @@ export function useProfilePosts(targetUserId?: string) {
       // リゾート名は埋め込み取得（以前は別クエリで1往復追加していた）
       const { data: rows, error } = await supabase
         .from('profile_posts')
-        .select('*, resorts(name)')
+        .select('*, resorts(name, name_en)')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
@@ -48,7 +51,7 @@ export function useProfilePosts(targetUserId?: string) {
       setState({
         posts: ((rows || []) as any[]).map(({ resorts, ...p }) => ({
           ...(p as ProfilePost),
-          resortName: p.resort_id ? resorts?.name || null : null,
+          resortName: p.resort_id && resorts?.name ? getResortName(resorts, locale) : null,
         })),
         loading: false,
         error: null,
@@ -60,7 +63,7 @@ export function useProfilePosts(targetUserId?: string) {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
-  }, [targetUserId]);
+  }, [targetUserId, locale]);
 
   useEffect(() => {
     load();

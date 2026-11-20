@@ -1,3 +1,5 @@
+import { CountBadge } from '@/components/ui/CountBadge';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { formatChannelTime } from '@/components/channels/ChannelParts';
 import { Chip } from '@/components/ui/Chip';
 import { PillButton } from '@/components/ui/PillButton';
@@ -43,6 +45,7 @@ export function ChannelsPanel() {
   }, [search]);
 
   const mine = useMyChannels();
+  const unread = useUnreadCounts();
   const discover = useDiscoverChannels(debounced);
   const myRequests = useMyChannelRequests();
   const actions = useChannelActions();
@@ -166,7 +169,13 @@ export function ChannelsPanel() {
           keyExtractor={(item) => item.channel.id}
           contentContainerStyle={styles.list}
           refreshControl={<RefreshControl refreshing={mine.isRefetching} onRefresh={() => mine.refetch()} tintColor={c.tint} />}
-          renderItem={({ item }) => <ChannelRow channel={item.channel} onPress={() => openChannel(item.channel.id)} />}
+          renderItem={({ item }) => (
+            <ChannelRow
+              channel={item.channel}
+              unread={unread.byChannel.get(item.channel.id) ?? 0}
+              onPress={() => openChannel(item.channel.id)}
+            />
+          )}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={[styles.emptyTitle, { color: c.text }]}>{t('channels.emptyJoinedTitle')}</Text>
@@ -203,7 +212,17 @@ export function ChannelsPanel() {
   );
 }
 
-function ChannelRow({ channel, onPress, trailing }: { channel: Channel; onPress: () => void; trailing?: React.ReactNode }) {
+function ChannelRow({
+  channel,
+  onPress,
+  trailing,
+  unread = 0,
+}: {
+  channel: Channel;
+  onPress: () => void;
+  trailing?: React.ReactNode;
+  unread?: number;
+}) {
   const c = useAppColors();
   const { t } = useTranslation();
   const kind = t(channelKindLabelKey(channel.kind));
@@ -228,9 +247,12 @@ function ChannelRow({ channel, onPress, trailing }: { channel: Channel; onPress:
           <View style={styles.flex} />
           {time && !trailing ? <Text style={[styles.rowTime, { color: c.textLabel }]}>{time}</Text> : null}
         </View>
-        <Text style={[styles.rowMeta, { color: c.tintText }]} numberOfLines={1}>
-          {kind} ・ {members}
-        </Text>
+        <View style={styles.rowMetaLine}>
+          <Text style={[styles.rowMeta, styles.flex, { color: c.tintText }]} numberOfLines={1}>
+            {kind} ・ {members}
+          </Text>
+          <CountBadge count={unread} />
+        </View>
         <Text style={[styles.rowOwner, { color: c.textMuted }]} numberOfLines={1}>
           {owner}
         </Text>
@@ -312,6 +334,11 @@ const styles = StyleSheet.create({
   rowTime: {
     fontSize: fontSize.xs,
     marginLeft: spacing.sm,
+  },
+  rowMetaLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   rowMeta: {
     fontSize: fontSize.xs,

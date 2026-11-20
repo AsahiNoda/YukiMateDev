@@ -19,6 +19,8 @@ type LatestMessageRow = {
   chat_id: string;
   sender_user_id: string;
   content_text: string | null;
+  /** 20261127000000_event_chat_media_bucket.sql を当てる前の RPC には無い */
+  content_image_url?: string | null;
   created_at: string;
   sender_display_name: string | null;
   sender_avatar_url: string | null;
@@ -38,7 +40,7 @@ const toEventMessage = (row: LatestMessageRow): EventMessage => ({
   senderName: row.sender_display_name || 'Unknown',
   senderAvatar: row.sender_avatar_url || null,
   contentText: row.content_text,
-  contentImageUrl: null,
+  contentImageUrl: row.content_image_url ?? null,
   createdAt: row.created_at,
 });
 
@@ -82,6 +84,7 @@ async function fetchLatestMessages(
           chat_id,
           sender_user_id,
           content_text,
+          content_image_url,
           created_at,
           sender:users!event_messages_sender_user_id_fkey(
             id,
@@ -280,7 +283,7 @@ export function useEventChats() {
             photos,
             host_user_id,
             status,
-            resorts(id, name),
+            resorts(id, name, name_en),
             event_participants(
               user_id,
               left_at,
@@ -335,6 +338,7 @@ export function useEventChats() {
           eventId: chat.event_id,
           eventTitle: event?.title || 'Unknown Event',
           eventResortName: event?.resorts?.name || null,
+          eventResortNameEn: event?.resorts?.name_en || null,
           eventStartAt: event?.start_at || new Date().toISOString(),
           eventPhotos: toPhotoUrls(event?.photos),
           messages: latest ? [toEventMessage(latest)] : [],

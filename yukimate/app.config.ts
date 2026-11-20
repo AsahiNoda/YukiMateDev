@@ -5,7 +5,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Slope Link',
   slug: 'slopelink',
-  version: '1.0.3',
+  version: '1.2.0',
   orientation: 'portrait',
   icon: './assets/images/app_icon.png',
   scheme: 'slopelink',
@@ -14,6 +14,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.slopelink.app',
+    buildNumber: '1', // App Store Connect用のビルド番号（同じ version の中で毎回インクリメント。version を上げたら 1 に戻してよい）
     infoPlist: {
       NSCameraUsageDescription: 'Slope Linkはプロフィール写真やイベント写真の撮影にカメラを使用します。',
       NSPhotoLibraryUsageDescription: 'Slope Linkはプロフィール写真やイベント写真の選択にフォトライブラリを使用します。',
@@ -21,7 +22,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   android: {
-    versionCode: 15, // Play Console用の内部バージョン番号（整数、毎回インクリメント）
+    versionCode: 21, // Play Console用の内部バージョン番号（整数、毎回インクリメント。1.1.0 のビルドは 20）
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
       foregroundImage: './assets/images/app_icon.png',

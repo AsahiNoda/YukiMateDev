@@ -196,6 +196,8 @@ export interface UserReaction {
   id: string; // uuid
   reactor_user_id: string; // uuid
   target_user_id: string; // uuid
+  /** どのイベントのあとの評価か（プロフィールから付けたものは null）。20261126000000_ratings_per_event.sql */
+  event_id: string | null; // uuid
   reaction: ReactionKind;
   created_at: string; // timestamptz
   updated_at: string | null; // timestamptz

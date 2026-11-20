@@ -1,3 +1,10 @@
+import { useMarkChatRead } from '@/hooks/useUnreadCounts';
+import { ImageViewer } from '@/components/ImageViewer';
+import { RemovablePhoto } from '@/components/ui/RemovablePhoto';
+import { useAppColors } from '@/hooks/useAppColors';
+import { uploadChatImage } from '@/lib/chatImageUpload';
+import * as ImagePicker from 'expo-image-picker';
+import { getResortName } from '@/utils/resort-helpers';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
@@ -23,6 +30,7 @@ import {
   Platform,
   StyleSheet,
   Text,
+  Pressable,
   TextInput,
   TouchableOpacity,
   View,
@@ -49,13 +57,26 @@ export default function EventChatScreen() {
   const params = useLocalSearchParams<{ eventId: string }>();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
 
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [chatRoom, setChatRoom] = useState<ChatRoom | null>(null);
   const [messages, setMessages] = useState<EventMessageWithSender[]>([]);
   const [inputText, setInputText] = useState('');
+  // 送る前の写真（1メッセージに1枚。event_messages.content_image_url）
+  const [pickedImage, setPickedImage] = useState<{ uri: string; width?: number; height?: number } | null>(null);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+
+  // 未読：開いている間は、メッセージが増えるたびと閉じるときに「ここまで読んだ」にする
+  const markRead = useMarkChatRead('event', params.eventId);
+  useEffect(() => {
+    markRead();
+  }, [messages.length, markRead]);
+  useEffect(() => () => {
+    markRead();
+  }, [markRead]);
+  const c = useAppColors();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<Profile | null>(null);
   const [sending, setSending] = useState(false);
@@ -228,7 +249,7 @@ export default function EventChatScreen() {
         .select(
           `
           *,
-          resorts(id, name),
+          resorts(id, name, name_en),
           profiles!posts_events_host_user_id_fkey(
             user_id,
             display_name,
@@ -545,8 +566,20 @@ export default function EventChatScreen() {
     }
   }
 
+  async function pickImage() {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(t('postModal.permissionError'), t('postModal.photoLibraryAccess'));
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    setPickedImage({ uri: asset.uri, width: asset.width, height: asset.height });
+  }
+
   async function sendMessage() {
-    if (!inputText.trim() || !chatRoom || !currentUserId || !params.eventId) {
+    if ((!inputText.trim() && !pickedImage) || !chatRoom || !currentUserId || !params.eventId) {
       console.log('Send blocked:', {
         hasText: !!inputText.trim(),
         hasChatRoom: !!chatRoom,
@@ -559,6 +592,7 @@ export default function EventChatScreen() {
     setSending(true);
     const tempId = `temp_${Date.now()}`;
     const messageContent = inputText.trim();
+    const imageToSend = pickedImage;
 
     console.log('Sending message:', {
       chatId: chatRoom.id,
@@ -572,8 +606,9 @@ export default function EventChatScreen() {
       id: tempId,
       chat_id: chatRoom.id,
       sender_user_id: currentUserId,
-      content_text: messageContent,
-      content_image_url: null,
+      content_text: messageContent || null,
+      // 送信中は端末の写真をそのまま表示し、アップロード後に公開 URL に置き換わる
+      content_image_url: imageToSend?.uri ?? null,
       created_at: new Date().toISOString(),
       sender: {
         id: currentUserId,
@@ -583,14 +618,19 @@ export default function EventChatScreen() {
 
     setMessages((prev) => [...prev, optimisticMessage]);
     setInputText('');
+    setPickedImage(null);
 
     try {
+      const uploaded = imageToSend
+        ? await uploadChatImage('event_chat_media', currentUserId, params.eventId, imageToSend)
+        : null;
       const { data, error } = await supabase
         .from('event_messages')
         .insert({
           chat_id: chatRoom.id,
           sender_user_id: currentUserId,
-          content_text: messageContent,
+          content_text: messageContent || null,
+          content_image_url: uploaded?.url ?? null,
         })
         .select(
           `
@@ -655,8 +695,10 @@ export default function EventChatScreen() {
       console.error('Send message error:', error);
       console.error('Error details:', JSON.stringify(error, null, 2));
 
-      // エラーの場合は一時メッセージを削除
+      // エラーの場合は一時メッセージを削除し、文と写真を入力欄に戻す
       setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
+      setInputText((current) => current || messageContent);
+      setPickedImage((current) => current ?? imageToSend);
 
       Alert.alert(
         t('common.error'),
@@ -725,14 +767,29 @@ export default function EventChatScreen() {
                 : [styles.otherBubble, { backgroundColor: colors.chipBackground }],
             ]}
           >
-            <Text
-              style={[
-                styles.text,
-                { color: isOwnMessage ? colors.primaryButtonText : colors.text },
-              ]}
-            >
-              {item.content_text}
-            </Text>
+            {item.content_image_url ? (
+              <Pressable
+                onPress={() => setViewerUrl(item.content_image_url)}
+                accessibilityRole="imagebutton"
+                accessibilityLabel={t('chat.photoMessage')}
+              >
+                <Image
+                  source={{ uri: item.content_image_url }}
+                  style={[styles.messageImage, { backgroundColor: colors.backgroundSecondary }]}
+                  contentFit="cover"
+                />
+              </Pressable>
+            ) : null}
+            {item.content_text ? (
+              <Text
+                style={[
+                  styles.text,
+                  { color: isOwnMessage ? colors.primaryButtonText : colors.text },
+                ]}
+              >
+                {item.content_text}
+              </Text>
+            ) : null}
           </View>
 
           <Text
@@ -760,7 +817,7 @@ export default function EventChatScreen() {
     ]).size;
     const meta = t('chatRoom.headerMeta', {
       date: formatEventDate(event.start_at, t),
-      resort: event.resorts?.name || t('common.unknown'),
+      resort: event.resorts ? getResortName(event.resorts, locale) : t('common.unknown'),
       count: memberCount,
     });
     const openDetails = () =>
@@ -856,14 +913,34 @@ export default function EventChatScreen() {
       {/* Input Container */}
       <View
         style={[
-          styles.inputContainer,
+          styles.inputArea,
           {
             backgroundColor: colors.card,
+            borderTopColor: colors.divider,
             // キーボードが出ていないときだけホームインジケーター／ナビゲーションバーの分を空ける
             paddingBottom: spacing.md + (keyboardVisible ? 0 : insets.bottom),
           },
         ]}
       >
+        {pickedImage ? (
+          <RemovablePhoto
+            uri={pickedImage.uri}
+            onRemove={() => setPickedImage(null)}
+            removeLabel={t('common.removePhoto')}
+            style={styles.pickedPhoto}
+          />
+        ) : null}
+        <View style={styles.inputContainer}>
+        <Pressable
+          onPress={pickImage}
+          disabled={sending}
+          style={styles.photoButton}
+          accessibilityRole="button"
+          accessibilityLabel={t('channels.addPhoto')}
+          testID="event-chat-add-photo"
+        >
+          <Ionicons name="image-outline" size={24} color={colors.textSecondary} />
+        </Pressable>
         <TextInput
           value={inputText}
           onChangeText={setInputText}
@@ -880,17 +957,26 @@ export default function EventChatScreen() {
 
         <TouchableOpacity
           onPress={sendMessage}
-          disabled={!inputText.trim() || sending}
+          disabled={(!inputText.trim() && !pickedImage) || sending}
           style={[
             styles.sendButton,
             {
-              backgroundColor: inputText.trim() && !sending ? '#5A7D9A' : colors.border,
+              backgroundColor: (inputText.trim() || pickedImage) && !sending ? c.primaryButton : c.chipBackground,
             },
           ]}
+          accessibilityRole="button"
+          accessibilityLabel={t('channels.send')}
         >
-          <IconSymbol name="paperplane.fill" size={20} color="#ffffff" />
+          <IconSymbol
+            name="paperplane.fill"
+            size={20}
+            color={(inputText.trim() || pickedImage) && !sending ? c.primaryButtonText : c.textLabel}
+          />
         </TouchableOpacity>
+        </View>
       </View>
+
+      <ImageViewer visible={!!viewerUrl} imageUrl={viewerUrl ?? ''} onClose={() => setViewerUrl(null)} />
     </KeyboardAvoidingView>
   );
 }
@@ -1125,13 +1211,30 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     textAlign: 'center',
   },
+  inputArea: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm + 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: spacing.sm,
+  },
+  pickedPhoto: {
+    marginLeft: 4,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.md,
     gap: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  photoButton: {
+    width: 40,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  messageImage: {
+    width: 200,
+    height: 200,
+    borderRadius: borderRadius.md,
   },
   input: {
     flex: 1,

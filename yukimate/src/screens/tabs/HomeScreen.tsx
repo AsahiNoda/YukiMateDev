@@ -140,6 +140,13 @@ export default function HomeScreen() {
 
   const weather = state.data.weather as any;
 
+  // パウダーアラートの「朝イチ組を作る」：明日の8時で作成画面を開く
+  const openEarlyGroup = () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    openCreate({ date: tomorrow, startTime: '08:00' });
+  };
+
   // ---- 上部のスライド：1枚目＝天気、2枚目＝次の予定（参加が確定したイベントがあるときだけ） ----
   const slides: HomeSlide[] = [];
   if (resort && !weather && state.data.weatherLoading) {
@@ -179,6 +186,8 @@ export default function HomeScreen() {
           weather={{ ...weather, resortName: weather.resortName ?? resortName ?? '' }}
           columns={columns}
           onPressMore={() => openResortPage('forecast')}
+          powderCm={powderCm}
+          onPowderAction={openEarlyGroup}
         />
       ),
     });
@@ -197,6 +206,21 @@ export default function HomeScreen() {
         />
       ),
     });
+  } else if (resort && feed.nextPlanLoaded) {
+    // 予定がないときも、天気の裏（2枚目）に「次の予定」として入口カードを置く
+    slides.push({
+      key: 'nextPlan',
+      label: t('homeFeed.slideNextPlan'),
+      render: () => (
+        <NoPlanCard
+          soloCount={feed.soloWeekendCount}
+          resortName={resortName}
+          onSearch={() => openSearch({ date: 'thisWeekend', solo: true, resortId: resort.id })}
+          onCreate={() => openCreate()}
+          onOpenMyEvents={openMyEvents}
+        />
+      ),
+    });
   }
 
   // 一致したスタイルの表示名
@@ -205,10 +229,6 @@ export default function HomeScreen() {
     return label === `ridingStyles.${s}` ? s : label;
   };
   const rec = feed.recommended;
-  const reasonItems = [
-    ...(rec.level ? [t(`levels.${rec.level}`)] : []),
-    ...rec.styles.slice(0, 2).map(styleLabel),
-  ].map((text) => t('homeFeed.quoted', { text }));
 
   return (
     <ScrollView
@@ -289,19 +309,6 @@ export default function HomeScreen() {
         </Pressable>
       ) : null}
 
-      {/* 予定がないとき：次の予定の位置に入口カード */}
-      {resort && feed.nextPlanLoaded && !feed.nextPlan ? (
-        <View style={styles.block}>
-          <NoPlanCard
-            soloCount={feed.soloWeekendCount}
-            resortName={resortName}
-            onSearch={() => openSearch({ date: 'thisWeekend', solo: true, resortId: resort.id })}
-            onCreate={() => openCreate()}
-            onOpenMyEvents={openMyEvents}
-          />
-        </View>
-      ) : null}
-
       {/* 申請ステータス */}
       <View style={styles.statusRow}>
         <ApplicationStatusRow pending={feed.myPendingApplications} received={receivedRequests} onPress={openRequests} />
@@ -359,7 +366,6 @@ export default function HomeScreen() {
             <View style={[styles.emptyFeatured, { backgroundColor: c.card, borderColor: c.dashedBorder }]}>
               <View style={styles.emptyFeaturedText}>
                 <Text style={[styles.emptyTitle, { color: c.text }]}>{t('homeFeed.featuredEmpty')}</Text>
-                <Text style={[styles.emptySub, { color: c.chipText }]}>{t('homeFeed.featuredEmptySubtitle')}</Text>
               </View>
               <PillButton title={t('actions.createYourself')} size="sm" icon="add" onPress={() => openCreate()} />
             </View>
@@ -377,11 +383,6 @@ export default function HomeScreen() {
             linkLabel={t('homeFeed.seeMore')}
             onPressLink={() => openSearch({})}
           />
-          {reasonItems.length > 0 ? (
-            <Text style={[styles.reason, { color: c.textLabel }]}>
-              {t('homeFeed.recommendedFrom', { items: reasonItems.join('') })}
-            </Text>
-          ) : null}
           <View style={styles.recList}>
             {rec.events.map((e) => {
               const tags = e.tags.map((x) => x.toLowerCase());
@@ -396,16 +397,7 @@ export default function HomeScreen() {
       {resort ? (
         <View style={styles.section}>
           <SectionHeader title={t('homeFeed.resortNow')} linkLabel={t('homeFeed.viewPosts')} onPressLink={() => openResortPage('posts')} />
-          <ResortNowSection
-            powderCm={powderCm}
-            posts={feed.resortPosts}
-            onPressPost={() => openResortPage('posts')}
-            onMakeEarlyGroup={() => {
-              const tomorrow = new Date();
-              tomorrow.setDate(tomorrow.getDate() + 1);
-              openCreate({ date: tomorrow, startTime: '08:00' });
-            }}
-          />
+          <ResortNowSection posts={feed.resortPosts} onPressPost={() => openResortPage('posts')} />
         </View>
       ) : null}
     </ScrollView>

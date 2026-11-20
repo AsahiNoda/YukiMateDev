@@ -1,3 +1,4 @@
+import { getResortName } from '@/utils/resort-helpers';
 import { PillButton } from '@/components/ui/PillButton';
 import { useTranslation } from '@/hooks/useTranslation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -20,7 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function MyPostsScreen() {
     const insets = useSafeAreaInsets();
-    const { t } = useTranslation();
+    const { t, locale } = useTranslation();
     const colorScheme = useColorScheme();
     const colors = Colors[colorScheme ?? 'light'];
     const { events, loading, error, refetch } = useMyEvents();
@@ -115,7 +116,7 @@ export default function MyPostsScreen() {
                     <View style={styles.infoRow}>
                         <IconSymbol name="mountain.2.fill" size={16} color={colors.textSecondary} />
                         <Text style={[styles.infoText, { color: colors.textSecondary }]} numberOfLines={1}>
-                            {item.resortName}
+                            {getResortName({ name: item.resortName, name_en: item.resortNameEn }, locale)}
                         </Text>
                     </View>
 

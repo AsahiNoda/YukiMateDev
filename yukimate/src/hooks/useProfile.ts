@@ -3,6 +3,8 @@ import { supabase } from '@lib/supabase';
 import type { ProfileData, SkillLevel, SocialLinks, TopResort } from '@types';
 import { queryClient } from '@/providers/QueryProvider';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from '@/hooks/useTranslation';
+import { getResortName } from '@/utils/resort-helpers';
 import { useEffect, useMemo, useRef } from 'react';
 
 type ProfileState =
@@ -10,14 +12,15 @@ type ProfileState =
   | { status: 'error'; error: string }
   | { status: 'success'; data: ProfileData };
 
-export const profileQueryKey = (userId: string | undefined) => ['profile', userId] as const;
+// locale を最後に入れる（['profile', userId] での invalidate は前方一致でそのまま効く）
+export const profileQueryKey = (userId: string | undefined, locale?: string) => ['profile', userId, locale] as const;
 
 /**
  * プロフィール画面のデータを取得
  * 以前は約8回の通信を順番に待っていたが、互いに依存しないクエリを1回の並列通信にまとめ、
  * リゾート名も埋め込み取得（resorts(name)）にして追加クエリを無くした。
  */
-async function fetchProfileData(targetUserId: string): Promise<ProfileData> {
+async function fetchProfileData(targetUserId: string, locale: string): Promise<ProfileData> {
   const [
     profileRes,
     favRes,
@@ -50,7 +53,7 @@ async function fetchProfileData(targetUserId: string): Promise<ProfileData> {
       .eq('user_id', targetUserId)
       .single(),
     // 1.5 お気に入りスキー場（多対多）
-    supabase.from('favorite_resorts').select('resort_id, resorts(id, name)').eq('user_id', targetUserId),
+    supabase.from('favorite_resorts').select('resort_id, resorts(id, name, name_en)').eq('user_id', targetUserId),
     // 2. ギア情報
     supabase
       .from('gear')
@@ -64,7 +67,7 @@ async function fetchProfileData(targetUserId: string): Promise<ProfileData> {
     // 中止（cancelled）したものは数えない
     supabase
       .from('posts_events')
-      .select('id, resort_id, resorts(name)')
+      .select('id, resort_id, resorts(name, name_en)')
       .eq('host_user_id', targetUserId)
       .neq('status', 'cancelled'),
     // 3.5 + 4. 参加イベント（よく行くゲレンデ集計 + 最近のイベント を1クエリで兼用）
@@ -72,13 +75,13 @@ async function fetchProfileData(targetUserId: string): Promise<ProfileData> {
       .from('event_participants')
       // left_at では絞らない：イベント後の「評価タイム」で全員 left_at が入るため、
       // left_at が null のものだけ数えると、終わったイベントが参加数から消えていた（下で絞る）
-      .select('joined_at, left_at, posts_events!inner(id, title, start_at, resort_id, status, resorts(name))')
+      .select('joined_at, left_at, posts_events!inner(id, title, start_at, resort_id, status, resorts(name, name_en))')
       .eq('user_id', targetUserId)
       .order('joined_at', { ascending: false }),
     // 5. 最近の投稿
     supabase
       .from('feed_posts')
-      .select('id, text, created_at, resort_id, resorts(name)')
+      .select('id, text, created_at, resort_id, resorts(name, name_en)')
       .eq('user_id', targetUserId)
       .order('created_at', { ascending: false })
       .limit(5),
@@ -97,7 +100,7 @@ async function fetchProfileData(targetUserId: string): Promise<ProfileData> {
   }
 
   const favoriteResorts = (favRes.data || [])
-    .map((row: any) => (row.resorts ? { id: row.resorts.id, name: row.resorts.name } : null))
+    .map((row: any) => (row.resorts ? { id: row.resorts.id, name: getResortName(row.resorts, locale) } : null))
     .filter(Boolean) as { id: string; name: string }[];
 
   if (gearRes.error) {
@@ -105,10 +108,10 @@ async function fetchProfileData(targetUserId: string): Promise<ProfileData> {
   }
   const gear = gearRes.data as any;
 
-  // リゾート名のマップ（埋め込み取得した resorts(name) から作る）
+  // リゾート名のマップ（埋め込み取得した resorts(name, name_en) から、表示言語の名前で作る）
   const resortMap: Record<string, string> = {};
   const rememberResort = (resortId: string | null | undefined, resorts: any) => {
-    if (resortId && resorts?.name) resortMap[resortId] = resorts.name;
+    if (resortId && resorts?.name) resortMap[resortId] = getResortName(resorts, locale);
   };
 
   // event_id ごとに resort_id を集約（主催/参加の重複を排除）
@@ -203,10 +206,11 @@ async function fetchProfileData(targetUserId: string): Promise<ProfileData> {
 export function useProfile(userId?: string, refreshKey?: number): ProfileState {
   const { user, loading: authLoading } = useAuth();
   const targetUserId = userId || user?.id;
+  const { locale } = useTranslation();
 
   const query = useQuery({
-    queryKey: profileQueryKey(targetUserId),
-    queryFn: () => fetchProfileData(targetUserId!),
+    queryKey: profileQueryKey(targetUserId, locale),
+    queryFn: () => fetchProfileData(targetUserId!, locale),
     enabled: !!targetUserId,
     staleTime: 1000 * 30,
   });

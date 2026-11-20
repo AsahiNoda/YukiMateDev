@@ -3,7 +3,6 @@ import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/cons
 import { useAppColors } from '@/hooks/useAppColors';
 import {
   channelErrorKey,
-  channelKindDescKey,
   channelKindLabelKey,
   CHANNEL_DESCRIPTION_MAX,
   CHANNEL_KINDS,
@@ -78,6 +77,8 @@ export default function CreateChannelScreen() {
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xl }]}
         keyboardShouldPersistTaps="handled"
       >
+        <Text style={[styles.intro, { color: c.textMuted }]}>{t('channels.about')}</Text>
+
         <Text style={[styles.label, { color: c.textLabel }]}>{t('channels.nameLabel')}</Text>
         <TextInput
           value={name}
@@ -130,16 +131,10 @@ export default function CreateChannelScreen() {
           options={CHANNEL_KINDS.map((value) => ({
             value,
             title: t(channelKindLabelKey(value)),
-            description: t(channelKindDescKey(value)),
           }))}
           testIDPrefix="channel-kind"
         />
 
-        <Text style={[styles.note, { color: c.textLabel }]}>
-          {t('channels.kindNote')}
-          {'\n'}
-          {t('channels.limitNote', { count: CHANNEL_OWN_LIMIT })}
-        </Text>
 
         <PillButton
           title={t('channels.createButton')}
@@ -164,7 +159,7 @@ function ChoiceList<T extends string>({
   onSelect,
   testIDPrefix,
 }: {
-  options: { value: T; title: string; description: string }[];
+  options: { value: T; title: string; description?: string }[];
   selected: T;
   onSelect: (value: T) => void;
   testIDPrefix: string;
@@ -202,7 +197,9 @@ function ChoiceList<T extends string>({
                 >
                   {option.title}
                 </Text>
-                <Text style={[styles.choiceDesc, { color: c.textMuted }]}>{option.description}</Text>
+                {option.description ? (
+                  <Text style={[styles.choiceDesc, { color: c.textMuted }]}>{option.description}</Text>
+                ) : null}
               </View>
               {active ? <View style={[styles.choiceDot, { backgroundColor: c.hourHighlightText }]} /> : null}
             </Pressable>
@@ -236,6 +233,11 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.md,
+  },
+  intro: {
+    fontSize: fontSize.sm,
+    lineHeight: 21,
+    marginBottom: spacing.xs,
   },
   label: {
     fontSize: fontSize.xs,
@@ -293,11 +295,6 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: borderRadius.round,
-  },
-  note: {
-    fontSize: fontSize.xxs,
-    lineHeight: 17,
-    marginTop: 10,
   },
   submit: {
     marginTop: spacing.lg,

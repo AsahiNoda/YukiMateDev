@@ -1,3 +1,6 @@
+import { CountBadge } from '@/components/ui/CountBadge';
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
+import { getResortName } from '@/utils/resort-helpers';
 import { PillButton } from '@/components/ui/PillButton';
 import { ChannelsPanel } from '@/components/channels/ChannelsPanel';
 import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
@@ -46,7 +49,7 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>('chats');
 
   // ほかの画面から「リクエスト」タブを開く：/(tabs)/chat?tab=requests&t=...
@@ -67,6 +70,7 @@ export default function ChatScreen() {
     refetch: refetchApplications,
   } = useEventApplications();
 
+  const unread = useUnreadCounts();
   const channelRequests = useIncomingChannelRequests();
   const channelActions = useChannelActions();
   const [respondingKey, setRespondingKey] = useState<string | null>(null);
@@ -228,7 +232,8 @@ export default function ChatScreen() {
    */
   function renderChatItem({ item }: { item: EventChat }) {
     const lastMessage = item.messages[0]; // messages are already sorted DESC in hook
-    const messagePreview = lastMessage?.contentText || t('chat.noMessages');
+    const messagePreview =
+      lastMessage?.contentText || (lastMessage?.contentImageUrl ? t('chat.photoMessage') : t('chat.noMessages'));
     const firstPhoto = item.eventPhotos?.[0];
 
     const formatTime = (dateString: string) => {
@@ -243,6 +248,7 @@ export default function ChatScreen() {
       return `${date.getMonth() + 1}/${date.getDate()}`;
     };
     const timeAgo = lastMessage ? formatTime(lastMessage.createdAt) : '';
+    const unreadCount = unread.byEvent.get(item.eventId) ?? 0;
 
     return (
       <TouchableOpacity
@@ -270,11 +276,25 @@ export default function ChatScreen() {
             {timeAgo ? <Text style={[styles.chatTime, { color: colors.textLabel }]}>{timeAgo}</Text> : null}
           </View>
           <Text style={[styles.chatResort, { color: colors.tintText }]} numberOfLines={1}>
-            {formatEventDate(item.eventStartAt, t)} ・ {item.eventResortName || t('chat.resortNotSet')}
+            {formatEventDate(item.eventStartAt, t)} ・{' '}
+            {item.eventResortName
+              ? getResortName({ name: item.eventResortName, name_en: item.eventResortNameEn }, locale)
+              : t('chat.resortNotSet')}
           </Text>
-          <Text style={[styles.chatPreview, { color: colors.textMuted }]} numberOfLines={1}>
-            {messagePreview}
-          </Text>
+          <View style={styles.chatPreviewRow}>
+            <Text
+              style={[
+                styles.chatPreview,
+                unreadCount > 0
+                  ? { color: colors.text, fontWeight: fontWeight.semibold }
+                  : { color: colors.textMuted },
+              ]}
+              numberOfLines={1}
+            >
+              {messagePreview}
+            </Text>
+            <CountBadge count={unreadCount} />
+          </View>
         </View>
       </TouchableOpacity>
     );
@@ -354,7 +374,7 @@ export default function ChatScreen() {
         day: 'numeric',
       })
       : '';
-    const resortName = item.event?.resorts?.name || '';
+    const resortName = item.event?.resorts ? getResortName(item.event.resorts, locale) : '';
     const countryFlag = item.applicant?.profiles?.country_code || '';
 
     return (
@@ -428,14 +448,17 @@ export default function ChatScreen() {
         <TouchableOpacity
           style={[styles.tab, activeTab === 'chats' && styles.activeTab]}
           onPress={() => setActiveTab('chats')}>
-          <Text
-            style={[
-              styles.tabText,
-              { color: colors.textSecondary },
-              activeTab === 'chats' && { color: colors.tint, fontWeight: fontWeight.semibold },
-            ]}>
-            {t('chat.tabChats')}
-          </Text>
+          <View style={styles.tabTitleWithBadge}>
+            <Text
+              style={[
+                styles.tabText,
+                { color: colors.textSecondary },
+                activeTab === 'chats' && { color: colors.tint, fontWeight: fontWeight.semibold },
+              ]}>
+              {t('chat.tabChats')}
+            </Text>
+            <CountBadge count={unread.eventTotal} />
+          </View>
           {activeTab === 'chats' && (
             <View style={[styles.tabIndicator, { backgroundColor: colors.tint }]} />
           )}
@@ -445,14 +468,17 @@ export default function ChatScreen() {
           style={[styles.tab, activeTab === 'channels' && styles.activeTab]}
           onPress={() => setActiveTab('channels')}
           testID="chat-tab-channels">
-          <Text
-            style={[
-              styles.tabText,
-              { color: colors.textSecondary },
-              activeTab === 'channels' && { color: colors.tint, fontWeight: fontWeight.semibold },
-            ]}>
-            {t('chat.tabChannels')}
-          </Text>
+          <View style={styles.tabTitleWithBadge}>
+            <Text
+              style={[
+                styles.tabText,
+                { color: colors.textSecondary },
+                activeTab === 'channels' && { color: colors.tint, fontWeight: fontWeight.semibold },
+              ]}>
+              {t('chat.tabChannels')}
+            </Text>
+            <CountBadge count={unread.channelTotal} />
+          </View>
           {activeTab === 'channels' && (
             <View style={[styles.tabIndicator, { backgroundColor: colors.tint }]} />
           )}
@@ -634,7 +660,13 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     marginBottom: 2,
   },
+  chatPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   chatPreview: {
+    flex: 1,
     fontSize: fontSize.sm,
   },
   emptyState: {

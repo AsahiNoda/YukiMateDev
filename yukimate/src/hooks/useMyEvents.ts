@@ -10,6 +10,8 @@ export interface MyEvent {
     capacityTotal: number;
     participantsCount: number;
     resortName: string;
+    /** 英語名（表示は getResortName で言語に合わせて選ぶ） */
+    resortNameEn: string | null;
     photos: string[];
     status: 'upcoming' | 'ongoing' | 'ended';
 }
@@ -54,7 +56,7 @@ export function useMyEvents(): MyEventsHookReturn {
           end_at,
           capacity_total,
           photos,
-          resorts(id, name),
+          resorts(id, name, name_en),
           event_participants(left_at)
         `)
                 .eq('host_user_id', user.id)
@@ -111,6 +113,7 @@ export function useMyEvents(): MyEventsHookReturn {
                         capacityTotal: event.capacity_total || 0,
                         participantsCount: count || 0,
                         resortName: event.resorts?.name || 'Unknown Resort',
+                        resortNameEn: event.resorts?.name_en || null,
                         photos: photoUrls,
                         status,
                     };

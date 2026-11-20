@@ -64,7 +64,7 @@ export default function FavoriteResortsWeatherScreen() {
 
       <ScrollView
         contentContainerStyle={{ padding: spacing.md, paddingBottom: insets.bottom + spacing.xl, gap: spacing.sm }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => refetch()} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => refetch()} tintColor={c.tintText} />}
       >
         {hasAny && rows.length > 1 ? (
           <View style={styles.sortRow}>
@@ -81,7 +81,7 @@ export default function FavoriteResortsWeatherScreen() {
         ) : null}
 
         {loading ? (
-          <ActivityIndicator style={{ marginTop: spacing.xl }} color={c.tint} />
+          <ActivityIndicator style={{ marginTop: spacing.xl }} color={c.tintText} />
         ) : error ? (
           <View style={styles.empty}>
             <Text style={[styles.emptyText, { color: c.chipText }]}>{t('homeFeed.weatherUnavailable')}</Text>
@@ -141,7 +141,10 @@ function WeatherRow({ row }: { row: ResortWeatherRow }) {
   return (
     <Pressable
       onPress={() => router.push(resortPageHref(row.id, 'forecast'))}
-      style={({ pressed }) => [styles.card, { backgroundColor: c.backgroundSecondary, opacity: pressed ? 0.85 : 1 }]}
+      style={({ pressed }) => [
+        styles.card,
+        { backgroundColor: c.glassCardBackground, borderColor: c.glassCardBorder, opacity: pressed ? 0.85 : 1 },
+      ]}
       accessibilityRole="button"
       accessibilityLabel={a11y}
       testID={`favorite-weather-${row.id}`}
@@ -154,13 +157,13 @@ function WeatherRow({ row }: { row: ResortWeatherRow }) {
             </Text>
             {row.isHome ? <Chip label={t('favoriteWeather.home')} tone="tint" icon="home" /> : null}
           </View>
-          <Text style={[styles.condition, { color: c.chipText }]}>
+          <Text style={[styles.condition, { color: c.textMuted }]}>
             {w ? t(weatherLabelKey(w.weatherCode)) : t('homeFeed.weatherUnavailable')}
           </Text>
         </View>
         {w ? (
           <View style={styles.tempBlock}>
-            <Icon width={36} height={36} />
+            <Icon width={36} height={36} color={c.text} />
             <Text style={[styles.temp, { color: c.text }]}>{Math.round(w.tempC)}°</Text>
           </View>
         ) : null}
@@ -168,7 +171,7 @@ function WeatherRow({ row }: { row: ResortWeatherRow }) {
       </View>
 
       {w ? (
-        <View style={[styles.stats, { borderTopColor: c.divider }]}>
+        <View style={[styles.stats, { borderTopColor: c.glassDivider }]}>
           <Stat label={t('favoriteWeather.newSnow')} value={`${Math.round(w.newSnowCm)}cm`} highlight={fresh} />
           <Stat
             label={t('favoriteWeather.tomorrow')}
@@ -187,10 +190,9 @@ function Stat({ label, value, highlight }: { label: string; value: string; highl
   return (
     <View style={styles.stat}>
       <View style={styles.statLabelRow}>
-        {highlight ? <View style={[styles.freshDot, { backgroundColor: c.freshDot }]} /> : null}
-        <Text style={[styles.statLabel, { color: c.textLabel }]}>{label}</Text>
+        <Text style={[styles.statLabel, { color: highlight ? c.hourHighlightText : c.textLabel }]}>{label}</Text>
       </View>
-      <Text style={[styles.statValue, { color: highlight ? c.tintText : c.text }]}>{value}</Text>
+      <Text style={[styles.statValue, { color: highlight ? c.hourHighlightText : c.text }]}>{value}</Text>
     </View>
   );
 }
@@ -214,7 +216,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold },
   sortRow: { alignItems: 'flex-start', marginBottom: spacing.xs },
-  card: { borderRadius: borderRadius.card, padding: spacing.md, gap: spacing.sm },
+  card: { borderRadius: borderRadius.glass, borderWidth: 1.5, padding: spacing.md, gap: spacing.sm },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   nameBlock: { flex: 1, gap: 2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
@@ -225,7 +227,6 @@ const styles = StyleSheet.create({
   stats: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: spacing.sm },
   stat: { flex: 1, gap: 2 },
   statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  freshDot: { width: 6, height: 6, borderRadius: borderRadius.round },
   statLabel: { fontSize: fontSize.xxs },
   statValue: { fontSize: fontSize.body, fontWeight: fontWeight.semibold, fontVariant: ['tabular-nums'] },
   empty: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },

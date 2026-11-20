@@ -1,3 +1,4 @@
+import { PhotoRemoveButton } from '@/components/ui/RemovablePhoto';
 import { PillButton } from '@/components/ui/PillButton';
 import { Colors } from '@/constants/theme';
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
@@ -400,12 +401,12 @@ export function PostCreateModal({
           ) : (
             <View style={styles.imagePreviewContainer}>
               <Image source={{ uri: imageUri }} style={styles.imagePreview} resizeMode="cover" />
-              <TouchableOpacity
-                style={[styles.removeImageButton, { backgroundColor: colors.background }]}
+              <PhotoRemoveButton
                 onPress={handleRemoveImage}
-                disabled={isSubmitting}>
-                <IconSymbol name="xmark.circle.fill" size={32} color={colors.error} />
-              </TouchableOpacity>
+                disabled={isSubmitting}
+                size={28}
+                accessibilityLabel={t('common.removePhoto')}
+              />
             </View>
           )}
 
@@ -512,20 +513,13 @@ const styles = StyleSheet.create({
   },
   imagePreviewContainer: {
     position: 'relative',
-    borderRadius: borderRadius.lg,
+    borderRadius: borderRadius.md,
     overflow: 'hidden',
   },
   imagePreview: {
     width: '100%',
     height: 300,
-    borderRadius: borderRadius.lg,
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    borderRadius: borderRadius.round,
-    padding: 2,
+    borderRadius: borderRadius.md,
   },
   commentSection: {
     gap: spacing.sm,

@@ -1,3 +1,4 @@
+import { RemovablePhoto } from '@/components/ui/RemovablePhoto';
 import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
 import { PillButton } from '@/components/ui/PillButton';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -957,7 +958,6 @@ export default function CreateEventScreen() {
         <View style={[styles.section, styles.switchRow]}>
           <View style={styles.switchText}>
             <Text style={[styles.label, styles.switchLabel]}>{t('create.soloOkLabel')}</Text>
-            <Text style={styles.switchHint}>{t('create.soloOkHint')}</Text>
           </View>
           <Switch
             value={soloOk}
@@ -1048,18 +1048,13 @@ export default function CreateEventScreen() {
           <Text style={styles.label}>{t('create.imagesLabel')}</Text>
           <View style={styles.imagesContainer}>
             {selectedImages.map((uri, index) => (
-              <View key={index} style={styles.imageWrapper}>
-                <Image source={{ uri }} style={styles.image} />
-                <TouchableOpacity
-                  style={styles.imageRemoveButton}
-                  onPress={() => removeImage(index)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <View style={styles.imageRemoveButtonInner}>
-                    <IconSymbol name="xmark" size={16} color={colors.text} />
-                  </View>
-                </TouchableOpacity>
-              </View>
+              <RemovablePhoto
+                key={index}
+                uri={uri}
+                size={100}
+                onRemove={() => removeImage(index)}
+                removeLabel={t('common.removePhoto')}
+              />
             ))}
             {selectedImages.length < 3 && (
               <TouchableOpacity style={styles.imagePlaceholder} onPress={pickImage}>
@@ -1319,30 +1314,6 @@ function createStyles(colors: typeof Colors.light) {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: 12,
-    },
-    imageWrapper: {
-      position: 'relative',
-      width: 100,
-      height: 100,
-    },
-    image: {
-      width: 100,
-      height: 100,
-      borderRadius: borderRadius.md,
-    },
-    imageRemoveButton: {
-      position: 'absolute',
-      top: -10,
-      right: -10,
-      zIndex: 10,
-    },
-    imageRemoveButtonInner: {
-      width: 28,
-      height: 28,
-      borderRadius: borderRadius.round,
-      backgroundColor: colors.error,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     imagePlaceholder: {
       width: 100,

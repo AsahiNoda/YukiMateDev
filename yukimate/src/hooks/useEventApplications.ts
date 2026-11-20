@@ -20,7 +20,7 @@ export interface EventApplicationWithDetails extends EventApplication {
     id: string;
     title: string;
     start_at: string;
-    resorts: { id: string; name: string } | null;
+    resorts: { id: string; name: string; name_en?: string | null } | null;
   } | null;
 }
 
@@ -103,7 +103,7 @@ export function useEventApplications() {
             title,
             start_at,
             host_user_id,
-            resorts(id, name)
+            resorts(id, name, name_en)
           ),
           applicant_user:users!event_applications_applicant_user_id_fkey(
             id,

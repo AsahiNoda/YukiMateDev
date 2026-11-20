@@ -263,9 +263,9 @@ export default function SnowfeedScreen({ resortId: routeResortId, initialTab }: 
           <Text style={[styles.emptyTitle, { color: c.text }]}>
             {isFirstTime ? t('snowfeed.setHomeResort') : t('snowfeed.selectResort')}
           </Text>
-          <Text style={[styles.emptyText, { color: c.chipText }]}>
-            {isFirstTime ? t('snowfeed.setHomeResortSubtitle') : t('snowfeed.selectResortSubtitle')}
-          </Text>
+          {isFirstTime ? (
+            <Text style={[styles.emptyText, { color: c.chipText }]}>{t('snowfeed.setHomeResortSubtitle')}</Text>
+          ) : null}
           <PillButton title={t('snowfeed.setHomeResortButton')} icon="search" onPress={() => setShowFirstTimeSearch(true)} />
         </View>
         <Modal visible={showFirstTimeSearch} animationType="slide" presentationStyle="pageSheet">

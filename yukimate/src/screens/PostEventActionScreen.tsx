@@ -236,10 +236,12 @@ export default function PostEventActionScreen() {
             {
               reactor_user_id: currentUserId,
               target_user_id: userId,
+              // イベントごとに1件（別のイベントで評価すると加算される）：20261126000000_ratings_per_event.sql
+              event_id: params.eventId,
               reaction: kind,
               updated_at: now,
             },
-            { onConflict: 'reactor_user_id,target_user_id' }
+            { onConflict: 'reactor_user_id,target_user_id,event_id' }
           )
         );
       }

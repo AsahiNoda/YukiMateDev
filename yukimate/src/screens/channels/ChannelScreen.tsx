@@ -1,3 +1,5 @@
+import { useMarkChatRead } from '@/hooks/useUnreadCounts';
+import { RemovablePhoto } from '@/components/ui/RemovablePhoto';
 import { ChannelPostSheet, formatChannelTime, ReactionPills } from '@/components/channels/ChannelParts';
 import { ImageViewer } from '@/components/ImageViewer';
 import { ReportSheet } from '@/components/ReportSheet';
@@ -25,7 +27,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -44,8 +46,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type PickedImage = { uri: string; width?: number; height?: number };
 
-const GRID_COLUMNS = 3;
-const GRID_GAP = 2;
 /** チャットの吹き出しの中の写真の幅 */
 const BUBBLE_IMAGE_WIDTH = 220;
 
@@ -58,7 +58,7 @@ const imageHeightFor = (media: ChannelMedia, width: number) => {
 /**
  * テーマ別チャンネルの画面。種類で中身が変わる：
  *   chat          … 吹き出しのチャット（下が新しい）
- *   media_only    … 写真のグリッド（新しい順）
+ *   media_only    … 写真だけのチャット（吹き出し・下が新しい。チャットと同じ並び）
  *   reaction_only … お知らせのフィード。メンバーは絵文字を押すだけ
  * 投稿の長押しでリアクション・通報・削除。参加していない人は読むだけ（下に「参加する」）。
  * プライベートは参加していないと中身が見えない（下に「参加をリクエスト」）。
@@ -92,6 +92,16 @@ export default function ChannelScreen() {
   const [sending, setSending] = useState(false);
   const [joining, setJoining] = useState(false);
 
+  // 未読：開いている間は、投稿が増えるたびと閉じるときに「ここまで読んだ」にする
+  const markRead = useMarkChatRead('channel', channelId);
+  const postCount = posts.data?.length ?? 0;
+  useEffect(() => {
+    if (role) markRead();
+  }, [postCount, role, markRead]);
+  useEffect(() => () => {
+    markRead();
+  }, [markRead]);
+
   // 入力欄をキーボードの真上に（EventChatScreen と同じやり方）
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
@@ -113,13 +123,6 @@ export default function ChannelScreen() {
   }, []);
 
   const list = posts.data ?? [];
-
-  // 写真のグリッドは写真1枚ごとに1マス
-  const tiles = useMemo(
-    () => (kind === 'media_only' ? list.flatMap((post) => post.media.map((media, i) => ({ key: `${post.id}_${i}`, post, media }))) : []),
-    [kind, list]
-  );
-  const tileSize = Math.floor((windowWidth - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS);
 
   const toggleReaction = async (post: ChannelPost, emoji: ChannelReaction) => {
     try {
@@ -286,29 +289,6 @@ export default function ChannelScreen() {
     );
   };
 
-  const renderTile = ({ item }: { item: { key: string; post: ChannelPost; media: ChannelMedia } }) => {
-    const total = item.post.reactions.reduce((sum, r) => sum + r.count, 0);
-    return (
-      <Pressable
-        onPress={() => setViewerUrl(item.media.url)}
-        onLongPress={() => setMenuPost(item.post)}
-        delayLongPress={300}
-        accessibilityRole="imagebutton"
-        accessibilityLabel={t('channels.photoA11y', { name: item.post.authorName })}
-        style={{ width: tileSize, height: tileSize }}
-      >
-        <Image source={{ uri: item.media.url }} style={[styles.tileImage, { backgroundColor: c.chipBackground }]} contentFit="cover" />
-        {total > 0 ? (
-          <View style={[styles.tileBadge, { backgroundColor: c.photoOverlayBackground }]}>
-            <Text style={[styles.tileBadgeText, { color: c.photoOverlayText }]}>
-              {item.post.reactions[0]?.emoji} {total}
-            </Text>
-          </View>
-        ) : null}
-      </Pressable>
-    );
-  };
-
   const renderFeedCard = ({ item }: { item: ChannelPost }) => {
     const cardWidth = windowWidth - spacing.md * 2 - 28;
     return (
@@ -405,18 +385,12 @@ export default function ChannelScreen() {
         {images.length > 0 ? (
           <View style={styles.previews}>
             {images.map((image, i) => (
-              <View key={`${image.uri}_${i}`}>
-                <Image source={{ uri: image.uri }} style={styles.preview} contentFit="cover" />
-                <Pressable
-                  onPress={() => setImages((prev) => prev.filter((_, j) => j !== i))}
-                  style={[styles.previewRemove, { backgroundColor: c.photoOverlayBackground }]}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel={t('channels.removePhoto')}
-                >
-                  <Ionicons name="close" size={14} color={c.photoOverlayText} />
-                </Pressable>
-              </View>
+              <RemovablePhoto
+                key={`${image.uri}_${i}`}
+                uri={image.uri}
+                onRemove={() => setImages((prev) => prev.filter((_, j) => j !== i))}
+                removeLabel={t('common.removePhoto')}
+              />
             ))}
           </View>
         ) : null}
@@ -536,18 +510,6 @@ export default function ChannelScreen() {
           <Text style={[styles.emptyText, { color: c.chipText }]}>{t('channels.actionFailed')}</Text>
           <PillButton title={t('common.retry')} icon="refresh" variant="secondary" onPress={() => posts.refetch()} />
         </View>
-      ) : kind === 'media_only' ? (
-        <FlatList
-          key="grid"
-          style={styles.flex}
-          data={tiles}
-          keyExtractor={(item) => item.key}
-          numColumns={GRID_COLUMNS}
-          columnWrapperStyle={{ gap: GRID_GAP }}
-          contentContainerStyle={{ gap: GRID_GAP, paddingBottom: spacing.md }}
-          renderItem={renderTile}
-          ListEmptyComponent={empty}
-        />
       ) : kind === 'reaction_only' ? (
         <FlatList
           key="feed"
@@ -702,22 +664,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
     marginHorizontal: 4,
   },
-  tileImage: {
-    width: '100%',
-    height: '100%',
-  },
-  tileBadge: {
-    position: 'absolute',
-    left: 6,
-    bottom: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: borderRadius.pill,
-  },
-  tileBadgeText: {
-    fontSize: fontSize.xxs,
-    fontWeight: fontWeight.semibold,
-  },
   feedList: {
     padding: spacing.md,
     gap: spacing.md - 4,
@@ -790,7 +736,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     maxHeight: 120,
-    borderRadius: borderRadius.round,
+    borderRadius: borderRadius.glass,
     paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 10,
@@ -809,20 +755,5 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.sm,
     paddingHorizontal: 4,
-  },
-  preview: {
-    width: 64,
-    height: 64,
-    borderRadius: borderRadius.round,
-  },
-  previewRemove: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 20,
-    height: 20,
-    borderRadius: borderRadius.round,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

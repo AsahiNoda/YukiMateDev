@@ -1,3 +1,4 @@
+import { useUnreadCounts } from '@/hooks/useUnreadCounts';
 import { Redirect, Tabs } from 'expo-router';
 import React from 'react';
 import 'react-native-get-random-values';
@@ -50,6 +51,8 @@ export default function TabLayout() {
 /** ログイン後だけ申請数を購読するため、タブ本体を分けている */
 function AuthedTabs({ labels }: { labels: Record<'home' | 'search' | 'create' | 'chat' | 'profile', string> }) {
   const pendingRequests = usePendingRequestCount();
+  // チャットのバッジ：届いたリクエスト＋未読（イベントのチャット・チャンネル）
+  const unread = useUnreadCounts();
   // イベント開始前のリマインダーを本人の端末に揃える
   useEventReminderSync();
 
@@ -58,7 +61,7 @@ function AuthedTabs({ labels }: { labels: Record<'home' | 'search' | 'create' | 
     {/* はじめて使うときのチュートリアル（1回だけ） */}
     <AppTutorial />
     <Tabs
-      tabBar={(props) => <AppTabBar {...props} badges={{ chat: pendingRequests }} />}
+      tabBar={(props) => <AppTabBar {...props} badges={{ chat: pendingRequests + unread.eventTotal + unread.channelTotal }} />}
       screenOptions={{
         headerShown: false,
       }}>

@@ -34,6 +34,10 @@ interface HomeWeatherCardProps {
    * ホームでは山の絵は画面の背景として HomeScreen 側で描く（横スライダーの中だと切れるため）ので false。
    */
   showMountain?: boolean;
+  /** 明日の朝までの降雪予報が基準以上のときだけ渡す（パウダーアラート）。今の状態の下に1行で出す */
+  powderCm?: number | null;
+  /** パウダーアラートの「朝イチ組を作る」 */
+  onPowderAction?: () => void;
 }
 
 const VISIBILITY_KEYS: Record<string, string> = {
@@ -49,7 +53,15 @@ const CARD_RADIUS = 20;
  * 山の背景＋ガラス調のカードは引き継ぎ、赤い「LIVE」は「● 8:00 更新」に置き換えた。
  * TODO(ui-redesign 8章)：リフト運行の行は、データソースが決まったら時間ごとの行の下に足す。
  */
-export function HomeWeatherCard({ weather, columns, onPressMore, title, showMountain = true }: HomeWeatherCardProps) {
+export function HomeWeatherCard({
+  weather,
+  columns,
+  onPressMore,
+  title,
+  showMountain = true,
+  powderCm = null,
+  onPowderAction,
+}: HomeWeatherCardProps) {
   const c = useAppColors();
   const scheme = useColorScheme();
   const { t } = useTranslation();
@@ -59,6 +71,8 @@ export function HomeWeatherCard({ weather, columns, onPressMore, title, showMoun
   const condition = t(weatherLabelKey(weather.weatherCode));
   const visibilityKey = weather.visibility ? VISIBILITY_KEYS[weather.visibility] : undefined;
   const visibility = visibilityKey ? t(visibilityKey) : null;
+  // 右側の余白に、今の天気を表すイラスト（時間ごとの行と同じ絵柄を大きく）
+  const NowIcon = weatherIconFor(weather.weatherCode);
 
   return (
     <View style={styles.wrapper}>
@@ -102,7 +116,33 @@ export function HomeWeatherCard({ weather, columns, onPressMore, title, showMoun
                 {visibility ? ` ・ ${t('homeFeed.visibility', { visibility })}` : ''}
               </Text>
             </View>
+            <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+              <NowIcon width={60} height={60} color={c.text} />
+            </View>
           </View>
+
+          {/* パウダーアラート：目立たせすぎず、細い線の下に1行 */}
+          {powderCm !== null ? (
+            <View style={[styles.powderRow, { borderTopColor: c.glassDivider }]}>
+              <Text style={[styles.powderText, { color: c.text }]} numberOfLines={2}>
+                <Text style={{ color: c.tintText, fontWeight: fontWeight.bold }}>{t('homeFeed.powderAlertTitle')}</Text>
+                {'  '}
+                {t('homeFeed.powderAlertMessage', { cm: powderCm })}
+              </Text>
+              {onPowderAction ? (
+                <Pressable
+                  onPress={onPowderAction}
+                  hitSlop={8}
+                  style={({ pressed }) => [styles.powderAction, pressed && { opacity: 0.7 }]}
+                  accessibilityRole="button"
+                  testID="home-powder-action"
+                >
+                  <Text style={[styles.powderActionText, { color: c.tintText }]}>{t('homeFeed.makeEarlyGroup')}</Text>
+                  <Ionicons name="chevron-forward" size={14} color={c.tintText} />
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
 
           {/* 今日の時間ごと */}
           {columns && columns.length > 0 ? (
@@ -234,6 +274,28 @@ const styles = StyleSheet.create({
   },
   subCondition: {
     fontSize: fontSize.meta,
+  },
+  powderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  powderText: {
+    flex: 1,
+    fontSize: fontSize.meta,
+  },
+  powderAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    minHeight: 32,
+  },
+  powderActionText: {
+    fontSize: fontSize.meta,
+    fontWeight: fontWeight.bold,
   },
   hourlyTitle: {
     fontSize: fontSize.xs,

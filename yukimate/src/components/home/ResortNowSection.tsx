@@ -3,16 +3,12 @@ import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing
 import { useAppColors } from '@/hooks/useAppColors';
 import type { ResortPostThumb } from '@/hooks/useHomeFeed';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface ResortNowSectionProps {
-  /** 今〜明日8時の降雪予報が基準以上のときだけ渡す（パウダーアラート） */
-  powderCm: number | null;
   posts: ResortPostThumb[];
-  onMakeEarlyGroup: () => void;
   onPressPost: () => void;
 }
 
@@ -29,29 +25,17 @@ function useRelativeTime() {
 }
 
 /**
- * 「ゲレンデの今」：パウダーアラート（+20cm以上の予報のとき先頭）と、投稿の写真2枚。
+ * 「ゲレンデの今」：ゲレンデの投稿の写真2枚。
+ * パウダーアラートはホームの天気カードの中（今の状態の下）に移した。
  * 見た目の仕様：docs/ui-redesign/mockups/New-Home-Snow.html
  */
-export function ResortNowSection({ powderCm, posts, onMakeEarlyGroup, onPressPost }: ResortNowSectionProps) {
+export function ResortNowSection({ posts, onPressPost }: ResortNowSectionProps) {
   const c = useAppColors();
   const { t } = useTranslation();
   const relative = useRelativeTime();
 
   return (
     <View style={styles.wrap}>
-      {powderCm !== null ? (
-        <View style={[styles.alert, { backgroundColor: c.accentSurface, borderColor: c.accentSurfaceBorder }]}>
-          <View style={[styles.alertIcon, { backgroundColor: c.primaryButton }]}>
-            <Ionicons name="snow" size={22} color={c.primaryButtonText} />
-          </View>
-          <View style={styles.alertText}>
-            <Text style={[styles.alertKicker, { color: c.tintText }]}>{t('homeFeed.powderAlertTitle')}</Text>
-            <Text style={[styles.alertTitle, { color: c.text }]}>{t('homeFeed.powderAlertMessage', { cm: powderCm })}</Text>
-          </View>
-          <PillButton title={t('homeFeed.makeEarlyGroup')} size="sm" onPress={onMakeEarlyGroup} />
-        </View>
-      ) : null}
-
       {posts.length > 0 ? (
         <View style={styles.posts}>
           {posts.map((post) => (
@@ -81,35 +65,6 @@ export function ResortNowSection({ powderCm, posts, onMakeEarlyGroup, onPressPos
 const styles = StyleSheet.create({
   wrap: {
     gap: 10,
-  },
-  alert: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md - 4,
-    borderRadius: borderRadius.card,
-    borderWidth: 1,
-    paddingVertical: 12,
-    paddingLeft: 14,
-    paddingRight: 12,
-  },
-  alertIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.round,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  alertText: {
-    flex: 1,
-  },
-  alertKicker: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.bold,
-  },
-  alertTitle: {
-    fontSize: fontSize.body,
-    fontWeight: fontWeight.heavy,
-    lineHeight: 20,
   },
   posts: {
     flexDirection: 'row',

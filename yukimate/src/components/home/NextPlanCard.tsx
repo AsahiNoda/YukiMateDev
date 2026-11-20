@@ -4,7 +4,9 @@ import { useAppColors } from '@/hooks/useAppColors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { NextPlan } from '@/hooks/useHomeFeed';
 import { useTranslation } from '@/hooks/useTranslation';
+import { levelLabel } from '@/utils/eventDisplay';
 import { daysUntil, formatEventDate } from '@/utils/formatEventDate';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React from 'react';
@@ -40,17 +42,27 @@ export function NextPlanCard({ plan, onOpenChat, onOpenDetail, onOpenMyEvents }:
   const isDark = useColorScheme() === 'dark';
   const daysLabel = useDaysLabel()(plan.startAt);
 
-  const rows: { icon: keyof typeof Ionicons.glyphMap; label: string; value: string }[] = [
-    { icon: 'calendar-outline', label: t('homeFeed.dateTime'), value: formatEventDate(plan.startAt, t) },
-    ...(plan.meetingPlace || plan.resortName
-      ? [{ icon: 'location-outline' as const, label: t('homeFeed.meetingPlace'), value: plan.meetingPlace || plan.resortName }]
-      : []),
+  // 終わりの時刻（同じ日なら「〜15:00」）
+  const end = plan.endAt ? new Date(plan.endAt) : null;
+  const endLabel =
+    end && end.toDateString() === new Date(plan.startAt).toDateString()
+      ? `〜${end.getHours()}:${String(end.getMinutes()).padStart(2, '0')}`
+      : '';
+  const level = levelLabel(plan.levelRequired, t);
+
+  // ラベルと値の行（アイコンは使わず、ラベルの列で揃える）
+  const rows: { key: string; label: string; value: string }[] = [
+    { key: 'date', label: t('homeFeed.dateTime'), value: `${formatEventDate(plan.startAt, t)}${endLabel}` },
+    ...(plan.resortName ? [{ key: 'resort', label: t('homeFeed.resortLabel'), value: plan.resortName }] : []),
+    ...(plan.meetingPlace ? [{ key: 'meeting', label: t('homeFeed.meetingPlace'), value: plan.meetingPlace }] : []),
     {
-      icon: 'people-outline',
-      label: t('homeFeed.members'),
-      value: plan.otherMembers > 0 ? t('homeFeed.youPlus', { count: plan.otherMembers }) : t('homeFeed.justYou'),
+      key: 'host',
+      label: t('homeFeed.hostLabel'),
+      value: plan.isHost ? t('homeFeed.hostYou') : plan.hostName,
     },
+    ...(level ? [{ key: 'level', label: t('homeFeed.levelLabel'), value: level }] : []),
   ];
+  const membersText = plan.otherMembers > 0 ? t('homeFeed.youPlus', { count: plan.otherMembers }) : t('homeFeed.justYou');
 
   return (
     // 天気カード（HomeWeatherCard）と同じガラス調：後ろの山の背景が透けて見える
@@ -69,15 +81,34 @@ export function NextPlanCard({ plan, onOpenChat, onOpenDetail, onOpenMyEvents }:
         </Text>
         <View style={styles.rows}>
           {rows.map((row) => (
-            <View key={row.label} style={styles.row}>
-              <Ionicons name={row.icon} size={16} color={c.textMuted} />
+            <View key={row.key} style={styles.row}>
+              <Text style={[styles.rowLabel, { color: c.textMuted }]}>{row.label}</Text>
               <Text style={[styles.rowText, { color: c.text }]} numberOfLines={1}>
-                <Text style={{ color: c.textMuted }}>{row.label}</Text>
-                {'　'}
                 {row.value}
               </Text>
             </View>
           ))}
+          {/* メンバー：写真を重ねて並べる */}
+          <View style={styles.row} accessible accessibilityLabel={`${t('homeFeed.members')} ${membersText}`}>
+            <Text style={[styles.rowLabel, { color: c.textMuted }]}>{t('homeFeed.members')}</Text>
+            {plan.memberAvatars.length > 0 ? (
+              <View style={styles.avatars}>
+                {plan.memberAvatars.map((url, i) => (
+                  <Image
+                    key={i}
+                    source={url ? { uri: url } : undefined}
+                    style={[
+                      styles.avatar,
+                      { backgroundColor: c.chipBackground, borderColor: c.background, marginLeft: i === 0 ? 0 : -6 },
+                    ]}
+                  />
+                ))}
+              </View>
+            ) : null}
+            <Text style={[styles.rowText, { color: c.text }]} numberOfLines={1}>
+              {membersText}
+            </Text>
+          </View>
         </View>
       </View>
       <View>
@@ -166,9 +197,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
+  rowLabel: {
+    width: 64,
+    fontSize: fontSize.meta,
+  },
   rowText: {
     flex: 1,
     fontSize: fontSize.meta,
+  },
+  avatars: {
+    flexDirection: 'row',
+  },
+  avatar: {
+    width: 22,
+    height: 22,
+    borderRadius: borderRadius.round,
+    borderWidth: 1.5,
   },
   actions: {
     flexDirection: 'row',

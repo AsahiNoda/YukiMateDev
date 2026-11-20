@@ -17,7 +17,7 @@ interface NoPlanCardProps {
 }
 
 /**
- * 予定がないときの入口カード（点線枠）。見た目の仕様：docs/ui-redesign/mockups/New-Home-NoPlan.html
+ * 予定がないときの入口カード（点線枠）。ホーム上部のスライドの2枚目（天気の裏）に出す。見た目の仕様：docs/ui-redesign/mockups/New-Home-NoPlan.html
  * 0件のときは「自分で作る」を主ボタンにする。
  */
 export function NoPlanCard({ soloCount, resortName, onSearch, onCreate, onOpenMyEvents }: NoPlanCardProps) {
@@ -28,6 +28,7 @@ export function NoPlanCard({ soloCount, resortName, onSearch, onCreate, onOpenMy
 
   return (
     <View style={[styles.card, { backgroundColor: c.card, borderColor: c.dashedBorder }]}>
+      <View>
       <View style={styles.kickerRow}>
         <Text style={[styles.kicker, { color: c.textLabel }]}>{t('homeFeed.slideNextPlan')}</Text>
         <MyEventsLink onPress={onOpenMyEvents} />
@@ -44,6 +45,7 @@ export function NoPlanCard({ soloCount, resortName, onSearch, onCreate, onOpenMy
             <Text style={[styles.chipText, { color: c.softTintChipText }]}>{label}</Text>
           </View>
         ))}
+      </View>
       </View>
       <View style={styles.actions}>
         {hasEvents ? (
@@ -63,8 +65,11 @@ export function NoPlanCard({ soloCount, resortName, onSearch, onCreate, onOpenMy
 }
 
 const styles = StyleSheet.create({
+  // ホーム上部のスライド（天気の裏）に入るので、天気カードと同じ高さいっぱいに広げる
   card: {
-    borderRadius: borderRadius.photoCard,
+    flex: 1,
+    justifyContent: 'space-between',
+    borderRadius: borderRadius.glass,
     borderWidth: 1,
     borderStyle: 'dashed',
     padding: spacing.md,

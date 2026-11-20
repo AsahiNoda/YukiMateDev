@@ -2,7 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { fetchWeatherData, requireWeather } from '@/services/weatherApi';
 import { getResortName } from '@/utils/resort-helpers';
-import { mockHomeData, type HomeData } from '@data/mockHomeData';
+import type { HomeData } from '@data/mockHomeData';
 import { useFocusEffect } from '@react-navigation/native';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -65,9 +65,9 @@ async function fetchFavorites(userId: string): Promise<FavoriteResortInfo[]> {
   return home?.id ? [{ ...home, isHome: true }] : [];
 }
 
-/** おすすめイベントと人気投稿（互いに依存しないので並列取得） */
+/** おすすめイベント（人気投稿の posts_snow はテーブルが無いので取得しない） */
 async function fetchHomeFeed(locale: string) {
-  const [eventsRes, trendingRes] = await Promise.all([
+  const [eventsRes] = await Promise.all([
     supabase
       .from('posts_events')
       .select(`
@@ -86,20 +86,6 @@ async function fetchHomeFeed(locale: string) {
       .gte('start_at', new Date().toISOString())
       .order('created_at', { ascending: false })
       .limit(10),
-    supabase
-      .from('posts_snow')
-      .select(`
-        id,
-        comment,
-        like_count,
-        created_at,
-        snow_tag,
-        resort_id,
-        resorts!posts_snow_resort_id_fkey(name, name_en),
-        photos
-      `)
-      .order('like_count', { ascending: false })
-      .limit(5),
   ]);
 
   if (eventsRes.error) throw eventsRes.error;
@@ -124,17 +110,7 @@ async function fetchHomeFeed(locale: string) {
   const priority = (role: string) => (role === 'developer' ? 0 : role === 'official' ? 1 : 2);
   featuredEvents.sort((a, b) => priority(a.hostRole) - priority(b.hostRole));
 
-  const trendingPosts = (trendingRes.data || []).map((post: any) => ({
-    id: post.id,
-    resortName: post.resorts ? getResortName(post.resorts, locale as any) : 'Unknown Resort',
-    photoUrl: post.photos && post.photos.length > 0 ? toPublicUrl('snow_images', post.photos[0]) : null,
-    snowTag: post.snow_tag || 'Snow',
-    comment: post.comment || '',
-    likeCount: post.like_count || 0,
-    createdAt: post.created_at,
-  }));
-
-  return { featuredEvents, trendingPosts };
+  return { featuredEvents };
 }
 
 export function useHomeData(): HomeDataResult {
@@ -248,7 +224,7 @@ export function useHomeData(): HomeDataResult {
         }
       : null;
 
-  const { featuredEvents, trendingPosts } = feedQuery.data;
+  const { featuredEvents } = feedQuery.data;
 
   return {
     status: 'success',
@@ -257,7 +233,7 @@ export function useHomeData(): HomeDataResult {
       weatherLoading,
       recommendedEvents: featuredEvents as any,
       suggestedEvents: [],
-      trendingPosts: trendingPosts.length > 0 ? (trendingPosts as any) : mockHomeData.trendingPosts,
+      trendingPosts: [],
     },
     ...base,
   };

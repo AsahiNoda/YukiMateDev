@@ -28,6 +28,8 @@ export type EventChat = {
   eventId: string;
   eventTitle: string;
   eventResortName: string | null;
+  /** ゲレンデの英語名（表示は getResortName で言語に合わせて選ぶ） */
+  eventResortNameEn?: string | null;
   eventStartAt: string;
   eventPhotos: string[];
   messages: EventMessage[];

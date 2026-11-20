@@ -57,6 +57,8 @@ export function useUserRating(targetUserId?: string) {
               .select('reaction')
               .eq('reactor_user_id', user.id)
               .eq('target_user_id', targetUserId)
+              // イベントに紐づかない評価（プロフィールから付けたもの）だけ。イベントごとの評価は振り返りで付ける
+              .is('event_id', null)
               .maybeSingle()
           : Promise.resolve({ data: null, error: null } as any),
       ]);
@@ -105,7 +107,8 @@ export function useUserRating(targetUserId?: string) {
             .from('user_reactions')
             .delete()
             .eq('reactor_user_id', user.id)
-            .eq('target_user_id', targetUserId);
+            .eq('target_user_id', targetUserId)
+            .is('event_id', null);
           if (error) return { success: false, error: error.message };
         } else {
           // upsert（1人1票・UNIQUE 制約で上書き）
@@ -113,10 +116,11 @@ export function useUserRating(targetUserId?: string) {
             {
               reactor_user_id: user.id,
               target_user_id: targetUserId,
+              event_id: null,
               reaction,
               updated_at: new Date().toISOString(),
             },
-            { onConflict: 'reactor_user_id,target_user_id' }
+            { onConflict: 'reactor_user_id,target_user_id,event_id' }
           );
           if (error) return { success: false, error: error.message };
         }
