@@ -13,6 +13,7 @@
 | `supabase/migrations/20261118000000_feed_interactions_rls.sql` | 通報に必要（未適用なら） | `reports` の本人名義 insert など |
 | `supabase/migrations/20261123000000_channel_media_bucket.sql` | チャンネルの写真に必要（feature/theme-channels） | 写真用の公開バケット `channel_media`（10MB・画像のみ、自分のフォルダーにだけアップロード可） |
 | `supabase/migrations/20261124000000_private_channels.sql` | プライベートチャンネルに必要（feature/theme-channels） | オープン／プライベート、参加リクエスト `channel_join_requests`、申請・承認の関数 `request_channel_join` / `respond_channel_join_request` |
+| `supabase/migrations/20261125000000_admin_dashboard.sql` | 運営ダッシュボード（Studio の admin スキーマ。docs/admin-dashboard.md） | 通報・問い合わせ・ユーザー・日ごとの数のビュー、対応の関数（通報を閉じる・利用停止・問い合わせの状態）と履歴 |
 | `supabase/migrations/20261122000000_theme_channels.sql` | チャンネルに必要（feature/theme-channels） | チャンネルの5テーブル・RLS・トリガー・`delete_channel_post` / `remove_channel_member`・通報の対象に `channel` / `channel_post`・Realtime |
 
 ---
@@ -93,8 +94,8 @@
 **今**：アプリから `reports` に入るだけ。**運営の見る場所が無い**。
 
 1. **自動の一時非表示**：同じ対象への未対応の通報が N 件（例 3件・別々の人）を超えたら、対象の投稿を `hidden_at` で隠すトリガー。
-2. **運営ダッシュボード**：Supabase Studio のビューで始める（`reports` × 対象の中身 × 通報者数）。次に簡単な管理画面（Next.js + service role、または Retool）。
-3. **対応フロー**：`reports.status`（pending → reviewing → resolved / rejected）、`moderation_actions(target, action, reason, actor, created_at)` で履歴。利用停止は `users.suspended_until` を見て、ログイン時・投稿時に弾く（RLS でも）。
+2. **運営ダッシュボード**：✅ Studio の `admin` スキーマで用意した（docs/admin-dashboard.md）。次に必要なら簡単な管理画面（Next.js + service role、または Retool）。
+3. **対応フロー**（一部 ✅：対応の履歴 `admin.moderation_actions`、利用停止は Auth の `banned_until`）：`reports.status`（pending → reviewing → resolved / rejected）、`moderation_actions(target, action, reason, actor, created_at)` で履歴。利用停止は `users.suspended_until` を見て、ログイン時・投稿時に弾く（RLS でも）。
 4. **24時間以内の確認**（規約で約束した）：新しい通報で運営の Slack / メールに通知（Database Webhook → Edge Function）。
 5. **コメントの通報**：`feed_comments` は表があるが UI が無い。コメント UI を作るときに「…→通報」を同時に入れる（`ReportSheet` の `targetType="comment"` で使える）。
 - 目安：1・4 で 1〜2日（**審査前に 4 だけでも入れておくのが安全**）、2・3 で 3〜5日。
