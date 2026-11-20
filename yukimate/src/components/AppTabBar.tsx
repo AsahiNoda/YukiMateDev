@@ -1,4 +1,4 @@
-import { borderRadius, fontWeight, spacing, touchTarget } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Ionicons } from '@expo/vector-icons';
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   label: {
-    fontSize: 10,
+    fontSize: fontSize.xxs,
   },
   badge: {
     position: 'absolute',
@@ -228,13 +228,13 @@ const styles = StyleSheet.create({
     right: -6,
     minWidth: 16,
     height: 16,
-    borderRadius: 8,
+    borderRadius: borderRadius.md,
     paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: fontSize.xxs,
     fontWeight: fontWeight.bold,
   },
 });

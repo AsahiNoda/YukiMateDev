@@ -1,3 +1,4 @@
+import { fontSize } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import React from 'react';
@@ -80,7 +81,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   label: {
-    fontSize: 16,
+    fontSize: fontSize.md,
   },
   right: {
     flexDirection: 'row',
@@ -88,6 +89,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   value: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
   },
 });

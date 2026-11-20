@@ -1,4 +1,4 @@
-import { fontWeight, spacing } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -77,7 +77,7 @@ export function HomeWeatherCard({ weather, columns, onPressMore, title, showMoun
           {/* 上の行：ゲレンデ名と最終更新 */}
           <View style={styles.topRow}>
             <Text
-              style={[styles.resortName, title ? { color: c.textMuted, fontSize: 13 } : { color: c.text }]}
+              style={[styles.resortName, title ? { color: c.textMuted, fontSize: fontSize.meta } : { color: c.text }]}
               numberOfLines={1}
             >
               {title ?? weather.resortName}
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
   },
   resortName: {
     flex: 1,
-    fontSize: 15,
+    fontSize: fontSize.body,
     fontWeight: fontWeight.bold,
   },
   updated: {
@@ -209,10 +209,10 @@ const styles = StyleSheet.create({
   updatedDot: {
     width: 6,
     height: 6,
-    borderRadius: 3,
+    borderRadius: borderRadius.round,
   },
   updatedText: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
   },
   nowRow: {
     flexDirection: 'row',
@@ -221,22 +221,22 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   temp: {
-    fontSize: 52,
-    fontWeight: '300',
+    fontSize: fontSize.display,
+    fontWeight: fontWeight.light,
     lineHeight: 56,
   },
   nowText: {
     flex: 1,
   },
   condition: {
-    fontSize: 16,
+    fontSize: fontSize.md,
     fontWeight: fontWeight.bold,
   },
   subCondition: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
   },
   hourlyTitle: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
     marginTop: 14,
     marginBottom: 6,
@@ -250,20 +250,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     paddingVertical: spacing.sm,
-    borderRadius: 10,
+    borderRadius: borderRadius.md,
   },
   hourPast: {
     opacity: 0.5,
   },
   hourLabel: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
   },
   hourTemp: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     fontWeight: fontWeight.bold,
   },
   hourSnow: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
   },
   moreLink: {
     marginTop: 14,
@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   moreText: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.bold,
   },
 });

@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   optionDescription: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
   },
   cancel: {
     minHeight: touchTarget.min,

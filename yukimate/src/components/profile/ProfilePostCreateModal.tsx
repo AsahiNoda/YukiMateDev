@@ -1,3 +1,6 @@
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
+import { PillButton } from '@/components/ui/PillButton';
+import { useTranslation } from '@/hooks/useTranslation';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useResorts } from '@/hooks/useResorts';
@@ -33,6 +36,7 @@ type Props = {
  */
 export function ProfilePostCreateModal({ visible, onClose, onCreated }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
@@ -95,11 +99,13 @@ export function ProfilePostCreateModal({ visible, onClose, onCreated }: Props) {
               <Ionicons name="close" size={26} color={colors.text} />
             </TouchableOpacity>
             <Text style={[styles.headerTitle, { color: colors.text }]}>新規投稿</Text>
-            <TouchableOpacity onPress={handleSubmit} disabled={submitting || !imageUrl}>
-              <Text style={[styles.postButton, { color: imageUrl ? colors.tint : colors.icon }]}>
-                {submitting ? '投稿中…' : '投稿'}
-              </Text>
-            </TouchableOpacity>
+            <PillButton
+              title={t('postModal.submit')}
+              size="sm"
+              onPress={handleSubmit}
+              loading={submitting}
+              disabled={!imageUrl}
+            />
           </View>
 
           <ScrollView contentContainerStyle={styles.content}>
@@ -194,7 +200,7 @@ export function ProfilePostCreateModal({ visible, onClose, onCreated }: Props) {
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
-  container: { flex: 1, borderTopLeftRadius: 16, borderTopRightRadius: 16, overflow: 'hidden' },
+  container: { flex: 1, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, overflow: 'hidden' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -203,13 +209,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderBottomWidth: 1,
   },
-  headerTitle: { fontSize: 17, fontWeight: '700' },
-  postButton: { fontSize: 16, fontWeight: '700' },
+  headerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold },
+  postButton: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
   content: { padding: 16, gap: 16 },
   imagePicker: {
     width: '100%',
     aspectRatio: 1,
-    borderRadius: 12,
+    borderRadius: borderRadius.card,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -217,27 +223,27 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   image: { width: '100%', height: '100%' },
-  imageHint: { fontSize: 14 },
+  imageHint: { fontSize: fontSize.sm },
   caption: {
     minHeight: 90,
-    borderRadius: 12,
+    borderRadius: borderRadius.card,
     borderWidth: 1,
     padding: 12,
-    fontSize: 15,
+    fontSize: fontSize.body,
     textAlignVertical: 'top',
   },
   resortSelector: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    borderRadius: 12,
+    borderRadius: borderRadius.card,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 14,
   },
-  resortText: { flex: 1, fontSize: 15 },
+  resortText: { flex: 1, fontSize: fontSize.body },
   pickerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  pickerModal: { borderTopLeftRadius: 20, borderTopRightRadius: 20, height: 500 },
+  pickerModal: { borderTopLeftRadius: borderRadius.glass, borderTopRightRadius: borderRadius.glass, height: 500 },
   pickerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -252,5 +258,5 @@ const styles = StyleSheet.create({
     padding: 16,
     borderBottomWidth: 1,
   },
-  pickerItemText: { fontSize: 16 },
+  pickerItemText: { fontSize: fontSize.md },
 });

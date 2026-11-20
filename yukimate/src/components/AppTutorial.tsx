@@ -1,5 +1,5 @@
 import { PillButton } from '@/components/ui/PillButton';
-import { fontWeight, spacing, touchTarget } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Ionicons } from '@expo/vector-icons';
@@ -139,13 +139,13 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   topRow: { height: touchTarget.min, alignItems: 'flex-end', paddingHorizontal: spacing.sm },
   skip: { minWidth: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.sm },
-  skipText: { fontSize: 15, fontWeight: fontWeight.semibold },
+  skipText: { fontSize: fontSize.body, fontWeight: fontWeight.semibold },
   slide: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl, gap: spacing.md },
-  iconCircle: { width: 120, height: 120, borderRadius: 60, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
-  title: { fontSize: 22, fontWeight: fontWeight.bold, textAlign: 'center' },
-  body: { fontSize: 15, lineHeight: 23, textAlign: 'center' },
+  iconCircle: { width: 120, height: 120, borderRadius: borderRadius.round, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
+  title: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, textAlign: 'center' },
+  body: { fontSize: fontSize.body, lineHeight: 23, textAlign: 'center' },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: spacing.lg },
-  dot: { height: 8, borderRadius: 4 },
+  dot: { height: 8, borderRadius: borderRadius.sm },
   footer: { paddingHorizontal: spacing.lg },
 });
 

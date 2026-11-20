@@ -2,7 +2,7 @@ import { ReportSheet } from '@/components/ReportSheet';
 import { ActionSheet, type ActionSheetAction } from '@/components/ui/ActionSheet';
 import { Chip } from '@/components/ui/Chip';
 import { PillButton } from '@/components/ui/PillButton';
-import { fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import {
   channelErrorKey,
@@ -280,7 +280,7 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   meta: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     marginTop: 2,
   },
   description: {
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     lineHeight: 23,
   },
   kindBox: {
-    borderRadius: 12,
+    borderRadius: borderRadius.card,
     padding: 14,
     gap: 2,
   },
@@ -297,13 +297,13 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
   },
   kindDesc: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
   },
   archived: {
     fontSize: fontSize.sm,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.semibold,
     marginTop: spacing.sm,
   },
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: borderRadius.round,
   },
   memberName: {
     flex: 1,

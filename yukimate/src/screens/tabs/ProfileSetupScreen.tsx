@@ -1,3 +1,4 @@
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
 import {
   CountryField,
   CountryPickerModal,
@@ -68,37 +69,37 @@ function createStyles(colors: typeof Colors.light) {
       marginTop: 48,
     },
     title: {
-      fontSize: 32,
-      fontWeight: 'bold',
+      fontSize: fontSize.xxxl,
+      fontWeight: fontWeight.bold,
       color: colors.text,
       marginBottom: 8,
     },
     subtitle: {
-      fontSize: 16,
+      fontSize: fontSize.md,
       color: colors.textSecondary,
     },
     section: {
       marginBottom: 24,
     },
     label: {
-      fontSize: 16,
-      fontWeight: '600',
+      fontSize: fontSize.md,
+      fontWeight: fontWeight.semibold,
       color: colors.text,
       marginBottom: 12,
     },
     input: {
       backgroundColor: colors.backgroundSecondary,
       color: colors.text,
-      fontSize: 16,
+      fontSize: fontSize.md,
       padding: 16,
-      borderRadius: 12,
+      borderRadius: borderRadius.card,
     },
     bioInput: {
       minHeight: 100,
       paddingTop: 16,
     },
     hint: {
-      fontSize: 12,
+      fontSize: fontSize.xs,
       color: colors.textSecondary,
       marginTop: 8,
     },
@@ -106,7 +107,7 @@ function createStyles(colors: typeof Colors.light) {
     headerImageContainer: {
       width: '100%',
       height: 180,
-      borderRadius: 12,
+      borderRadius: borderRadius.card,
       overflow: 'hidden',
       backgroundColor: colors.backgroundSecondary,
     },
@@ -123,7 +124,7 @@ function createStyles(colors: typeof Colors.light) {
       gap: 8,
     },
     placeholderText: {
-      fontSize: 14,
+      fontSize: fontSize.sm,
       color: colors.textSecondary,
       marginTop: 8,
     },
@@ -131,7 +132,7 @@ function createStyles(colors: typeof Colors.light) {
     avatarContainer: {
       width: 120,
       height: 120,
-      borderRadius: 60,
+      borderRadius: borderRadius.round,
       overflow: 'hidden',
       backgroundColor: colors.backgroundSecondary,
       alignSelf: 'center',
@@ -149,7 +150,7 @@ function createStyles(colors: typeof Colors.light) {
       backgroundColor: colors.backgroundSecondary,
     },
     avatarHint: {
-      fontSize: 12,
+      fontSize: fontSize.xs,
       color: colors.textSecondary,
       textAlign: 'center',
       marginTop: 8,
@@ -159,7 +160,7 @@ function createStyles(colors: typeof Colors.light) {
       flexDirection: 'row',
       alignItems: 'center',
       backgroundColor: colors.backgroundSecondary,
-      borderRadius: 12,
+      borderRadius: borderRadius.card,
       paddingHorizontal: 16,
       paddingVertical: 16,
       gap: 12,
@@ -171,7 +172,7 @@ function createStyles(colors: typeof Colors.light) {
     },
     selectedCountryText: {
       flex: 1,
-      fontSize: 16,
+      fontSize: fontSize.md,
       color: colors.text,
     },
     // ピッカーモーダルスタイル
@@ -182,8 +183,8 @@ function createStyles(colors: typeof Colors.light) {
     },
     pickerModal: {
       backgroundColor: colors.background,
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
+      borderTopLeftRadius: borderRadius.glass,
+      borderTopRightRadius: borderRadius.glass,
       height: 500,
     },
     pickerHeader: {
@@ -195,8 +196,8 @@ function createStyles(colors: typeof Colors.light) {
       borderBottomColor: colors.border,
     },
     pickerTitle: {
-      fontSize: 18,
-      fontWeight: '600',
+      fontSize: fontSize.lg,
+      fontWeight: fontWeight.semibold,
       color: colors.text,
     },
     pickerList: {
@@ -220,12 +221,12 @@ function createStyles(colors: typeof Colors.light) {
     },
     pickerItemText: {
       flex: 1,
-      fontSize: 16,
+      fontSize: fontSize.md,
       color: colors.textSecondary,
     },
     pickerItemTextActive: {
       color: colors.text,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
     },
     buttonGroup: {
       flexDirection: 'row',
@@ -236,38 +237,38 @@ function createStyles(colors: typeof Colors.light) {
       flex: 1,
       paddingVertical: 16,
       backgroundColor: colors.backgroundSecondary,
-      borderRadius: 12,
+      borderRadius: borderRadius.card,
       alignItems: 'center',
     },
     languageButtonActive: {
       backgroundColor: colors.tint,
     },
     languageText: {
-      fontSize: 16,
+      fontSize: fontSize.md,
       color: colors.textSecondary,
     },
     languageTextActive: {
       color: colors.text,
-      fontWeight: 'bold',
+      fontWeight: fontWeight.bold,
     },
     // スキルレベルスタイル
     skillButton: {
       flex: 1,
       paddingVertical: 16,
       backgroundColor: colors.backgroundSecondary,
-      borderRadius: 12,
+      borderRadius: borderRadius.card,
       alignItems: 'center',
     },
     skillButtonActive: {
       backgroundColor: colors.tint,
     },
     skillText: {
-      fontSize: 16,
+      fontSize: fontSize.md,
       color: colors.textSecondary,
     },
     skillTextActive: {
       color: colors.text,
-      fontWeight: 'bold',
+      fontWeight: fontWeight.bold,
     },
     styleGrid: {
       flexDirection: 'row',
@@ -278,23 +279,23 @@ function createStyles(colors: typeof Colors.light) {
       paddingHorizontal: 16,
       paddingVertical: 12,
       backgroundColor: colors.backgroundSecondary,
-      borderRadius: 20,
+      borderRadius: borderRadius.glass,
     },
     styleButtonActive: {
       backgroundColor: colors.tint,
     },
     styleText: {
-      fontSize: 14,
+      fontSize: fontSize.sm,
       color: colors.textSecondary,
     },
     styleTextActive: {
       color: colors.text,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
     },
     submitButton: {
       marginTop: 24,
       paddingVertical: 16,
-      borderRadius: 12,
+      borderRadius: borderRadius.card,
       backgroundColor: colors.tint,
       alignItems: 'center',
     },
@@ -303,8 +304,8 @@ function createStyles(colors: typeof Colors.light) {
     },
     submitButtonText: {
       color: colors.text,
-      fontSize: 18,
-      fontWeight: '600',
+      fontSize: fontSize.lg,
+      fontWeight: fontWeight.semibold,
     },
   });
 }

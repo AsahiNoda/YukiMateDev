@@ -1,3 +1,4 @@
+import { fontSize, fontWeight } from '@/constants/spacing';
 import {
   CountryField,
   CountryPickerModal,
@@ -37,8 +38,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { COUNTRIES, getFlagSource } from '@/constants/countries';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/hooks/useTranslation';
 
 type RidingStyle = 'Freeride' | 'Powder' | 'Carving' | 'Park' | 'Backcountry';
@@ -55,8 +55,7 @@ const RIDING_STYLES: RidingStyle[] = [
 
 export default function EditProfileScreen() {
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colors = useAppColors();
   const { user } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const profileState = useProfile(undefined, refreshKey);
@@ -389,7 +388,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     // color is set dynamically
-    fontSize: 16,
+    fontSize: fontSize.md,
   },
   header: {
     flexDirection: 'row',
@@ -407,261 +406,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
     // color is set dynamically
-  },
-  saveButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  saveButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    // color is set dynamically
-  },
-  saveButtonTextDisabled: {
-    // color is set dynamically
-  },
-  scrollView: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 20,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    // color is set dynamically
-    marginBottom: 8,
-  },
-  input: {
-    // backgroundColor, borderColor, color are set dynamically
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    borderWidth: 1,
-  },
-  textArea: {
-    height: 100,
-    paddingTop: 12,
-  },
-  charCount: {
-    fontSize: 12,
-    // color is set dynamically
-    textAlign: 'right',
-    marginTop: 4,
-  },
-  // ヘッダー画像スタイル
-  headerImageContainer: {
-    width: '100%',
-    height: 180,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#1e293b',
-    borderWidth: 2,
-    borderColor: '#334155',
-  },
-  headerImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  headerImagePlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  placeholderText: {
-    fontSize: 14,
-    // color is set dynamically
-    marginTop: 8,
-  },
-  // アバター画像スタイル
-  avatarContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    overflow: 'hidden',
-    backgroundColor: '#1e293b',
-    borderWidth: 3,
-    borderColor: '#334155',
-    alignSelf: 'center',
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#1e293b',
-  },
-  avatarHint: {
-    fontSize: 12,
-    // color is set dynamically
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  // 国籍セレクタースタイル
-  countrySelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1e293b',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  selectedFlag: {
-    width: 32,
-    height: 22,
-    resizeMode: 'contain',
-  },
-  selectedCountryText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#FFFFFF',
-  },
-  // ピッカーモーダルスタイル
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  pickerModal: {
-    backgroundColor: '#0f172a',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    height: 500,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-  },
-  pickerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  pickerList: {
-    // maxHeight removed to fill available space
-  },
-  pickerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
-  },
-  pickerItemActive: {
-    backgroundColor: '#1e293b',
-  },
-  pickerFlag: {
-    width: 32,
-    height: 22,
-    resizeMode: 'contain',
-  },
-  pickerItemText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#cbd5e1',
-  },
-  pickerItemTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  buttonGroup: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  // 言語スタイル
-  languageButton: {
-    flex: 1,
-    paddingVertical: 16,
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  languageButtonActive: {
-    borderColor: '#06b6d4',
-    backgroundColor: '#0e7490',
-  },
-  languageText: {
-    fontSize: 16,
-    color: '#94a3b8',
-  },
-  languageTextActive: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  levelButton: {
-    flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#1e293b',
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  levelButtonActive: {
-    backgroundColor: '#06b6d4',
-    borderColor: '#06b6d4',
-  },
-  levelButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#94a3b8',
-  },
-  levelButtonTextActive: {
-    color: '#FFFFFF',
-  },
-  styleGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  snsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
-  },
-  snsIcon: {
-    width: 24,
-    textAlign: 'center',
-  },
-  snsInput: {
-    flex: 1,
-  },
-  styleButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#1e293b',
-    borderRadius: 20,
-  },
-  styleButtonActive: {
-    backgroundColor: '#0e7490',
-  },
-  styleText: {
-    fontSize: 14,
-    color: '#94a3b8',
-  },
-  styleTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
   },
 });

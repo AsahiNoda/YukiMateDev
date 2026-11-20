@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     textAlign: 'center',
-    fontSize: 17,
+    fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
   },
   iconButton: {
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: fontSize.meta,
     lineHeight: 19,
   },
   search: {
@@ -372,13 +372,13 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   section: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.bold,
     marginTop: spacing.md + 2,
     marginBottom: 2,
   },
   hint: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     paddingVertical: spacing.sm,
   },
   row: {
@@ -403,10 +403,10 @@ const styles = StyleSheet.create({
   },
   rowName: {
     flexShrink: 1,
-    fontSize: 16,
+    fontSize: fontSize.md,
   },
   rowArea: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     marginTop: 1,
   },
   areaHeader: {
@@ -418,11 +418,11 @@ const styles = StyleSheet.create({
   },
   areaName: {
     flex: 1,
-    fontSize: 15,
+    fontSize: fontSize.body,
     fontWeight: fontWeight.semibold,
   },
   areaCount: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
   },
   areaList: {
     paddingLeft: spacing.sm,
@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
   empty: {
     textAlign: 'center',
     marginTop: spacing.xl,
-    fontSize: 14,
+    fontSize: fontSize.sm,
   },
 });
 

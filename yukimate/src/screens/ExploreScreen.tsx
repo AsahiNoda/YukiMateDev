@@ -1,10 +1,11 @@
+import { PillButton } from '@/components/ui/PillButton';
 import { EventListCard } from '@/components/EventListCard';
 import { ResortSearch } from '@/components/snowfeed/ResortSearch';
 import { Chip } from '@/components/ui/Chip';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { DatePickerSheet } from '@/components/ui/DatePickerSheet';
 import { OptionSheet } from '@/components/ui/OptionSheet';
-import { spacing } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { ACTIVITY_TYPES, type ActivityType } from '@/constants/activities';
 import { getAreaOrder } from '@/constants/areas';
 import { Colors } from '@/constants/theme';
@@ -329,9 +330,7 @@ export default function ExploreScreen({ header, initialFilters }: ExploreScreenP
         <View style={styles.centered}>
           <IconSymbol name="exclamationmark.triangle" size={48} color={colors.error} />
           <Text style={[styles.errorText, { color: colors.error }]}>{t('explore.errorOccurred')}</Text>
-          <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.tint }]} onPress={refetch}>
-            <Text style={[styles.retryButtonText, { color: colors.text }]}>{t('explore.retry')}</Text>
-          </TouchableOpacity>
+          <PillButton title={t('explore.retry')} icon="refresh" variant="secondary" onPress={refetch} />
         </View>
       )}
 
@@ -524,12 +523,12 @@ const styles = StyleSheet.create({
     marginBottom: SECTION_GAP,
     paddingHorizontal: 12,
     minHeight: 44,
-    borderRadius: 12,
+    borderRadius: borderRadius.card,
     gap: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: fontSize.md,
     // color is set dynamically in the component
   },
   categoriesContainer: {
@@ -545,7 +544,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 8,
     paddingVertical: 8,
-    borderRadius: 16,
+    borderRadius: borderRadius.xl,
     // backgroundColor is set dynamically in the component
     gap: 4,
   },
@@ -553,8 +552,8 @@ const styles = StyleSheet.create({
     // backgroundColor is set dynamically in the component
   },
   categoryText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
     // color is set dynamically in the component
   },
   categoryTextActive: {
@@ -568,21 +567,21 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   resultsText: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     // color is set dynamically in the component
   },
   resortFilter: {
     flexDirection: 'row',
     alignItems: 'center',
     // backgroundColor is set dynamically in the component
-    borderRadius: 8,
+    borderRadius: borderRadius.md,
     paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 6,
   },
   resortFilterText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: fontSize.meta,
+    fontWeight: fontWeight.semibold,
     // color is set dynamically in the component
   },
   listContent: {
@@ -614,7 +613,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm + 4,
   },
   countText: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
   },
   resortInfoLink: {
     flexDirection: 'row',
@@ -622,8 +621,8 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   resortInfoText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: fontSize.meta,
+    fontWeight: fontWeight.bold,
   },
   sortButton: {
     flexDirection: 'row',
@@ -639,24 +638,13 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     // color is set dynamically in the component
-    fontSize: 16,
+    fontSize: fontSize.md,
   },
   errorText: {
     marginTop: 16,
     // color is set dynamically in the component
-    fontSize: 16,
+    fontSize: fontSize.md,
     marginBottom: 16,
-  },
-  retryButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    // backgroundColor is set dynamically in the component
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    // color is set dynamically in the component
-    fontSize: 16,
-    fontWeight: '600',
   },
   empty: {
     alignItems: 'center',
@@ -667,14 +655,14 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: 16,
     // color is set dynamically in the component
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
     textAlign: 'center',
   },
   emptySubtext: {
     marginTop: 8,
     // color is set dynamically in the component
-    fontSize: 14,
+    fontSize: fontSize.sm,
     textAlign: 'center',
   },
   sortFab: {
@@ -683,7 +671,7 @@ const styles = StyleSheet.create({
     right: 24,
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: borderRadius.round,
     // backgroundColor and shadowColor are set dynamically in the component
     alignItems: 'center',
     justifyContent: 'center',
@@ -700,13 +688,13 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     // backgroundColor is set dynamically in the component
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: borderRadius.sheet,
+    borderTopRightRadius: borderRadius.sheet,
     padding: 24,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
     // color is set dynamically in the component
     marginBottom: 20,
   },
@@ -719,7 +707,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: borderRadius.card,
     marginBottom: 8,
   },
   areaSection: {
@@ -731,12 +719,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: borderRadius.md,
     marginBottom: 4,
   },
   areaHeaderText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
     // color is set dynamically in the component
   },
   resortListContainer: {
@@ -748,33 +736,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: borderRadius.md,
     marginBottom: 4,
   },
   resortItemActive: {
     // backgroundColor is set dynamically in the component
   },
   resortItemText: {
-    fontSize: 15,
+    fontSize: fontSize.body,
     // color is set dynamically in the component
   },
   resortItemTextActive: {
     // color is set dynamically in the component
-    fontWeight: '600',
+    fontWeight: fontWeight.semibold,
   },
   modalOptionActive: {
     // backgroundColor is set dynamically in the component
   },
   modalOptionText: {
-    fontSize: 16,
+    fontSize: fontSize.md,
     // color is set dynamically in the component
   },
   modalOptionTextActive: {
     // color is set dynamically in the component
-    fontWeight: '600',
+    fontWeight: fontWeight.semibold,
   },
   modalOptionSubtext: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     marginTop: 2,
     // color is set dynamically in the component
   },
@@ -783,8 +771,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 8,
@@ -802,8 +790,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   homeResortText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
     // color is set dynamically in the component
   },
 });

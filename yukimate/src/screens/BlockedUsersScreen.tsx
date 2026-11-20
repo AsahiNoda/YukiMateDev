@@ -1,3 +1,5 @@
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
+import { PillButton } from '@/components/ui/PillButton';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -144,21 +146,13 @@ export default function BlockedUsersScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={[
-            styles.unblockButton,
-            isUnblocking && styles.unblockButtonDisabled,
-            { borderColor: colors.error },
-          ]}
+        <PillButton
+          title={t('blockedUsers.unblockButton')}
+          size="sm"
+          variant="secondary"
+          loading={isUnblocking}
           onPress={() => handleUnblock(item.id, item.blocked_user_id)}
-          disabled={isUnblocking}
-        >
-          {isUnblocking ? (
-            <ActivityIndicator size="small" color={colors.error} />
-          ) : (
-            <Text style={[styles.unblockButtonText, { color: colors.error }]}>{t('blockedUsers.unblockButton')}</Text>
-          )}
-        </TouchableOpacity>
+        />
       </View>
     );
   };
@@ -226,8 +220,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
   },
   placeholder: {
     width: 40,
@@ -259,31 +253,16 @@ const styles = StyleSheet.create({
   avatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: borderRadius.round,
   },
   avatarPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   userName: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
     flex: 1,
-  },
-  unblockButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  unblockButtonDisabled: {
-    opacity: 0.5,
-  },
-  unblockButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   emptyContainer: {
     flex: 1,
@@ -292,7 +271,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: fontSize.md,
     textAlign: 'center',
   },
 });

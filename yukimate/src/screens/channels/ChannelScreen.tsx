@@ -254,7 +254,7 @@ export default function ChannelScreen() {
             accessibilityHint={t('channels.postMenuTitle')}
             style={[
               styles.bubble,
-              own ? { backgroundColor: c.primaryButton, borderBottomRightRadius: 4 } : { backgroundColor: c.chipBackground, borderBottomLeftRadius: 4 },
+              own ? { backgroundColor: c.primaryButton, borderBottomRightRadius: borderRadius.sm } : { backgroundColor: c.chipBackground, borderBottomLeftRadius: borderRadius.sm },
               item.media.length > 0 && !item.body && styles.bubbleMediaOnly,
             ]}
           >
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: borderRadius.round,
   },
   messageContent: {
     maxWidth: '78%',
@@ -680,7 +680,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   bubble: {
-    borderRadius: 18,
+    borderRadius: borderRadius.xl,
     paddingHorizontal: 14,
     paddingVertical: 9,
     gap: 6,
@@ -691,14 +691,14 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   bubbleImage: {
-    borderRadius: 12,
+    borderRadius: borderRadius.card,
   },
   bubbleText: {
     fontSize: fontSize.md,
     lineHeight: 22,
   },
   time: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
     marginTop: 2,
     marginHorizontal: 4,
   },
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.pill,
   },
   tileBadgeText: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
     fontWeight: fontWeight.semibold,
   },
   feedList: {
@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
   },
   feedImage: {
     width: '100%',
-    borderRadius: 10,
+    borderRadius: borderRadius.md,
   },
   empty: {
     alignItems: 'center',
@@ -790,7 +790,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
     maxHeight: 120,
-    borderRadius: 20,
+    borderRadius: borderRadius.round,
     paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 10,
@@ -799,7 +799,7 @@ const styles = StyleSheet.create({
   sendButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: borderRadius.round,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
@@ -813,7 +813,7 @@ const styles = StyleSheet.create({
   preview: {
     width: 64,
     height: 64,
-    borderRadius: 10,
+    borderRadius: borderRadius.round,
   },
   previewRemove: {
     position: 'absolute',
@@ -821,7 +821,7 @@ const styles = StyleSheet.create({
     right: 4,
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: borderRadius.round,
     alignItems: 'center',
     justifyContent: 'center',
   },

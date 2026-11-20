@@ -1,3 +1,4 @@
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useColorScheme } from 'react-native';
 import { reportError } from '@/lib/sentry';
@@ -139,50 +140,50 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   emoji: {
-    fontSize: 64,
+    fontSize: fontSize.displayLarge,
     marginBottom: 16,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: fontSize.xxl,
+    fontWeight: fontWeight.bold,
     marginBottom: 12,
     textAlign: 'center',
   },
   message: {
-    fontSize: 16,
+    fontSize: fontSize.md,
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 24,
   },
   errorDetails: {
     width: '100%',
-    borderRadius: 8,
+    borderRadius: borderRadius.md,
     padding: 16,
     marginBottom: 24,
   },
   errorTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
     marginBottom: 8,
     marginTop: 12,
   },
   errorText: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     fontFamily: 'monospace',
   },
   button: {
     paddingHorizontal: 32,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: borderRadius.card,
     marginBottom: 16,
   },
   buttonText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
   },
   hint: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     textAlign: 'center',
   },
 });

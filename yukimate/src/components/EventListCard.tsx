@@ -1,7 +1,7 @@
 import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
 import { Chip } from '@/components/ui/Chip';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { borderRadius, fontWeight, spacing } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useBookmark } from '@/hooks/useBookmark';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -215,8 +215,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   dateText: {
-    fontSize: 13,
-    fontWeight: '900',
+    fontSize: fontSize.meta,
+    fontWeight: fontWeight.heavy,
   },
   levelPill: {
     position: 'absolute',
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   overlaySmallText: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
     fontWeight: fontWeight.bold,
   },
   body: {
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   title: {
-    fontSize: 18,
+    fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
     lineHeight: 24,
   },
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   },
   placeText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: fontSize.meta,
   },
   chips: {
     flexDirection: 'row',
@@ -272,16 +272,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   hostName: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.bold,
     flexShrink: 1,
   },
   price: {
-    fontSize: 16,
+    fontSize: fontSize.md,
     fontWeight: fontWeight.bold,
   },
   perPerson: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.normal,
   },
 });

@@ -1,3 +1,4 @@
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import { Image } from 'expo-image';
@@ -231,20 +232,20 @@ const styles = StyleSheet.create({
     logoImage: {
         width: 100,
         height: 100,
-        borderRadius: 50,
+        borderRadius: borderRadius.round,
     },
     form: {
         width: '100%',
     },
     title: {
-        fontSize: 28,
-        fontWeight: '700',
+        fontSize: fontSize.title,
+        fontWeight: fontWeight.bold,
         marginBottom: 12,
         textAlign: 'center',
         letterSpacing: -0.5,
     },
     description: {
-        fontSize: 14,
+        fontSize: fontSize.sm,
         marginBottom: 24,
         textAlign: 'center',
         lineHeight: 20,
@@ -254,13 +255,13 @@ const styles = StyleSheet.create({
     },
     input: {
         borderWidth: 1,
-        borderRadius: 14,
+        borderRadius: borderRadius.card,
         padding: 18,
-        fontSize: 16,
+        fontSize: fontSize.md,
         marginBottom: 14,
     },
     button: {
-        borderRadius: 14,
+        borderRadius: borderRadius.card,
         padding: 18,
         alignItems: 'center',
         justifyContent: 'center',
@@ -279,8 +280,8 @@ const styles = StyleSheet.create({
         opacity: 0.6,
     },
     buttonText: {
-        fontSize: 17,
-        fontWeight: '600',
+        fontSize: fontSize.lg,
+        fontWeight: fontWeight.semibold,
         letterSpacing: 0.3,
     },
     languageButton: {
@@ -290,11 +291,11 @@ const styles = StyleSheet.create({
         zIndex: 10,
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 20,
+        borderRadius: borderRadius.glass,
         backgroundColor: 'rgba(128, 128, 128, 0.1)',
     },
     languageButtonText: {
-        fontSize: 14,
-        fontWeight: '600',
+        fontSize: fontSize.sm,
+        fontWeight: fontWeight.semibold,
     },
 });

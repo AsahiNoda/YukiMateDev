@@ -541,7 +541,7 @@ const styles = StyleSheet.create({
   },
   card: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 20,
+    borderRadius: borderRadius.glass,
     overflow: 'hidden',
   },
   cardBehind: {
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
   indicatorBar: {
     width: 40,
     height: 3,
-    borderRadius: 2,
+    borderRadius: borderRadius.sm,
   },
   starredBadge: {
     position: 'absolute',
@@ -622,12 +622,12 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   title: {
-    fontSize: 22,
+    fontSize: fontSize.xxl,
     lineHeight: 30,
-    fontWeight: '900',
+    fontWeight: fontWeight.heavy,
   },
   description: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     lineHeight: 20,
   },
   chips: {
@@ -641,7 +641,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   hostText: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     flexShrink: 1,
   },
   price: {
@@ -650,7 +650,7 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   perPerson: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.normal,
   },
   hintRow: {
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md + 4,
   },
   hintText: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
   },
   actions: {
     flexDirection: 'row',
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
   roundIcon: {
     width: 56,
     height: 56,
-    borderRadius: 28,
+    borderRadius: borderRadius.round,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
@@ -691,7 +691,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 26,
   },
   actionLabel: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
   },
   modalOverlay: {

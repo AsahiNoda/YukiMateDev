@@ -1,4 +1,4 @@
-import { borderRadius, fontWeight, spacing } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -101,7 +101,7 @@ export function WeatherForecast({ forecast }: WeatherForecastProps) {
                     <View style={[styles.snowBar, { width: `${barWidth}%`, backgroundColor: isMax ? c.tintText : c.weeklyBar }]} />
                   ) : null}
                 </View>
-                <Text style={[styles.snow, isMax ? { color: c.tintText, fontWeight: '900' } : { color: c.textMuted }]}>
+                <Text style={[styles.snow, isMax ? { color: c.tintText, fontWeight: fontWeight.heavy } : { color: c.textMuted }]}>
                   {snow > 0 ? snow : '–'}
                 </Text>
               </View>
@@ -115,7 +115,7 @@ export function WeatherForecast({ forecast }: WeatherForecastProps) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
+    borderRadius: borderRadius.glass,
     borderWidth: 1.5,
     overflow: 'hidden',
   },
@@ -131,11 +131,11 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   title: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.bold,
   },
   unit: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
   },
   row: {
     flexDirection: 'row',
@@ -143,20 +143,20 @@ const styles = StyleSheet.create({
     gap: spacing.md - 4,
     paddingVertical: 8,
     paddingHorizontal: 6,
-    borderRadius: 10,
+    borderRadius: borderRadius.md,
   },
   dayCol: {
     width: 44,
   },
   day: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
   },
   date: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
   },
   temps: {
     width: 74,
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.bold,
   },
   snowCol: {
@@ -178,17 +178,17 @@ const styles = StyleSheet.create({
   snow: {
     width: 26,
     textAlign: 'right',
-    fontSize: 14,
+    fontSize: fontSize.sm,
     fontWeight: fontWeight.bold,
   },
   unavailable: {
-    borderRadius: 20,
+    borderRadius: borderRadius.glass,
     padding: spacing.lg,
     alignItems: 'center',
     gap: spacing.sm,
   },
   unavailableText: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     textAlign: 'center',
   },
 });

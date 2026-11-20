@@ -1,5 +1,5 @@
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { borderRadius, fontWeight, spacing } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useBookmark } from '@/hooks/useBookmark';
 import type { HomeEventSummary } from '@/hooks/useHomeFeed';
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   overlayText: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
   },
   save: {
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
     right: 8,
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: borderRadius.round,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -156,16 +156,16 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   date: {
-    fontSize: 13,
-    fontWeight: '900',
+    fontSize: fontSize.meta,
+    fontWeight: fontWeight.heavy,
     marginBottom: 4,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '900',
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.heavy,
     lineHeight: 26,
     marginBottom: 6,
     textShadowColor: 'rgba(0,0,0,0.5)',
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   },
   place: {
     flex: 1,
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.bold,
   },
 });

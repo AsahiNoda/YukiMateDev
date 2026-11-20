@@ -1,3 +1,4 @@
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
 import { ImageViewer } from '@/components/ImageViewer';
 import { ReportSheet } from '@/components/ReportSheet';
 import { Chip } from '@/components/ui/Chip';
@@ -91,14 +92,14 @@ function createStyles(colors: typeof Colors.light) {
       zIndex: 10,
     },
     cancelledNotice: {
-      borderRadius: 12,
+      borderRadius: borderRadius.card,
       paddingHorizontal: 12,
       paddingVertical: 10,
       marginBottom: 12,
     },
     cancelledText: {
-      fontSize: 14,
-      fontWeight: '700',
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.bold,
     },
     activityRow: {
       flexDirection: 'row',
@@ -133,24 +134,13 @@ function createStyles(colors: typeof Colors.light) {
     loadingText: {
       marginTop: 16,
       color: colors.textSecondary,
-      fontSize: 16,
+      fontSize: fontSize.md,
     },
     errorText: {
       color: colors.error,
-      fontSize: 18,
+      fontSize: fontSize.lg,
       textAlign: 'center',
       marginBottom: 24,
-    },
-    backButton: {
-      paddingVertical: 12,
-      paddingHorizontal: 24,
-      backgroundColor: colors.backgroundSecondary,
-      borderRadius: 8,
-    },
-    backButtonText: {
-      color: colors.textSecondary,
-      fontSize: 16,
-      fontWeight: '600',
     },
     headerImageContainer: {
       width: '100%',
@@ -176,7 +166,7 @@ function createStyles(colors: typeof Colors.light) {
     imageIndicatorBar: {
       flex: 1,
       height: 3,
-      borderRadius: 2,
+      borderRadius: borderRadius.sm,
     },
     backButtonIcon: {
       position: 'absolute',
@@ -198,16 +188,16 @@ function createStyles(colors: typeof Colors.light) {
     },
     contentCard: {
       backgroundColor: colors.background,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
+      borderTopLeftRadius: borderRadius.sheet,
+      borderTopRightRadius: borderRadius.sheet,
       marginTop: -24,
       padding: 24,
       position: 'relative',
       zIndex: 1,
     },
     title: {
-      fontSize: 26,
-      fontWeight: 'bold',
+      fontSize: fontSize.xxl,
+      fontWeight: fontWeight.bold,
       color: colors.text,
       marginBottom: 16,
     },
@@ -215,12 +205,12 @@ function createStyles(colors: typeof Colors.light) {
       marginBottom: 20,
     },
     sectionLabel: {
-      fontSize: 12,
-      fontWeight: '700',
+      fontSize: fontSize.xs,
+      fontWeight: fontWeight.bold,
       marginBottom: 6,
     },
     descriptionText: {
-      fontSize: 15,
+      fontSize: fontSize.body,
       lineHeight: 23,
     },
     detailsGrid: {
@@ -246,7 +236,7 @@ function createStyles(colors: typeof Colors.light) {
     gridIconContainer: {
       width: 36,
       height: 36,
-      borderRadius: 18,
+      borderRadius: borderRadius.round,
       backgroundColor: colors.backgroundSecondary,
       alignItems: 'center',
       justifyContent: 'center',
@@ -256,9 +246,9 @@ function createStyles(colors: typeof Colors.light) {
       flex: 1,
     },
     gridValue: {
-      fontSize: 14,
+      fontSize: fontSize.sm,
       color: colors.text,
-      fontWeight: '500',
+      fontWeight: fontWeight.medium,
     },
     tagsSection: {
       marginBottom: 20,
@@ -269,8 +259,8 @@ function createStyles(colors: typeof Colors.light) {
       gap: 8,
     },
     tagText: {
-      fontSize: 13,
-      fontWeight: '500',
+      fontSize: fontSize.meta,
+      fontWeight: fontWeight.medium,
     },
     participantsSection: {
       marginTop: 4,
@@ -285,20 +275,20 @@ function createStyles(colors: typeof Colors.light) {
     participantAvatar: {
       width: 48,
       height: 48,
-      borderRadius: 24,
+      borderRadius: borderRadius.round,
       backgroundColor: colors.tint,
     },
     participantAvatarPlaceholder: {
       width: 48,
       height: 48,
-      borderRadius: 24,
+      borderRadius: borderRadius.round,
       backgroundColor: colors.tint,
       alignItems: 'center',
       justifyContent: 'center',
     },
     participantAvatarText: {
-      fontSize: 18,
-      fontWeight: 'bold',
+      fontSize: fontSize.lg,
+      fontWeight: fontWeight.bold,
       color: colors.text,
     },
     participantInfo: {
@@ -311,8 +301,8 @@ function createStyles(colors: typeof Colors.light) {
       marginBottom: 4,
     },
     participantName: {
-      fontSize: 15,
-      fontWeight: '600',
+      fontSize: fontSize.body,
+      fontWeight: fontWeight.semibold,
       color: colors.text,
       marginRight: 6,
     },
@@ -320,7 +310,7 @@ function createStyles(colors: typeof Colors.light) {
       marginRight: 4,
     },
     participantFlag: {
-      fontSize: 16,
+      fontSize: fontSize.md,
     },
     participantFlagImage: {
       width: 24,
@@ -333,7 +323,7 @@ function createStyles(colors: typeof Colors.light) {
       gap: 4,
     },
     participantStyleTagText: {
-      fontSize: 12,
+      fontSize: fontSize.xs,
       color: colors.textSecondary,
     },
     footer: {
@@ -359,12 +349,12 @@ function createStyles(colors: typeof Colors.light) {
     footerHostAvatar: {
       width: 40,
       height: 40,
-      borderRadius: 20,
+      borderRadius: borderRadius.round,
       marginRight: 10,
     },
     footerHostAvatarText: {
-      fontSize: 16,
-      fontWeight: 'bold',
+      fontSize: fontSize.md,
+      fontWeight: fontWeight.bold,
       color: colors.text,
     },
     footerHostInfo: {
@@ -372,7 +362,7 @@ function createStyles(colors: typeof Colors.light) {
       flex: 1,
     },
     footerHostLabel: {
-      fontSize: 11,
+      fontSize: fontSize.xxs,
       color: colors.icon,
       marginBottom: 2,
     },
@@ -382,8 +372,8 @@ function createStyles(colors: typeof Colors.light) {
       gap: 6,
     },
     footerHostName: {
-      fontSize: 14,
-      fontWeight: '600',
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.semibold,
       color: colors.text,
     },
     footerHostStar: {
@@ -779,12 +769,7 @@ export default function EventDetailScreen() {
     return (
       <View style={[styles.centered, { backgroundColor: colors.background }]}>
         <Text style={[styles.errorText, { color: colors.error }]}>{error || t('eventDetail.eventNotFound')}</Text>
-        <TouchableOpacity
-          style={[styles.backButton, { backgroundColor: colors.backgroundSecondary }]}
-          onPress={() => router.back()}
-        >
-          <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>{t('common.back')}</Text>
-        </TouchableOpacity>
+        <PillButton title={t('common.back')} variant="secondary" onPress={() => router.back()} />
       </View>
     );
   }

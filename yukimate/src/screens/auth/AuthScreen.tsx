@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xxl,
   },
   logo: {
-    fontSize: 80,
+    fontSize: fontSize.displayLarge,
     marginBottom: spacing.md,
   },
   appName: {

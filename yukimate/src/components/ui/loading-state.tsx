@@ -1,3 +1,4 @@
+import { fontSize } from '@/constants/spacing';
 import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { Colors } from '@/constants/theme';
@@ -28,7 +29,7 @@ const styles = StyleSheet.create({
   },
   message: {
     marginTop: 16,
-    fontSize: 16,
+    fontSize: fontSize.md,
   },
 });
 

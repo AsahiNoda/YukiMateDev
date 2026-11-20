@@ -1,3 +1,4 @@
+import { fontSize, fontWeight } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
 import { useTranslation } from '@/hooks/useTranslation';
 import { IconSymbol } from '@components/ui/icon-symbol';
@@ -371,8 +372,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
   },
   placeholder: {
     width: 40,
@@ -384,7 +385,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   description: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     lineHeight: 20,
     padding: 16,
   },
@@ -398,8 +399,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   categoryTitle: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
     marginBottom: 16,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -416,12 +417,12 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   settingTitle: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
     marginBottom: 4,
   },
   settingDescription: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     lineHeight: 18,
   },
   noteSection: {
@@ -429,7 +430,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
   noteText: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     lineHeight: 16,
   },
 });

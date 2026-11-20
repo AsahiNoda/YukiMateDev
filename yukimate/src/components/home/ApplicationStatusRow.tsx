@@ -1,4 +1,4 @@
-import { spacing, touchTarget } from '@/constants/spacing';
+import { borderRadius, fontSize, spacing, touchTarget } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Ionicons } from '@expo/vector-icons';
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   text: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
   },
   received: {
     flexDirection: 'row',
@@ -79,7 +79,7 @@ const styles = StyleSheet.create({
   dot: {
     width: 6,
     height: 6,
-    borderRadius: 3,
+    borderRadius: borderRadius.round,
   },
 });
 

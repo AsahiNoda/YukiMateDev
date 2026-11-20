@@ -1,7 +1,7 @@
 import { ResortSearch } from '@/components/snowfeed/ResortSearch';
 import { showTutorialAgain } from '@/components/AppTutorial';
 import { ActionSheet } from '@/components/ui/ActionSheet';
-import { borderRadius, fontWeight, spacing, touchTarget } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLocale } from '@/contexts/LocaleContext';
 import { useAppColors } from '@/hooks/useAppColors';
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
   },
   content: {
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   groupTitle: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.bold,
     marginLeft: 4,
     marginBottom: spacing.sm,
@@ -265,11 +265,11 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     flex: 1,
-    fontSize: 15,
+    fontSize: fontSize.body,
   },
   rowValue: {
     maxWidth: '45%',
-    fontSize: 14,
+    fontSize: fontSize.sm,
   },
   bottomCard: {
     marginTop: 4,
@@ -280,11 +280,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   textButtonLabel: {
-    fontSize: 15,
+    fontSize: fontSize.body,
     fontWeight: fontWeight.bold,
   },
   deleteLabel: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     marginTop: spacing.sm,
   },
 });

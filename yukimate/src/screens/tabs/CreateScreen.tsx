@@ -1,3 +1,5 @@
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
+import { PillButton } from '@/components/ui/PillButton';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { getAreaOrder } from '@/constants/areas';
 import { Colors } from '@/constants/theme';
@@ -1019,9 +1021,7 @@ export default function CreateEventScreen() {
               onChangeText={setTagInput}
               onSubmitEditing={addTag}
             />
-            <TouchableOpacity style={styles.tagAddButton} onPress={addTag}>
-              <Text style={styles.tagAddButtonText}>{t('create.addTagButton')}</Text>
-            </TouchableOpacity>
+            <PillButton title={t('create.addTagButton')} size="sm" variant="secondary" onPress={addTag} />
           </View>
           {tags.length > 0 && (
             <View style={styles.tagsList}>
@@ -1071,29 +1071,22 @@ export default function CreateEventScreen() {
         </View>
 
         {/* Create/Edit Button */}
-        <TouchableOpacity
-          style={[styles.createButton, loading && styles.createButtonDisabled]}
+        <PillButton
+          title={isEditMode ? t('create.saveEdit') : t('create.post')}
           onPress={handleCreate}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color={colors.text} />
-          ) : (
-            <Text style={styles.createButtonText}>
-              {isEditMode ? t('create.saveEdit') : t('create.post')}
-            </Text>
-          )}
-        </TouchableOpacity>
+          loading={loading}
+          style={styles.createButton}
+        />
 
         {/* Delete Button (Edit Mode Only) */}
         {isEditMode && (
-          <TouchableOpacity
-            style={styles.deleteButton}
+          <PillButton
+            title={t('create.deletePost')}
+            variant="danger"
             onPress={handleDelete}
             disabled={loading}
-          >
-            <Text style={styles.deleteButtonText}>{t('create.deletePost')}</Text>
-          </TouchableOpacity>
+            style={styles.deleteButton}
+          />
         )}
 
         <View style={{ height: 120 }} />
@@ -1124,8 +1117,8 @@ function createStyles(colors: typeof Colors.light) {
       backgroundColor: colors.background,
     },
     modalTitle: {
-      fontSize: 18,
-      fontWeight: 'bold',
+      fontSize: fontSize.lg,
+      fontWeight: fontWeight.bold,
       color: colors.text,
     },
     closeButton: {
@@ -1138,8 +1131,8 @@ function createStyles(colors: typeof Colors.light) {
       padding: 16,
     },
     title: {
-      fontSize: 28,
-      fontWeight: 'bold',
+      fontSize: fontSize.title,
+      fontWeight: fontWeight.bold,
       color: colors.text,
       marginBottom: 24,
       marginTop: 16,
@@ -1167,21 +1160,21 @@ function createStyles(colors: typeof Colors.light) {
       marginBottom: 2,
     },
     switchHint: {
-      fontSize: 12,
+      fontSize: fontSize.xs,
       color: colors.textLabel,
     },
     label: {
-      fontSize: 14,
-      fontWeight: '600',
+      fontSize: fontSize.sm,
+      fontWeight: fontWeight.semibold,
       color: colors.textSecondary,
       marginBottom: 8,
     },
     input: {
       backgroundColor: colors.backgroundSecondary,
       color: colors.text,
-      fontSize: 16,
+      fontSize: fontSize.md,
       padding: 12,
-      borderRadius: 8,
+      borderRadius: borderRadius.md,
     },
     textArea: {
       minHeight: 100,
@@ -1198,25 +1191,25 @@ function createStyles(colors: typeof Colors.light) {
     picker: {
       backgroundColor: colors.backgroundSecondary,
       padding: 12,
-      borderRadius: 8,
+      borderRadius: borderRadius.md,
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
     },
     pickerText: {
       color: colors.text,
-      fontSize: 16,
+      fontSize: fontSize.md,
     },
     pickerOptions: {
       marginTop: 8,
       backgroundColor: colors.backgroundSecondary,
-      borderRadius: 8,
+      borderRadius: borderRadius.md,
       maxHeight: 200,
     },
     timePickerOptions: {
       marginTop: 8,
       backgroundColor: colors.backgroundSecondary,
-      borderRadius: 8,
+      borderRadius: borderRadius.md,
       maxHeight: 200,
       // Note: スクロールバーの太さはプラットフォームのデフォルト設定に依存します
       // iOSとAndroidではネイティブのスクロールバーが使用されます
@@ -1236,11 +1229,11 @@ function createStyles(colors: typeof Colors.light) {
     },
     pickerOptionText: {
       color: colors.textSecondary,
-      fontSize: 16,
+      fontSize: fontSize.md,
     },
     pickerOptionTextActive: {
       color: colors.tint,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
     },
     areaSection: {
       borderBottomWidth: 1,
@@ -1257,8 +1250,8 @@ function createStyles(colors: typeof Colors.light) {
       borderBottomColor: colors.border,
     },
     areaHeaderText: {
-      fontSize: 16,
-      fontWeight: '600',
+      fontSize: fontSize.md,
+      fontWeight: fontWeight.semibold,
       color: colors.textSecondary,
     },
     resortListContainer: {
@@ -1277,12 +1270,12 @@ function createStyles(colors: typeof Colors.light) {
       backgroundColor: colors.tint,
     },
     resortItemText: {
-      fontSize: 14,
+      fontSize: fontSize.sm,
       color: colors.textSecondary,
     },
     resortItemTextActive: {
       color: colors.text,
-      fontWeight: '600',
+      fontWeight: fontWeight.semibold,
     },
     tagInputRow: {
       flexDirection: 'row',
@@ -1291,17 +1284,6 @@ function createStyles(colors: typeof Colors.light) {
     tagInput: {
       flex: 1,
       marginBottom: 0,
-    },
-    tagAddButton: {
-      backgroundColor: colors.tint,
-      paddingHorizontal: 16,
-      borderRadius: 8,
-      justifyContent: 'center',
-    },
-    tagAddButtonText: {
-      color: colors.text,
-      fontSize: 14,
-      fontWeight: '600',
     },
     tagsList: {
       flexDirection: 'row',
@@ -1316,11 +1298,11 @@ function createStyles(colors: typeof Colors.light) {
       backgroundColor: colors.tint,
       paddingHorizontal: 12,
       paddingVertical: 8,
-      borderRadius: 16,
+      borderRadius: borderRadius.xl,
     },
     tagText: {
       color: colors.text,
-      fontSize: 14,
+      fontSize: fontSize.sm,
     },
     tagRemoveButton: {
       marginLeft: 4,
@@ -1328,7 +1310,7 @@ function createStyles(colors: typeof Colors.light) {
     tagRemoveIcon: {
       width: 20,
       height: 20,
-      borderRadius: 10,
+      borderRadius: borderRadius.round,
       backgroundColor: colors.error,
       alignItems: 'center',
       justifyContent: 'center',
@@ -1346,7 +1328,7 @@ function createStyles(colors: typeof Colors.light) {
     image: {
       width: 100,
       height: 100,
-      borderRadius: 8,
+      borderRadius: borderRadius.md,
     },
     imageRemoveButton: {
       position: 'absolute',
@@ -1357,7 +1339,7 @@ function createStyles(colors: typeof Colors.light) {
     imageRemoveButtonInner: {
       width: 28,
       height: 28,
-      borderRadius: 14,
+      borderRadius: borderRadius.round,
       backgroundColor: colors.error,
       alignItems: 'center',
       justifyContent: 'center',
@@ -1366,7 +1348,7 @@ function createStyles(colors: typeof Colors.light) {
       width: 100,
       height: 100,
       backgroundColor: colors.backgroundSecondary,
-      borderRadius: 8,
+      borderRadius: borderRadius.md,
       borderWidth: 1,
       borderColor: colors.border,
       borderStyle: 'dashed',
@@ -1375,38 +1357,18 @@ function createStyles(colors: typeof Colors.light) {
     },
     imagePlaceholderText: {
       color: colors.textSecondary,
-      fontSize: 12,
+      fontSize: fontSize.xs,
       marginTop: 4,
     },
     createButton: {
       marginTop: 24,
-      paddingVertical: 16,
-      backgroundColor: colors.tint,
-      borderRadius: 12,
-      alignItems: 'center',
-    },
-    createButtonDisabled: {
-      opacity: 0.6,
-    },
-    createButtonText: {
-      color: colors.text,
-      fontSize: 18,
-      fontWeight: '600',
     },
     deleteButton: {
       marginTop: 16,
-      paddingVertical: 14,
-      backgroundColor: 'transparent',
-      alignItems: 'center',
-    },
-    deleteButtonText: {
-      color: colors.error,
-      fontSize: 16,
-      fontWeight: '500',
     },
     errorText: {
       color: colors.error,
-      fontSize: 14,
+      fontSize: fontSize.sm,
     },
     placeholderText: {
       color: colors.textSecondary,
@@ -1428,12 +1390,12 @@ function createStyles(colors: typeof Colors.light) {
       minWidth: 80,
     },
     backButtonText: {
-      fontSize: 16,
+      fontSize: fontSize.md,
       marginLeft: 4,
     },
     headerTitle: {
-      fontSize: 18,
-      fontWeight: '600',
+      fontSize: fontSize.lg,
+      fontWeight: fontWeight.semibold,
       flex: 1,
       textAlign: 'center',
     },

@@ -9,7 +9,7 @@ import { ResortNowSection } from '@/components/home/ResortNowSection';
 import { WeeklySnowChart } from '@/components/home/WeeklySnowChart';
 import { Chip } from '@/components/ui/Chip';
 import { PillButton } from '@/components/ui/PillButton';
-import { borderRadius, fontWeight, spacing } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useHomeFeed } from '@/hooks/useHomeFeed';
 import { usePendingRequestCount } from '@/hooks/usePendingRequestCount';
@@ -444,11 +444,11 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     textAlign: 'center',
   },
   errorText: {
-    fontSize: 16,
+    fontSize: fontSize.md,
     fontWeight: fontWeight.bold,
   },
   headerRow: {
@@ -458,14 +458,14 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   appName: {
-    fontSize: 22,
-    fontWeight: '900',
+    fontSize: fontSize.xxl,
+    fontWeight: fontWeight.heavy,
     letterSpacing: 0.3,
   },
   headerIconButton: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: borderRadius.round,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -480,26 +480,26 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   weatherUnavailable: {
-    borderRadius: 20,
+    borderRadius: borderRadius.glass,
     padding: spacing.lg,
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.sm,
   },
   setupCard: {
-    borderRadius: 20,
+    borderRadius: borderRadius.glass,
     padding: spacing.lg,
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.md,
   },
   setupTitle: {
-    fontSize: 16,
+    fontSize: fontSize.md,
     fontWeight: fontWeight.bold,
     textAlign: 'center',
   },
   setupText: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
@@ -522,8 +522,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   favWeatherText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: fontSize.meta,
+    fontWeight: fontWeight.semibold,
   },
   block: {
     marginTop: spacing.sm,
@@ -544,11 +544,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     flex: 1,
-    fontSize: 17,
+    fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
   },
   sectionLink: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.bold,
   },
   bleed: {
@@ -571,14 +571,14 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   emptyTitle: {
-    fontSize: 15,
+    fontSize: fontSize.body,
     fontWeight: fontWeight.bold,
   },
   emptySub: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
   },
   reason: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     marginTop: -4,
     marginBottom: 10,
   },

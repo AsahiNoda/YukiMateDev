@@ -1,5 +1,5 @@
 import { PillButton } from '@/components/ui/PillButton';
-import { fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import {
   channelErrorKey,
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   label: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
     marginTop: 18,
     marginBottom: 6,
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   counter: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
     textAlign: 'right',
     marginTop: 4,
   },
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     minHeight: touchTarget.min,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 14,
+    borderRadius: borderRadius.card,
   },
   choiceDivider: {
     height: StyleSheet.hairlineWidth,
@@ -283,19 +283,19 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   choiceTitle: {
-    fontSize: 15,
+    fontSize: fontSize.body,
     fontWeight: fontWeight.semibold,
   },
   choiceDesc: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
   },
   choiceDot: {
     width: 6,
     height: 6,
-    borderRadius: 3,
+    borderRadius: borderRadius.round,
   },
   note: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
     lineHeight: 17,
     marginTop: 10,
   },

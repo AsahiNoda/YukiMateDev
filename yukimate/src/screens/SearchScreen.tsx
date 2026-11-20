@@ -1,5 +1,5 @@
 import { SegmentedToggle } from '@/components/ui/SegmentedToggle';
-import { fontWeight, spacing } from '@/constants/spacing';
+import { fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/hooks/useTranslation';
 import ExploreScreen, { type ExploreInitialFilters } from '@/screens/ExploreScreen';
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   title: {
-    fontSize: 24,
+    fontSize: fontSize.xxl,
     fontWeight: fontWeight.bold,
   },
 });

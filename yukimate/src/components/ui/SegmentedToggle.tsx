@@ -1,4 +1,4 @@
-import { borderRadius, fontWeight, touchTarget } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, touchTarget } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -58,7 +58,7 @@ const SEGMENT_HEIGHT = 30;
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    borderRadius: 10,
+    borderRadius: borderRadius.md,
     padding: PADDING,
   },
   segment: {
@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   label: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
   },
 });
 

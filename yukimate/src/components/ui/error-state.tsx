@@ -1,3 +1,4 @@
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { IconSymbol } from './icon-symbol';
@@ -39,26 +40,26 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   message: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     textAlign: 'center',
     marginBottom: 24,
   },
   retryButton: {
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: borderRadius.md,
   },
   retryButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
   },
 });
 

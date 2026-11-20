@@ -18,7 +18,7 @@ import { useTranslation } from '@/hooks/useTranslation';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 
 type Segment = 'joined' | 'discover';
 
@@ -215,7 +215,7 @@ function ChannelRow({ channel, onPress, trailing }: { channel: Channel; onPress:
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.row, { borderBottomColor: c.divider, opacity: pressed ? 0.85 : 1 }]}
+      style={({ pressed }) => [styles.row, { backgroundColor: c.card, borderColor: c.border, opacity: pressed ? 0.85 : 1 }]}
       accessibilityRole="button"
       accessibilityLabel={t('channels.openA11y', { name: channel.name, visibility, kind, members, owner })}
     >
@@ -275,16 +275,25 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     paddingVertical: 0,
   },
+  // 1件ずつ独立したカードにするので、外側の余白とカード間のすき間を付ける
   list: {
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
     paddingBottom: 120,
+    gap: spacing.sm,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md - 4,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md - 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    padding: spacing.md - 2,
+    borderRadius: borderRadius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 },
+      android: { elevation: 1 },
+      default: {},
+    }),
   },
   rowBody: {
     flex: 1,

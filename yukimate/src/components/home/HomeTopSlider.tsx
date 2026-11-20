@@ -1,4 +1,4 @@
-import { borderRadius, fontWeight, spacing, touchTarget } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import React, { useRef, useState } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.pill,
   },
   dotLabel: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
   },
 });
 

@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     marginBottom: 22,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.bold,
     marginLeft: 4,
     marginBottom: spacing.sm,
@@ -346,11 +346,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   label: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     fontWeight: fontWeight.semibold,
   },
   required: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
     fontWeight: fontWeight.bold,
   },
   inputWrap: {
@@ -379,7 +379,7 @@ const styles = StyleSheet.create({
   },
   counter: {
     alignSelf: 'flex-end',
-    fontSize: 12,
+    fontSize: fontSize.xs,
   },
   chips: {
     flexDirection: 'row',
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   photoBadgeText: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
   },
   avatar: {
@@ -420,7 +420,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 30,
     height: 30,
-    borderRadius: 15,
+    borderRadius: borderRadius.round,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
@@ -446,7 +446,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   sheetTitle: {
-    fontSize: 17,
+    fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
   },
   iconButton: {
@@ -465,9 +465,9 @@ const styles = StyleSheet.create({
   },
   countryName: {
     flex: 1,
-    fontSize: 15,
+    fontSize: fontSize.body,
   },
   hint: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
   },
 });

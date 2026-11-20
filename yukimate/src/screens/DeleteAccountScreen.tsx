@@ -1,3 +1,5 @@
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
+import { PillButton } from '@/components/ui/PillButton';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -176,21 +178,14 @@ export default function DeleteAccountScreen() {
         </View>
 
         {/* Delete Button */}
-        <TouchableOpacity
-          style={[
-            styles.deleteButton,
-            { backgroundColor: colors.error },
-            (confirmText !== 'DELETE' || deleting) && styles.deleteButtonDisabled,
-          ]}
+        <PillButton
+          title={t('deleteAccount.permanentlyDelete')}
+          variant="danger"
           onPress={handleDeleteAccount}
-          disabled={confirmText !== 'DELETE' || deleting}
-        >
-          {deleting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.deleteButtonText}>{t('deleteAccount.permanentlyDelete')}</Text>
-          )}
-        </TouchableOpacity>
+          loading={deleting}
+          disabled={confirmText !== 'DELETE'}
+          style={styles.deleteButton}
+        />
       </ScrollView>
     </View>
   );
@@ -215,8 +210,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
   },
   placeholder: {
     width: 40,
@@ -231,17 +226,17 @@ const styles = StyleSheet.create({
   warning: {
     alignItems: 'center',
     padding: 24,
-    borderRadius: 12,
+    borderRadius: borderRadius.card,
     marginBottom: 24,
   },
   warningTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
     marginTop: 12,
     marginBottom: 8,
   },
   warningText: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -249,8 +244,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
     marginBottom: 16,
   },
   list: {
@@ -262,37 +257,25 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   listText: {
-    fontSize: 15,
+    fontSize: fontSize.body,
   },
   label: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: fontSize.body,
+    fontWeight: fontWeight.medium,
     marginBottom: 8,
   },
   input: {
-    fontSize: 16,
+    fontSize: fontSize.md,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 8,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
   },
   hint: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     marginTop: 8,
   },
   deleteButton: {
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginTop: 8,
-  },
-  deleteButtonDisabled: {
-    opacity: 0.5,
-  },
-  deleteButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

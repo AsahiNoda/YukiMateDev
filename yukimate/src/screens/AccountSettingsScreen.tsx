@@ -1,3 +1,5 @@
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
+import { PillButton } from '@/components/ui/PillButton';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -167,20 +169,12 @@ export default function AccountSettingsScreen() {
               {t('accountSettings.passwordMinLength')}
             </Text>
 
-            <TouchableOpacity
-              style={[
-                styles.submitButton,
-                { backgroundColor: colors.accent },
-                passwordLoading && styles.submitButtonDisabled
-              ]}
+            <PillButton
+              title={t('accountSettings.changePassword')}
               onPress={handleChangePassword}
-              disabled={passwordLoading}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.submitButtonText}>
-                {passwordLoading ? t('accountSettings.changing') : t('accountSettings.changePassword')}
-              </Text>
-            </TouchableOpacity>
+              loading={passwordLoading}
+              style={styles.submitButton}
+            />
           </View>
         </View>
 
@@ -215,8 +209,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
   },
   placeholder: {
     width: 40,
@@ -229,7 +223,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   card: {
-    borderRadius: 16,
+    borderRadius: borderRadius.xl,
     borderWidth: 1,
     padding: 20,
     marginBottom: 16,
@@ -241,8 +235,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
   },
   infoRow: {
     flexDirection: 'row',
@@ -250,11 +244,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   infoLabel: {
-    fontSize: 15,
+    fontSize: fontSize.body,
   },
   infoValue: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: fontSize.body,
+    fontWeight: fontWeight.medium,
   },
   formContent: {
     gap: 16,
@@ -263,47 +257,35 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.medium,
   },
   input: {
     height: 48,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: borderRadius.card,
     paddingHorizontal: 16,
-    fontSize: 16,
+    fontSize: fontSize.md,
   },
   helpText: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     lineHeight: 18,
   },
   submitButton: {
-    height: 52,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
     marginTop: 8,
-  },
-  submitButtonDisabled: {
-    opacity: 0.6,
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
   noteCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: borderRadius.card,
     borderWidth: 1,
     marginTop: 8,
   },
   noteText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: fontSize.meta,
     lineHeight: 18,
   },
 });

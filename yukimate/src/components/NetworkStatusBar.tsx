@@ -1,3 +1,4 @@
+import { fontSize, fontWeight } from '@/constants/spacing';
 import React from 'react';
 import { View, Text, StyleSheet, useColorScheme } from 'react-native';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
@@ -41,8 +42,8 @@ const styles = StyleSheet.create({
   },
   text: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
   },
 });
 

@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
     fontWeight: fontWeight.bold,
   },
 });

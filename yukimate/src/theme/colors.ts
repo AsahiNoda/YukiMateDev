@@ -37,27 +37,5 @@ export const spacing = {
     xxl: 48,
 };
 
-export const fontSize = {
-    xs: 12,
-    sm: 14,
-    md: 16,
-    lg: 18,
-    xl: 20,
-    xxl: 24,
-};
-
-export const borderRadius = {
-    sm: 4,
-    md: 8,
-    lg: 12,
-    full: 9999,
-    // UIリデザインの基本ルール（src/constants/spacing.ts と同じ値）
-    card: 12,
-    pill: 999,
-};
-
-export const fontWeight = {
-    normal: '400' as const,
-    semibold: '600' as const,
-    bold: '700' as const,
-};
+// 文字・角の丸み・太さは src/constants/spacing.ts の1か所で決める
+export { borderRadius, fontSize, fontWeight } from '@/constants/spacing';

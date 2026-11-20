@@ -1,10 +1,11 @@
+import { fontSize } from '@/constants/spacing';
 import Animated from 'react-native-reanimated';
 
 export function HelloWave() {
   return (
     <Animated.Text
       style={{
-        fontSize: 28,
+        fontSize: fontSize.title,
         lineHeight: 32,
         marginTop: -6,
         animationName: {

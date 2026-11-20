@@ -1,3 +1,4 @@
+import { fontSize, fontWeight } from '@/constants/spacing';
 import { StyleSheet, Text, type TextProps } from 'react-native';
 
 import { useThemeColor } from '@hooks/use-theme-color';
@@ -36,25 +37,25 @@ export function ThemedText({
 
 const styles = StyleSheet.create({
   default: {
-    fontSize: 16,
+    fontSize: fontSize.md,
     lineHeight: 24,
   },
   defaultSemiBold: {
-    fontSize: 16,
+    fontSize: fontSize.md,
     lineHeight: 24,
-    fontWeight: '600',
+    fontWeight: fontWeight.semibold,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
+    fontSize: fontSize.xxxl,
+    fontWeight: fontWeight.bold,
     lineHeight: 32,
   },
   subtitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: fontSize.xl,
+    fontWeight: fontWeight.bold,
   },
   link: {
     lineHeight: 30,
-    fontSize: 16,
+    fontSize: fontSize.md,
   },
 });

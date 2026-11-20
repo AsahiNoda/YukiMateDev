@@ -1,5 +1,5 @@
 import { PillButton } from '@/components/ui/PillButton';
-import { borderRadius, fontWeight, spacing } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import type { ResortPostThumb } from '@/hooks/useHomeFeed';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
   alertIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: borderRadius.round,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -103,12 +103,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   alertKicker: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
   },
   alertTitle: {
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: fontSize.body,
+    fontWeight: fontWeight.heavy,
     lineHeight: 20,
   },
   posts: {
@@ -128,12 +128,12 @@ const styles = StyleSheet.create({
     height: 96,
   },
   postText: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     paddingHorizontal: 10,
     paddingVertical: spacing.sm,
   },
   empty: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
   },
 });
 

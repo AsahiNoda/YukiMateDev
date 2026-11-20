@@ -1,3 +1,4 @@
+import { PillButton } from '@/components/ui/PillButton';
 import { Colors } from '@/constants/theme';
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { supabase, getAuthUser } from '@/lib/supabase';
@@ -325,26 +326,13 @@ export function PostCreateModal({
             <IconSymbol name="xmark" size={24} color={colors.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: colors.text }]}>{t('postModal.title')}</Text>
-          <TouchableOpacity
+          <PillButton
+            title={t('postModal.submit')}
+            size="sm"
             onPress={handleSubmit}
+            loading={isSubmitting}
             disabled={!canSubmit}
-            style={styles.postButton}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !canSubmit }}>
-            {isSubmitting ? (
-              <ActivityIndicator size="small" color={colors.accent} />
-            ) : (
-              <Text
-                style={[
-                  styles.postButtonText,
-                  {
-                    color: canSubmit ? c.tintText : c.textLabel,
-                  },
-                ]}>
-                {t('postModal.submit')}
-              </Text>
-            )}
-          </TouchableOpacity>
+          />
         </View>
 
         <ScrollView
@@ -468,14 +456,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: fontSize.xl,
     fontWeight: fontWeight.bold,
-  },
-  postButton: {
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.sm,
-  },
-  postButtonText: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
   },
   content: {
     flex: 1,

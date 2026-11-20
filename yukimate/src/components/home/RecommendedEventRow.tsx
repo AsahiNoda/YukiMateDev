@@ -1,6 +1,6 @@
 import { Chip } from '@/components/ui/Chip';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { borderRadius, fontWeight, spacing } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import type { HomeEventSummary } from '@/hooks/useHomeFeed';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -81,11 +81,11 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   meta: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
   },
   title: {
-    fontSize: 15,
+    fontSize: fontSize.body,
     fontWeight: fontWeight.bold,
     lineHeight: 20,
   },

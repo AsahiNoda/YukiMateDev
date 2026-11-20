@@ -1,3 +1,4 @@
+import { fontSize, fontWeight } from '@/constants/spacing';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { IconSymbol } from './icon-symbol';
@@ -27,15 +28,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A202C',
   },
   title: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
     color: '#FFFFFF',
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
   },
   message: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     color: '#9CA3AF',
     textAlign: 'center',
   },

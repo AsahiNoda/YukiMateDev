@@ -2,7 +2,7 @@ import { ResortSearch } from '@/components/snowfeed/ResortSearch';
 import { Chip } from '@/components/ui/Chip';
 import { PillButton } from '@/components/ui/PillButton';
 import { SegmentedToggle } from '@/components/ui/SegmentedToggle';
-import { borderRadius, fontWeight, spacing, touchTarget } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useFavoriteResortsWeather, type ResortWeatherRow } from '@/hooks/useFavoriteResortsWeather';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -58,7 +58,7 @@ export default function FavoriteResortsWeatherScreen() {
           accessibilityLabel={t('favoriteWeather.add')}
           testID="favorite-weather-add"
         >
-          <Ionicons name="heart-outline" size={22} color={c.text} />
+          <Ionicons name="add" size={26} color={c.text} />
         </Pressable>
       </View>
 
@@ -212,24 +212,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: fontWeight.bold },
+  headerTitle: { fontSize: fontSize.lg, fontWeight: fontWeight.bold },
   sortRow: { alignItems: 'flex-start', marginBottom: spacing.xs },
   card: { borderRadius: borderRadius.card, padding: spacing.md, gap: spacing.sm },
   cardTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   nameBlock: { flex: 1, gap: 2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
-  name: { fontSize: 16, fontWeight: fontWeight.bold, flexShrink: 1 },
-  condition: { fontSize: 13 },
+  name: { fontSize: fontSize.md, fontWeight: fontWeight.bold, flexShrink: 1 },
+  condition: { fontSize: fontSize.meta },
   tempBlock: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  temp: { fontSize: 24, fontWeight: fontWeight.bold, fontVariant: ['tabular-nums'] },
+  temp: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, fontVariant: ['tabular-nums'] },
   stats: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, paddingTop: spacing.sm },
   stat: { flex: 1, gap: 2 },
   statLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  freshDot: { width: 6, height: 6, borderRadius: 3 },
-  statLabel: { fontSize: 11 },
-  statValue: { fontSize: 15, fontWeight: fontWeight.semibold, fontVariant: ['tabular-nums'] },
+  freshDot: { width: 6, height: 6, borderRadius: borderRadius.round },
+  statLabel: { fontSize: fontSize.xxs },
+  statValue: { fontSize: fontSize.body, fontWeight: fontWeight.semibold, fontVariant: ['tabular-nums'] },
   empty: { alignItems: 'center', gap: spacing.sm, paddingVertical: spacing.xl },
-  emptyTitle: { fontSize: 16, fontWeight: fontWeight.bold },
-  emptyText: { fontSize: 14, lineHeight: 21, textAlign: 'center' },
-  footnote: { fontSize: 12, marginTop: spacing.sm, textAlign: 'center' },
+  emptyTitle: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
+  emptyText: { fontSize: fontSize.sm, lineHeight: 21, textAlign: 'center' },
+  footnote: { fontSize: fontSize.xs, marginTop: spacing.sm, textAlign: 'center' },
 });

@@ -1,4 +1,4 @@
-import { borderRadius, fontWeight, spacing, touchTarget } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { CHANNEL_REACTIONS, type ChannelPost, type ChannelReaction } from '@/hooks/useChannels';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -171,10 +171,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   pillEmoji: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
   },
   pillCount: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.semibold,
   },
   sheet: {
@@ -182,13 +182,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: borderRadius.glass,
+    borderTopRightRadius: borderRadius.glass,
     paddingTop: spacing.md,
     paddingHorizontal: spacing.md,
   },
   sheetTitle: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.semibold,
     textAlign: 'center',
     marginBottom: spacing.sm,
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emoji: {
-    fontSize: 24,
+    fontSize: fontSize.xxl,
   },
   action: {
     minHeight: touchTarget.min + 8,
@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   actionText: {
-    fontSize: 16,
+    fontSize: fontSize.md,
     fontWeight: fontWeight.medium,
   },
   cancel: {
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   cancelText: {
-    fontSize: 16,
+    fontSize: fontSize.md,
     fontWeight: fontWeight.semibold,
   },
 });

@@ -1,3 +1,4 @@
+import { PillButton } from '@/components/ui/PillButton';
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -309,8 +310,9 @@ export default function PostEventActionScreen() {
           </View>
 
           {/* 終了ボタン */}
-          <TouchableOpacity
-            style={[styles.finishButton, { backgroundColor: colors.tint }]}
+          <PillButton
+            title={t('postEventAction.finishButton')}
+            style={styles.finishButton}
             onPress={async () => {
               console.log('[PostEventActionScreen] ✅ Finish button pressed (no participants)');
 
@@ -323,9 +325,7 @@ export default function PostEventActionScreen() {
                 router.replace('/(tabs)/chat');
               }
             }}
-          >
-            <Text style={styles.finishButtonText}>{t('postEventAction.finishButton')}</Text>
-          </TouchableOpacity>
+          />
 
           {/* ホストのみ: 削除警告 */}
           {isHost && (
@@ -468,15 +468,12 @@ export default function PostEventActionScreen() {
 
       {/* 完了ボタン */}
       <View style={[styles.footer, { borderTopColor: colors.border, paddingBottom: 120 }]}>
-        <TouchableOpacity
-          style={[styles.finishButton, { backgroundColor: colors.tint }, processing && styles.finishButtonDisabled]}
+        <PillButton
+          title={t('postEventAction.completeButton')}
           onPress={handleFinish}
-          disabled={processing}
-        >
-          <Text style={styles.finishButtonText}>
-            {processing ? t('postEventAction.processing') : t('postEventAction.completeButton')}
-          </Text>
-        </TouchableOpacity>
+          loading={processing}
+          style={styles.finishButton}
+        />
 
         {/* ホストのみ: 削除警告 */}
         {isHost && (
@@ -528,15 +525,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: spacing.lg,
   },
-  participantRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1, // Add border width to make borderColor visible
-  },
   participantCard: {
     padding: spacing.md,
     marginBottom: spacing.md,
@@ -556,14 +544,14 @@ const styles = StyleSheet.create({
   reactionButton: {
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: borderRadius.round,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: 'transparent',
   },
   reactionEmoji: {
-    fontSize: 24,
+    fontSize: fontSize.xxl,
   },
   participantInfo: {
     flexDirection: 'row',
@@ -573,7 +561,7 @@ const styles = StyleSheet.create({
   participantAvatar: {
     width: 50,
     height: 50,
-    borderRadius: 25,
+    borderRadius: borderRadius.round,
     marginRight: spacing.md,
   },
   participantDetails: {
@@ -613,18 +601,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, // Add border width
   },
   finishButton: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: borderRadius.lg,
-    alignItems: 'center',
-  },
-  finishButtonDisabled: {
-    opacity: 0.5,
-  },
-  finishButtonText: {
-    color: '#ffffff',
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.semibold,
+    alignSelf: 'stretch',
   },
   hostDeletionWarning: {
     fontSize: fontSize.sm,

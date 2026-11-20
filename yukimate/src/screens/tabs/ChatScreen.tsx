@@ -1,3 +1,4 @@
+import { PillButton } from '@/components/ui/PillButton';
 import { ChannelsPanel } from '@/components/channels/ChannelsPanel';
 import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
@@ -245,7 +246,8 @@ export default function ChatScreen() {
 
     return (
       <TouchableOpacity
-        style={[styles.chatRow, { borderBottomColor: colors.divider }]}
+        style={[styles.chatRow, { backgroundColor: colors.card, borderColor: colors.border }]}
+        activeOpacity={0.85}
         onPress={() => router.push({
           pathname: '/event-chat/[eventId]',
           params: { eventId: item.eventId },
@@ -324,20 +326,14 @@ export default function ChatScreen() {
           </View>
         </TouchableOpacity>
         <View style={styles.applicationActions}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.rejectButton, { borderColor: colors.border }]}
+          <PillButton
+            title={t('chat.rejectButton')}
+            variant="secondary"
+            fill
             disabled={busy}
             onPress={() => respondChannelRequest(request, false)}
-          >
-            <Text style={[styles.rejectButtonText, { color: colors.text }]}>{t('chat.rejectButton')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.approveButton, { backgroundColor: colors.tint }]}
-            disabled={busy}
-            onPress={() => respondChannelRequest(request, true)}
-          >
-            {busy ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.approveButtonText}>{t('chat.approveButton')}</Text>}
-          </TouchableOpacity>
+          />
+          <PillButton title={t('chat.approveButton')} fill loading={busy} onPress={() => respondChannelRequest(request, true)} />
         </View>
       </View>
     );
@@ -406,20 +402,17 @@ export default function ChatScreen() {
 
         {/* アクションボタン */}
         <View style={styles.applicationActions}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.rejectButton, { borderColor: colors.border }]}
-            onPress={() => handleReject(item.id, applicantName)}>
-            <Text style={[styles.rejectButtonText, { color: colors.text }]}>
-              {t('chat.rejectButton')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.approveButton, { backgroundColor: colors.tint }]}
-            onPress={() => handleApprove(item.id, item.event_id, item.applicant_user_id, applicantName)}>
-            <Text style={styles.approveButtonText}>
-              {t('chat.approveButton')}
-            </Text>
-          </TouchableOpacity>
+          <PillButton
+            title={t('chat.rejectButton')}
+            variant="secondary"
+            fill
+            onPress={() => handleReject(item.id, applicantName)}
+          />
+          <PillButton
+            title={t('chat.approveButton')}
+            fill
+            onPress={() => handleApprove(item.id, item.event_id, item.applicant_user_id, applicantName)}
+          />
         </View>
       </View >
     );
@@ -559,20 +552,21 @@ export default function ChatScreen() {
   );
 }
 
+// 一覧のカードを背景から少し浮かせる控えめな影
+const cardShadow = Platform.select({
+  ios: {
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+  },
+  android: { elevation: 1 },
+  default: {},
+});
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  headerTitle: {
-    fontSize: fontSize.xxl,
-    fontWeight: fontWeight.bold,
   },
   loadingContainer: {
     flex: 1,
@@ -580,8 +574,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   sectionHeader: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
   sectionTitle: {
     fontSize: fontSize.sm,
@@ -592,55 +587,20 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
     gap: spacing.md,
   },
-  // チャット一覧は区切り線の行なので、外側の余白と行間は付けない
+  // チャット一覧：1件ずつ独立したカードにするので、外側の余白とカード間のすき間を付ける
   chatSectionList: {
+    paddingHorizontal: spacing.md,
     paddingBottom: 120,
-  },
-  chatItemContainer: {
-    borderRadius: borderRadius.xl,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  blurContainer: {
-    borderRadius: borderRadius.xl,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(248, 255, 255, 0.15)',
-  },
-  chatItemGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    gap: spacing.md,
-  },
-  chatIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.round,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  chatImage: {
-    width: 80,
-    height: 80,
-    borderRadius: borderRadius.md,
   },
   chatRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md - 4,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md - 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    padding: spacing.md - 4,
+    marginBottom: spacing.sm,
+    borderRadius: borderRadius.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    ...cardShadow,
   },
   chatThumb: {
     width: 56,
@@ -666,10 +626,6 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.semibold,
     flex: 1,
   },
-  chatTimeContainer: {
-    alignItems: 'flex-end',
-    gap: spacing.xs,
-  },
   chatTime: {
     fontSize: fontSize.xs,
     marginLeft: spacing.sm,
@@ -678,40 +634,8 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     marginBottom: 2,
   },
-  participantsAvatars: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.xs / 2,
-  },
-  participantAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 2,
-  },
   chatPreview: {
     fontSize: fontSize.sm,
-  },
-  deletionWarning: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.bold,
-    color: '#ef4444',
-  },
-  chatBadge: {
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  badge: {
-    minWidth: 24,
-    height: 24,
-    borderRadius: borderRadius.round,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-  },
-  badgeText: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.bold,
   },
   emptyState: {
     alignItems: 'center',
@@ -778,11 +702,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: spacing.md,
   },
-  applicationAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: borderRadius.round,
-  },
   applicationUserInfo: {
     flex: 1,
     gap: spacing.xs,
@@ -795,18 +714,6 @@ const styles = StyleSheet.create({
   applicationName: {
     fontSize: fontSize.lg,
     fontWeight: fontWeight.semibold,
-  },
-  countryFlag: {
-    fontSize: fontSize.lg,
-  },
-  levelBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs / 2,
-    borderRadius: borderRadius.sm,
-  },
-  levelText: {
-    fontSize: fontSize.xs,
-    textTransform: 'capitalize',
   },
   applicationEventTitle: {
     fontSize: fontSize.md,
@@ -826,24 +733,5 @@ const styles = StyleSheet.create({
   applicationActions: {
     flexDirection: 'row',
     gap: spacing.md,
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-  },
-  rejectButton: {
-    borderWidth: 1,
-  },
-  rejectButtonText: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.medium,
-  },
-  approveButton: {},
-  approveButtonText: {
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.medium,
-    color: '#FFFFFF',
   },
 });

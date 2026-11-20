@@ -1,5 +1,5 @@
 import { PillButton } from '@/components/ui/PillButton';
-import { borderRadius, fontWeight, spacing } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/hooks/useTranslation';
 import { MyEventsLink } from './NextPlanCard';
@@ -76,17 +76,17 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   kicker: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.heavy,
     lineHeight: 24,
     marginBottom: 4,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     marginBottom: 12,
   },
   chips: {
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   chipText: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
   },
   actions: {
     flexDirection: 'row',

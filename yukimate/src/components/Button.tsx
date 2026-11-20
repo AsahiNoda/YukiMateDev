@@ -1,3 +1,4 @@
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextStyle, TouchableOpacity, ViewStyle, useColorScheme } from 'react-native';
@@ -52,12 +53,12 @@ const styles = StyleSheet.create({
     button: {
         paddingVertical: 12,
         paddingHorizontal: 24,
-        borderRadius: 8,
+        borderRadius: borderRadius.md,
         alignItems: 'center',
         justifyContent: 'center',
     },
     text: {
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: fontSize.md,
+        fontWeight: fontWeight.semibold,
     },
 });

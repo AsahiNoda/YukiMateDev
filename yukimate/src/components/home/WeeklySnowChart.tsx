@@ -1,4 +1,4 @@
-import { borderRadius, fontWeight, spacing } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/hooks/useTranslation';
 import type { DailySnowfall } from '@/services/weatherApi';
@@ -76,7 +76,7 @@ export function WeeklySnowChart({ days }: WeeklySnowChartProps) {
             <Ionicons name="remove" size={14} color={c.textLabel} />
           )}
         </View>
-        <Text style={[styles.value, d.isMax ? { color: c.tintText, fontWeight: '900' } : { color: c.text }]}>{value}</Text>
+        <Text style={[styles.value, d.isMax ? { color: c.tintText, fontWeight: fontWeight.heavy } : { color: c.text }]}>{value}</Text>
       </View>
     );
   };
@@ -117,11 +117,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   title: {
-    fontSize: 17,
+    fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
   },
   unit: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
   },
   chart: {
     flexDirection: 'row',
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   },
   weekend: {
     flexDirection: 'row',
-    borderRadius: 10,
+    borderRadius: borderRadius.md,
     marginVertical: -6,
     marginHorizontal: 2,
     paddingTop: 6,
@@ -157,15 +157,15 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   weekendText: {
-    fontSize: 10,
+    fontSize: fontSize.xxs,
     fontWeight: fontWeight.bold,
     textAlign: 'center',
   },
   dayLabel: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
   },
   date: {
-    fontSize: 10,
+    fontSize: fontSize.xxs,
   },
   barArea: {
     height: BAR_MAX_HEIGHT,
@@ -174,10 +174,10 @@ const styles = StyleSheet.create({
   },
   bar: {
     width: 14,
-    borderRadius: 4,
+    borderRadius: borderRadius.sm,
   },
   value: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.bold,
   },
 });

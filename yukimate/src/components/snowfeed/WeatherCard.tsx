@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   temperature: {
-    fontSize: 72,
+    fontSize: fontSize.displayLarge,
     fontWeight: fontWeight.bold,
     lineHeight: 72,
   },

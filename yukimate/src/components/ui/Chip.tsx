@@ -1,4 +1,4 @@
-import { borderRadius, fontWeight, touchTarget } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, touchTarget } from '@/constants/spacing';
 import { ThemeColors } from '@/constants/theme';
 import { useAppColors } from '@/hooks/useAppColors';
 import { Ionicons } from '@expo/vector-icons';
@@ -141,11 +141,11 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   labelText: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
     fontWeight: fontWeight.bold,
   },
   filterText: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.normal,
   },
   selectedText: {

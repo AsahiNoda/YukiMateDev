@@ -1,7 +1,7 @@
 import { FormInput, FormLabel, FormSection } from '@/components/profile/ProfileFormParts';
 import { Chip } from '@/components/ui/Chip';
 import { PillButton } from '@/components/ui/PillButton';
-import { fontWeight, spacing, touchTarget } from '@/constants/spacing';
+import { fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -122,11 +122,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
   },
   lead: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     lineHeight: 21,
     marginBottom: spacing.md,
   },

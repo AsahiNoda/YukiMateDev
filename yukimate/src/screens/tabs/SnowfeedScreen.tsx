@@ -4,7 +4,7 @@ import { ResortPostCard } from '@/components/resort/ResortPostCard';
 import { ActionSheet } from '@/components/ui/ActionSheet';
 import { Chip } from '@/components/ui/Chip';
 import { PillButton } from '@/components/ui/PillButton';
-import { borderRadius, fontWeight, spacing, touchTarget } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { deleteOwnPost, reportPost, useResortPage, type ResortRef } from '@/hooks/useResortPage';
 import { REPORT_REASON_KEYS } from '@/components/ReportSheet';
@@ -608,12 +608,12 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: fontSize.xl,
     fontWeight: fontWeight.bold,
     textAlign: 'center',
   },
   emptyText: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     textAlign: 'center',
   },
   header: {
@@ -641,14 +641,14 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   homeOverline: {
-    fontSize: 11,
+    fontSize: fontSize.xxs,
     fontWeight: fontWeight.bold,
     letterSpacing: 0.5,
   },
   title: {
     flexShrink: 1,
-    fontSize: 19,
-    fontWeight: '900',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.heavy,
   },
   chipsScroll: {
     flexGrow: 0,
@@ -665,7 +665,7 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   unavailable: {
-    borderRadius: 20,
+    borderRadius: borderRadius.glass,
     padding: spacing.lg,
     alignItems: 'center',
     gap: spacing.sm,
@@ -697,15 +697,15 @@ const styles = StyleSheet.create({
     minHeight: touchTarget.min,
   },
   seeAllText: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.semibold,
   },
   bannerTitle: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     fontWeight: fontWeight.bold,
   },
   bannerSub: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
   },
   tabs: {
     flexDirection: 'row',
@@ -720,7 +720,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
   },
   tabText: {
-    fontSize: 15,
+    fontSize: fontSize.body,
   },
   tabBody: {
     paddingHorizontal: spacing.md,
@@ -731,7 +731,7 @@ const styles = StyleSheet.create({
   },
   tabEmpty: {
     textAlign: 'center',
-    fontSize: 14,
+    fontSize: fontSize.sm,
     marginTop: spacing.lg,
     paddingHorizontal: spacing.md,
   },
@@ -753,7 +753,7 @@ const styles = StyleSheet.create({
   },
   ratingLabel: {
     width: 84,
-    fontSize: 13,
+    fontSize: fontSize.meta,
   },
   ratingTrack: {
     flex: 1,
@@ -768,7 +768,7 @@ const styles = StyleSheet.create({
   ratingValue: {
     width: 32,
     textAlign: 'right',
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.bold,
   },
   overallRow: {
@@ -780,8 +780,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   overallValue: {
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.heavy,
   },
   bottomBar: {
     position: 'absolute',
@@ -804,14 +804,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   switcherTitle: {
-    fontSize: 18,
+    fontSize: fontSize.lg,
     fontWeight: fontWeight.bold,
   },
   setHomeButton: {
     marginBottom: spacing.md,
   },
   sectionLabel: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.bold,
     marginTop: spacing.md,
     marginBottom: 4,
@@ -825,10 +825,10 @@ const styles = StyleSheet.create({
   },
   switcherRowText: {
     flex: 1,
-    fontSize: 16,
+    fontSize: fontSize.md,
   },
   hint: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     marginTop: spacing.md,
   },
   searchOther: {

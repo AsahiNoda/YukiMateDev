@@ -1,5 +1,5 @@
 import { PillButton } from '@/components/ui/PillButton';
-import { borderRadius, fontWeight, spacing } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { NextPlan } from '@/hooks/useHomeFeed';
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     minHeight: 24,
   },
   linkText: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     fontWeight: fontWeight.bold,
   },
   myEventsLink: {
@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
   },
   card: {
     flex: 1,
-    borderRadius: 20,
+    borderRadius: borderRadius.glass,
     borderWidth: 1.5,
     overflow: 'hidden',
     padding: spacing.md,
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   kicker: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     fontWeight: fontWeight.bold,
   },
   daysPill: {
@@ -149,12 +149,12 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   daysText: {
-    fontSize: 12,
-    fontWeight: '900',
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.heavy,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '900',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.heavy,
     lineHeight: 24,
     marginBottom: 10,
   },
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
   },
   rowText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: fontSize.meta,
   },
   actions: {
     flexDirection: 'row',

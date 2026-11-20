@@ -85,6 +85,7 @@ export const Colors = {
     weekendFrame: 'rgba(61, 99, 130, 0.1)',
     photoOverlayTint: '#8FB3D1', // 写真の上（暗いグラデーション）の日付。テーマに関わらず同じ
     photoGradientEnd: 'rgba(10, 14, 22, 0.85)',
+    backgroundFade: 'rgba(236, 250, 255, 0.4)', // 背景色の半透明（写真の下端を背景へぼかす）
   },
   dark: {
     text: '#F7FAFC', // オフホワイト
@@ -152,6 +153,7 @@ export const Colors = {
     weekendFrame: 'rgba(143, 179, 209, 0.12)',
     photoOverlayTint: '#8FB3D1', // 写真の上（暗いグラデーション）の日付。テーマに関わらず同じ
     photoGradientEnd: 'rgba(10, 14, 22, 0.85)',
+    backgroundFade: 'rgba(26, 32, 44, 0.4)', // 背景色の半透明（写真の下端を背景へぼかす）
   },
 };
 

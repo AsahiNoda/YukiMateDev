@@ -1,5 +1,5 @@
 import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
-import { borderRadius, fontWeight, spacing, touchTarget } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/hooks/useTranslation';
 import { Ionicons } from '@expo/vector-icons';
@@ -106,11 +106,11 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   name: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     fontWeight: fontWeight.bold,
   },
   meta: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
   },
   menuButton: {
     width: touchTarget.min,
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   },
   text: {
     marginTop: 10,
-    fontSize: 14,
+    fontSize: fontSize.sm,
     lineHeight: 22,
   },
   actions: {
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   helpfulText: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
   },
 });
 

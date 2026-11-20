@@ -1,3 +1,5 @@
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
+import { PillButton } from '@/components/ui/PillButton';
 import { Colors } from '@/constants/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTranslation } from '@/hooks/useTranslation';
@@ -144,21 +146,13 @@ export default function StarredUsersScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={[
-            styles.unstarButton,
-            isUnstarring && styles.unstarButtonDisabled,
-            { borderColor: colors.accent },
-          ]}
+        <PillButton
+          title={t('starredUsers.unstarButton')}
+          size="sm"
+          variant="secondary"
+          loading={isUnstarring}
           onPress={() => handleUnstar(item.id, item.target_user_id)}
-          disabled={isUnstarring}
-        >
-          {isUnstarring ? (
-            <ActivityIndicator size="small" color={colors.accent} />
-          ) : (
-            <Text style={[styles.unstarButtonText, { color: colors.accent }]}>{t('starredUsers.unstarButton')}</Text>
-          )}
-        </TouchableOpacity>
+        />
       </View>
     );
   };
@@ -226,8 +220,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
   },
   placeholder: {
     width: 40,
@@ -259,31 +253,16 @@ const styles = StyleSheet.create({
   avatar: {
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: borderRadius.round,
   },
   avatarPlaceholder: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   userName: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.medium,
     flex: 1,
-  },
-  unstarButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    minWidth: 70,
-    alignItems: 'center',
-  },
-  unstarButtonDisabled: {
-    opacity: 0.5,
-  },
-  unstarButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
   },
   emptyContainer: {
     flex: 1,
@@ -292,7 +271,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   emptyText: {
-    fontSize: 16,
+    fontSize: fontSize.md,
     textAlign: 'center',
   },
 });

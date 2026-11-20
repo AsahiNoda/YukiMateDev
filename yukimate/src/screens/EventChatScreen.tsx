@@ -922,7 +922,7 @@ const styles = StyleSheet.create({
     fontWeight: fontWeight.bold,
   },
   compactMeta: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
     marginTop: 1,
   },
   noticeBar: {
@@ -933,7 +933,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   noticeText: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
   },
   loadingContainer: {
     flex: 1,
@@ -963,7 +963,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: borderRadius.round,
     marginRight: spacing.sm,
     marginBottom: spacing.xs,
   },
@@ -977,10 +977,10 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   ownBubble: {
-    borderBottomRightRadius: 6,
+    borderBottomRightRadius: borderRadius.sm,
   },
   otherBubble: {
-    borderBottomLeftRadius: 6,
+    borderBottomLeftRadius: borderRadius.sm,
   },
   senderNameContainer: {
     flexDirection: 'row',
@@ -1043,7 +1043,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerImageEmoji: {
-    fontSize: 32,
+    fontSize: fontSize.xxxl,
   },
   headerInfo: {
     flex: 1,
@@ -1080,7 +1080,7 @@ const styles = StyleSheet.create({
   participantAvatar: {
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: borderRadius.round,
     borderWidth: 2,
   },
   actionButtons: {
@@ -1147,6 +1147,6 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 20,
+    borderRadius: borderRadius.round,
   },
 });

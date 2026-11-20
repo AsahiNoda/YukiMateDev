@@ -1,3 +1,4 @@
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { router } from 'expo-router';
@@ -344,8 +345,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
   },
   placeholder: {
     width: 40,
@@ -358,12 +359,12 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   updateDate: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     marginBottom: 16,
     textAlign: 'center',
   },
   introText: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     lineHeight: 22,
     marginBottom: 24,
   },
@@ -371,20 +372,20 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
     marginBottom: 12,
     lineHeight: 24,
   },
   subSectionTitle: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: fontSize.body,
+    fontWeight: fontWeight.semibold,
     marginTop: 16,
     marginBottom: 8,
     lineHeight: 22,
   },
   sectionText: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     lineHeight: 22,
     marginBottom: 8,
   },
@@ -392,14 +393,14 @@ const styles = StyleSheet.create({
     padding: 12,
     borderLeftWidth: 3,
     borderLeftColor: '#ff9800',
-    borderRadius: 4,
+    borderRadius: borderRadius.sm,
     marginTop: 8,
     marginBottom: 12,
-    fontSize: 14,
+    fontSize: fontSize.sm,
     lineHeight: 20,
   },
   endText: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     textAlign: 'center',
     marginTop: 24,
     marginBottom: 16,

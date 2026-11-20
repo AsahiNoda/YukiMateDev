@@ -1,3 +1,5 @@
+import { PillButton } from '@/components/ui/PillButton';
+import { useTranslation } from '@/hooks/useTranslation';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
@@ -18,6 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SavedPostsScreen() {
     const insets = useSafeAreaInsets();
+    const { t } = useTranslation();
     const colorScheme = useColorScheme();
     const colors = Colors[colorScheme ?? 'light'];
     const { posts, loading, error, refetch } = useSavedPosts();
@@ -153,12 +156,7 @@ export default function SavedPostsScreen() {
                 <View style={styles.emptyContainer}>
                     <IconSymbol name="exclamationmark.triangle" size={48} color={colors.error} />
                     <Text style={[styles.emptyText, { color: colors.error }]}>{error}</Text>
-                    <TouchableOpacity
-                        style={[styles.retryButton, { backgroundColor: colors.accent }]}
-                        onPress={refetch}
-                    >
-                        <Text style={styles.retryButtonText}>再試行</Text>
-                    </TouchableOpacity>
+                    <PillButton title={t('common.retry')} icon="refresh" variant="secondary" onPress={refetch} />
                 </View>
             </View>
         );
@@ -297,16 +295,5 @@ const styles = StyleSheet.create({
     emptyText: {
         fontSize: fontSize.md,
         textAlign: 'center',
-    },
-    retryButton: {
-        paddingHorizontal: spacing.lg,
-        paddingVertical: spacing.md,
-        borderRadius: borderRadius.md,
-        marginTop: spacing.md,
-    },
-    retryButtonText: {
-        fontSize: fontSize.md,
-        fontWeight: fontWeight.semibold,
-        color: '#FFFFFF',
     },
 });

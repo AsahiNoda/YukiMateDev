@@ -1,3 +1,4 @@
+import { fontSize, fontWeight } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
 import React from 'react';
 import { StyleSheet, Text, useColorScheme, View } from 'react-native';
@@ -24,8 +25,8 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   title: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: fontSize.meta,
+    fontWeight: fontWeight.semibold,
     textTransform: 'uppercase',
     marginBottom: 8,
     letterSpacing: 0.5,

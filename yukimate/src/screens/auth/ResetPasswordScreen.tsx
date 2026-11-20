@@ -1,3 +1,4 @@
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
 import { router } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
 import {
@@ -399,12 +400,12 @@ const styles = StyleSheet.create({
     zIndex: 10,
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: borderRadius.glass,
     backgroundColor: 'rgba(128, 128, 128, 0.1)',
   },
   languageButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.semibold,
   },
   keyboardView: {
     flex: 1,
@@ -420,17 +421,17 @@ const styles = StyleSheet.create({
     marginBottom: 56,
   },
   logoIcon: {
-    fontSize: 72,
+    fontSize: fontSize.displayLarge,
     marginBottom: 12,
   },
   logoText: {
-    fontSize: 36,
-    fontWeight: '700',
+    fontSize: fontSize.xxxl,
+    fontWeight: fontWeight.bold,
     letterSpacing: -0.5,
     marginBottom: 8,
   },
   tagline: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     textAlign: 'center',
     opacity: 0.7,
   },
@@ -438,8 +439,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   title: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: fontSize.title,
+    fontWeight: fontWeight.bold,
     marginBottom: 32,
     textAlign: 'center',
     letterSpacing: -0.5,
@@ -449,13 +450,13 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderRadius: 14,
+    borderRadius: borderRadius.card,
     padding: 18,
-    fontSize: 16,
+    fontSize: fontSize.md,
     marginBottom: 14,
   },
   button: {
-    borderRadius: 14,
+    borderRadius: borderRadius.card,
     padding: 18,
     alignItems: 'center',
     justifyContent: 'center',
@@ -474,8 +475,8 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   buttonText: {
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
     letterSpacing: 0.3,
   },
   cancelButton: {
@@ -483,7 +484,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelText: {
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: fontSize.body,
+    fontWeight: fontWeight.medium,
   },
 });

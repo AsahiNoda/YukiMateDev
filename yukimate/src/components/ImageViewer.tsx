@@ -1,3 +1,4 @@
+import { borderRadius } from '@/constants/spacing';
 import React from 'react';
 import { Image } from 'expo-image';
 import {
@@ -84,7 +85,7 @@ const styles = StyleSheet.create({
     right: 16,
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: borderRadius.round,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,

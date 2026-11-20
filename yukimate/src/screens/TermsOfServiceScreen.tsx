@@ -1,3 +1,4 @@
+import { fontSize, fontWeight } from '@/constants/spacing';
 import { Colors } from '@/constants/theme';
 import { IconSymbol } from '@components/ui/icon-symbol';
 import { router } from 'expo-router';
@@ -235,8 +236,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.semibold,
   },
   placeholder: {
     width: 40,
@@ -249,7 +250,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   updateDate: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     marginBottom: 24,
     textAlign: 'center',
   },
@@ -257,18 +258,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
     marginBottom: 12,
     lineHeight: 24,
   },
   sectionText: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     lineHeight: 22,
     marginBottom: 8,
   },
   endText: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     textAlign: 'center',
     marginTop: 24,
     marginBottom: 16,

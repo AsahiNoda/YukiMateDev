@@ -3,15 +3,14 @@ import { getFlagSource } from '@/constants/countries';
 import { Chip } from '@/components/ui/Chip';
 import { PillButton } from '@/components/ui/PillButton';
 import { ReportSheet } from '@/components/ReportSheet';
-import { borderRadius } from '@/constants/spacing';
+import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
 import { levelLabel } from '@/utils/eventDisplay';
 import { getResortName } from '@/utils/resort-helpers';
-import { Colors } from '@/constants/theme';
 import { useTranslation } from '@/hooks/useTranslation';
 import { getAvatarGradientColors, getBadgeColor } from '@/utils/avatar-utils';
 import { useAuth } from '@contexts/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
-import { useColorScheme } from '@hooks/use-color-scheme';
+import { useAppColors } from '@/hooks/useAppColors';
 import { useProfile } from '@hooks/useProfile';
 import { useUserRating } from '@hooks/useUserRating';
 import { supabase } from '@lib/supabase';
@@ -94,8 +93,7 @@ function ProfileScreen({ userId }: { userId?: string }) {
   const { user: currentUser } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const profileState = useProfile(userId, refreshKey);
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colors = useAppColors();
   const { t, locale } = useTranslation();
 
   // 評価・投稿（表示対象ユーザー）
@@ -377,11 +375,7 @@ function ProfileScreen({ userId }: { userId?: string }) {
             <Image source={{ uri: headerUrl }} style={styles.headerImage} />
             {/* 下端を背景色へぼかす */}
             <LinearGradient
-              colors={
-                colorScheme === 'dark'
-                  ? ['transparent', 'rgba(26, 32, 44, 0.4)', 'rgba(26, 32, 44, 1)']
-                  : ['transparent', 'rgba(255, 255, 255, 0.4)', 'rgba(236, 250, 255, 1)']
-              }
+              colors={['transparent', colors.backgroundFade, colors.background]}
               style={styles.headerGradientOverlay}
             />
           </>
@@ -392,7 +386,7 @@ function ProfileScreen({ userId }: { userId?: string }) {
         {/* Back Button */}
         {userId && (
           <TouchableOpacity
-            style={styles.headerBackButton}
+            style={[styles.headerBackButton, { backgroundColor: colors.photoOverlayBackground }]}
             onPress={() => router.back()}
           >
             <Ionicons name="chevron-back" size={24} color="#fff" />
@@ -422,7 +416,7 @@ function ProfileScreen({ userId }: { userId?: string }) {
             // 他のユーザーのプロフィール - 星とブロックボタンを表示
             <>
               <TouchableOpacity
-                style={styles.headerActionButton}
+                style={[styles.headerActionButton, { backgroundColor: colors.photoOverlayBackground }]}
                 onPress={handleStarToggle}
               >
                 <Ionicons
@@ -432,7 +426,7 @@ function ProfileScreen({ userId }: { userId?: string }) {
                 />
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.headerActionButton}
+                style={[styles.headerActionButton, { backgroundColor: colors.photoOverlayBackground }]}
                 onPress={() => setReportVisible(true)}
                 accessibilityRole="button"
                 accessibilityLabel={t('resortPage.reportUser')}
@@ -441,7 +435,7 @@ function ProfileScreen({ userId }: { userId?: string }) {
                 <Ionicons name="flag-outline" size={22} color="#fff" />
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.headerActionButton}
+                style={[styles.headerActionButton, { backgroundColor: colors.photoOverlayBackground }]}
                 onPress={handleBlockToggle}
               >
                 <Ionicons
@@ -735,7 +729,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     // color is set dynamically in the component
-    fontSize: 16,
+    fontSize: fontSize.md,
   },
   headerImageContainer: {
     height: width * 0.7,
@@ -767,8 +761,7 @@ const styles = StyleSheet.create({
   headerActionButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: borderRadius.round,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -778,8 +771,7 @@ const styles = StyleSheet.create({
     left: 20,
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: borderRadius.round,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
@@ -789,17 +781,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: borderRadius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingsButton: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -818,7 +799,7 @@ const styles = StyleSheet.create({
   avatarGradientRing: {
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
-    borderRadius: 60,
+    borderRadius: borderRadius.round,
     padding: 4,
     alignItems: 'center',
     justifyContent: 'center',
@@ -826,18 +807,9 @@ const styles = StyleSheet.create({
   avatarInnerContainer: {
     width: 112,
     height: 112,
-    borderRadius: 56,
+    borderRadius: borderRadius.round,
     overflow: 'hidden',
     // backgroundColor is set dynamically in the component
-  },
-  avatarContainer: {
-    position: 'relative',
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 4,
-    overflow: 'visible',
-    marginRight: 16,
   },
   badgeContainer: {
     position: 'absolute',
@@ -845,7 +817,7 @@ const styles = StyleSheet.create({
     right: -2,
     width: 38,
     height: 38,
-    borderRadius: 19,
+    borderRadius: borderRadius.round,
     // backgroundColor and borderColor are set dynamically in the component
     alignItems: 'center',
     justifyContent: 'center',
@@ -859,7 +831,7 @@ const styles = StyleSheet.create({
   avatar: {
     width: 112,
     height: 112,
-    borderRadius: 56,
+    borderRadius: borderRadius.round,
   },
   avatarPlaceholder: {
     // backgroundColor is set dynamically in the component
@@ -872,8 +844,8 @@ const styles = StyleSheet.create({
     paddingTop: AVATAR_SIZE / 2 + 8,
   },
   userName: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: fontSize.xxl,
+    fontWeight: fontWeight.bold,
     // color is set dynamically in the component
     marginBottom: 2,
   },
@@ -881,24 +853,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     marginBottom: 8,
   },
-  flagEmoji: {
-    fontSize: 22,
-  },
   flagImage: {
     width: 32,
     height: 22,
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  tag: {
-    // color is set dynamically in the component
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
   },
   section: {
     paddingHorizontal: 20,
@@ -906,7 +863,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   homeResortLine: {
-    fontSize: 13,
+    fontSize: fontSize.meta,
     marginBottom: 4,
   },
   profileChips: {
@@ -917,7 +874,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   bioLead: {
-    fontSize: 14,
+    fontSize: fontSize.sm,
     lineHeight: 22,
     paddingHorizontal: 20,
     marginBottom: 14,
@@ -942,27 +899,27 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   statValue: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: fontSize.lg,
+    fontWeight: fontWeight.bold,
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: fontSize.xs,
   },
   statCount: {
-    fontSize: 12,
-    fontWeight: '400',
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.normal,
   },
   rankBadge: {
     width: 26,
     height: 26,
-    borderRadius: 13,
+    borderRadius: borderRadius.round,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 10,
   },
   rankText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: fontSize.meta,
+    fontWeight: fontWeight.bold,
   },
   snsLinkRow: {
     flexDirection: 'row',
@@ -975,8 +932,8 @@ const styles = StyleSheet.create({
   },
   snsLinkText: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: fontSize.body,
+    fontWeight: fontWeight.semibold,
   },
   myListRows: {
     marginHorizontal: 20,
@@ -993,50 +950,15 @@ const styles = StyleSheet.create({
   },
   myListRowText: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: fontSize.body,
+    fontWeight: fontWeight.semibold,
   },
   sectionTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
     // color is set dynamically in the component
     marginBottom: 12,
     letterSpacing: 1,
-  },
-  bioText: {
-    // color is set dynamically in the component
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  // 評価
-  ratingCard: {
-    borderRadius: 14,
-    padding: 16,
-  },
-  ratingValue: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  ratingSub: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  reactionRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 14,
-  },
-  reactionButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  reactionEmoji: {
-    fontSize: 26,
   },
   // チップ
   chipWrap: {
@@ -1050,11 +972,11 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: borderRadius.glass,
   },
   chipText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: fontSize.meta,
+    fontWeight: fontWeight.semibold,
   },
   // よく行くゲレンデ
   topResortRow: {
@@ -1063,19 +985,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     gap: 12,
   },
-  topResortMedal: {
-    fontSize: 20,
-    width: 28,
-    textAlign: 'center',
-  },
   topResortName: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: fontSize.body,
+    fontWeight: fontWeight.semibold,
   },
   topResortCount: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: fontSize.meta,
+    fontWeight: fontWeight.semibold,
   },
   // ギア
   gearRow: {
@@ -1085,134 +1002,16 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   gearType: {
-    fontSize: 11,
-    fontWeight: '700',
+    fontSize: fontSize.xxs,
+    fontWeight: fontWeight.bold,
     letterSpacing: 0.8,
     width: 72,
   },
   gearName: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: fontSize.body,
+    fontWeight: fontWeight.semibold,
   },
-  // SNS
-  snsIconRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  snsCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // 投稿グリッド
-  postsHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  addPostButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  postGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-  },
-  postThumbWrap: {
-    width: POST_GRID_SIZE,
-    height: POST_GRID_SIZE,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  postThumb: {
-    width: '100%',
-    height: '100%',
-  },
-  postOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-  },
-  postOverlayText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  // MVP: Gear styles are disabled
-  // gearHeaderRow: {
-  //   flexDirection: 'row',
-  //   justifyContent: 'space-between',
-  //   alignItems: 'center',
-  //   marginBottom: 12,
-  // },
-  // gearCard: {
-  //   backgroundColor: '#1e293b',
-  //   borderRadius: 16,
-  //   overflow: 'hidden',
-  //   borderWidth: 1,
-  //   borderColor: '#334155',
-  // },
-  // gearImageContainer: {
-  //   height: 220,
-  //   backgroundColor: '#334155',
-  //   flexDirection: 'row',
-  //   alignItems: 'center',
-  //   justifyContent: 'space-between',
-  //   paddingHorizontal: 8,
-  // },
-  // gearImage: {
-  //   flex: 1,
-  //   height: '90%',
-  // },
-  // gearImagePlaceholder: {
-  //   flex: 1,
-  //   justifyContent: 'center',
-  //   alignItems: 'center',
-  // },
-  // gearPlaceholderText: {
-  //   color: '#64748b',
-  //   fontSize: 14,
-  //   marginTop: 8,
-  // },
-  // navButton: {
-  //   width: 36,
-  //   height: 36,
-  //   borderRadius: 18,
-  //   backgroundColor: 'rgba(0,0,0,0.5)',
-  //   alignItems: 'center',
-  //   justifyContent: 'center',
-  // },
-  // gearInfo: {
-  //   padding: 16,
-  //   alignItems: 'center',
-  //   backgroundColor: '#0f172a',
-  // },
-  // gearType: {
-  //   color: '#94a3b8',
-  //   fontSize: 11,
-  //   fontWeight: 'bold',
-  //   marginBottom: 4,
-  //   letterSpacing: 1,
-  // },
-  // gearName: {
-  //   color: '#fff',
-  //   fontSize: 18,
-  //   fontWeight: 'bold',
-  //   textTransform: 'uppercase',
-  //   letterSpacing: 0.5,
-  // },
 });
 
 export default ProfileScreen;
