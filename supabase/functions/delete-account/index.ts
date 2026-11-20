@@ -1,230 +1,94 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+/**
+ * アカウント削除（アプリの「アカウントを削除」から呼ぶ）。
+ *
+ * 1. 呼び出した本人を確認する（Authorization のトークン ＝ 本文の userId）
+ * 2. 認証ユーザー（auth.users）を最初に消す。
+ *    データは外部キーの ON DELETE CASCADE で auth.users → public.users → 各テーブルへ消える
+ *    （止まる外部キーは 20261129000000_account_deletion_cascade.sql で無くした）。
+ *    ここで失敗したら何も消えていないので、「データだけ消えてログインは残る」状態にならない。
+ * 3. ストレージの本人のフォルダ（「ユーザーID/」の下）を消す。失敗しても削除は成功として返す。
+ */
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/** 本人の写真を「ユーザーID/」の下に置いているバケット */
+const USER_FOLDER_BUCKETS = [
+  'profile_avatar',
+  'profile_header',
+  'profile_posts',
+  'feed-post-images',
+  'event_images',
+  'channel_media',
+  'event_chat_media',
+];
+
+const json = (body: unknown, status: number) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+
 Deno.serve(async (req) => {
-  // CORS preflight request
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // リクエストボディを取得
-    const { userId } = await req.json();
+    const { userId } = await req.json().catch(() => ({ userId: null }));
+    if (!userId) return json({ error: 'User ID is required' }, 400);
 
-    if (!userId) {
-      return new Response(
-        JSON.stringify({ error: 'User ID is required' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Supabase クライアントを作成
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    // ユーザー認証を確認
+    // 本人確認
     const authHeader = req.headers.get('Authorization');
-
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
+    if (!authHeader) return json({ error: 'Missing authorization header' }, 401);
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user || user.id !== userId) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
+    if (authError || !user || user.id !== userId) return json({ error: 'Unauthorized' }, 401);
 
     console.log('Deleting account for user:', userId);
 
-    // 1. イベント参加者から削除
-    const { error: participantsError } = await supabase
-      .from('event_participants')
-      .delete()
-      .eq('user_id', userId);
-    if (participantsError) console.error('Error deleting event_participants:', participantsError);
-
-    // 2. イベント申請を削除
-    const { error: applicationsError } = await supabase
-      .from('event_applications')
-      .delete()
-      .eq('user_id', userId);
-    if (applicationsError) console.error('Error deleting event_applications:', applicationsError);
-
-    // 3. チャットメッセージを削除
-    const { error: messagesError } = await supabase
-      .from('event_messages')
-      .delete()
-      .eq('sender_user_id', userId);
-    if (messagesError) console.error('Error deleting event_messages:', messagesError);
-
-    // 4. 投稿を削除
-    const { error: postsError } = await supabase
-      .from('posts_feed')
-      .delete()
-      .eq('author_user_id', userId);
-    if (postsError) console.error('Error deleting posts_feed:', postsError);
-
-    // 5. コメントを削除
-    const { error: commentsError } = await supabase
-      .from('feed_comments')
-      .delete()
-      .eq('user_id', userId);
-    if (commentsError) console.error('Error deleting feed_comments:', commentsError);
-
-    // 6. いいねを削除
-    const { error: likesError } = await supabase
-      .from('feed_likes')
-      .delete()
-      .eq('user_id', userId);
-    if (likesError) console.error('Error deleting feed_likes:', likesError);
-
-    // 7. ★登録を削除（自分が登録した & 自分が登録された）
-    const { error: starsError } = await supabase
-      .from('stars')
-      .delete()
-      .or(`user_id.eq.${userId},target_user_id.eq.${userId}`);
-    if (starsError) console.error('Error deleting stars:', starsError);
-
-    // 8. ブロックを削除（自分がブロックした & 自分がブロックされた）
-    const { error: blocksError } = await supabase
-      .from('blocks')
-      .delete()
-      .or(`user_id.eq.${userId},blocked_user_id.eq.${userId}`);
-    if (blocksError) console.error('Error deleting blocks:', blocksError);
-
-    // 9. 主催イベントを削除（cascadeで関連データも削除される）
-    const { error: eventsError } = await supabase
-      .from('posts_events')
-      .delete()
-      .eq('host_user_id', userId);
-    if (eventsError) console.error('Error deleting posts_events:', eventsError);
-
-    // 10. プロフィールを削除
-    const { data: deletedProfiles, error: profileError } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('user_id', userId)
-      .select();
-    if (profileError) {
-      console.error('Error deleting profiles:', profileError);
-    } else {
-      console.log(`Deleted ${deletedProfiles?.length || 0} profile(s) for user ${userId}`);
+    // 認証ユーザーを消す（データは CASCADE で一緒に消える）
+    const { error: deleteUserError } = await supabase.auth.admin.deleteUser(userId);
+    if (deleteUserError) {
+      console.error('Auth user deletion error:', deleteUserError);
+      return json({ error: 'delete_failed', detail: deleteUserError.message }, 500);
     }
 
-    // 11. ギア情報を削除
-    const { error: gearError } = await supabase
-      .from('gear')
-      .delete()
-      .eq('user_id', userId);
-    if (gearError) console.error('Error deleting gear:', gearError);
-
-    // 12. 通知トークンを削除
-    const { error: tokensError } = await supabase
-      .from('notification_tokens')
-      .delete()
-      .eq('user_id', userId);
-    if (tokensError) console.error('Error deleting notification_tokens:', tokensError);
-
-    // 13. usersテーブルから削除（public.users から削除）
-    // auth.usersの削除前に実行しないと、外部キー制約違反（ON DELETE RESTRICTの場合）で失敗する可能性がある
-    const { data: deletedUsers, error: usersError } = await supabase
-      .from('users')
-      .delete()
-      .eq('id', userId)
-      .select();
-    if (usersError) {
-      console.error('Error deleting from users table:', usersError);
-      // usersテーブル削除失敗時は、ここでエラーにするか、warningにして続行するか
-      // 外部キー制約エラーの場合は続行してもauth.users削除で転けるため、ログを出して続行
-    } else {
-      console.log(`Deleted ${deletedUsers?.length || 0} user record(s) from users table for user ${userId}`);
-    }
-
-    // 14. 認証ユーザーを削除（auth.usersから削除）
-    const { error: deleteAuthUserError } = await supabase.auth.admin.deleteUser(userId);
-
-    if (deleteAuthUserError) {
-      console.error('Auth user deletion error:', deleteAuthUserError);
-      throw new Error('Failed to delete auth user: ' + deleteAuthUserError.message);
-    }
-
-    console.log('Auth user deleted successfully:', userId);
-
-    // 15. Storageから画像削除
-    try {
-      // アバター画像削除
-      const { data: avatarFiles } = await supabase.storage
-        .from('avatars')
-        .list(userId);
-
-      if (avatarFiles && avatarFiles.length > 0) {
-        const avatarPaths = avatarFiles.map(f => `${userId}/${f.name}`);
-        await supabase.storage
-          .from('avatars')
-          .remove(avatarPaths);
+    // ストレージの本人のフォルダ（失敗しても続ける）
+    for (const bucket of USER_FOLDER_BUCKETS) {
+      try {
+        const paths: string[] = [];
+        // 「ユーザーID/」直下と、その下のフォルダ（チャンネルID・イベントID）を1段だけたどる
+        const { data: top } = await supabase.storage.from(bucket).list(userId, { limit: 1000 });
+        for (const entry of top ?? []) {
+          if (entry.id) {
+            paths.push(`${userId}/${entry.name}`);
+          } else {
+            const { data: inner } = await supabase.storage.from(bucket).list(`${userId}/${entry.name}`, { limit: 1000 });
+            for (const file of inner ?? []) paths.push(`${userId}/${entry.name}/${file.name}`);
+          }
+        }
+        if (paths.length > 0) await supabase.storage.from(bucket).remove(paths);
+      } catch (storageError) {
+        console.error(`Storage cleanup error (${bucket}):`, storageError);
       }
-
-      // 投稿画像削除
-      const { data: postFiles } = await supabase.storage
-        .from('posts')
-        .list(userId);
-
-      if (postFiles && postFiles.length > 0) {
-        const postPaths = postFiles.map(f => `${userId}/${f.name}`);
-        await supabase.storage
-          .from('posts')
-          .remove(postPaths);
-      }
-    } catch (storageError) {
-      console.error('Storage deletion error:', storageError);
-      // ストレージエラーは無視して続行
     }
 
     console.log('Account deleted successfully:', userId);
-
-    return new Response(
-      JSON.stringify({ success: true, message: 'Account deleted successfully' }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    return json({ success: true }, 200);
   } catch (error) {
     console.error('Delete account error:', error);
-    return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
+    return json({ error: 'delete_failed', detail: error instanceof Error ? error.message : String(error) }, 500);
   }
 });

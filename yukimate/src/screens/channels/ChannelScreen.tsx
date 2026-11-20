@@ -250,7 +250,11 @@ export default function ChannelScreen() {
           </Pressable>
         ) : null}
         <View style={[styles.messageContent, own && styles.ownContent]}>
-          {!own ? <Text style={[styles.senderName, { color: c.textMuted }]}>{item.authorName}</Text> : null}
+          {!own ? (
+            <Text style={[styles.senderName, { color: c.textMuted }]} onPress={() => openUser(item.userId)} accessibilityRole="link">
+              {item.authorName}
+            </Text>
+          ) : null}
           <Pressable
             onLongPress={() => setMenuPost(item)}
             delayLongPress={300}

@@ -1,556 +1,449 @@
-import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
-import { useState } from 'react';
-import { Image } from 'expo-image';
-import {
-  Alert,
-  KeyboardAvoidingView,
-  Pressable,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { logHandled } from '@/lib/logHandled';
+import { AuthNotice, AuthScaffold } from '@/components/auth/AuthScaffold';
+import { PillButton } from '@/components/ui/PillButton';
+import { SegmentedToggle } from '@/components/ui/SegmentedToggle';
+import { TextField } from '@/components/ui/TextField';
+import { fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
+import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/hooks/useTranslation';
-import { useLocale } from '@/contexts/LocaleContext';
 import { supabase } from '@lib/supabase';
-import { validateEmail, validatePassword } from '@/utils/validation';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import React, { useEffect, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 /** 利用規約の版（規約を改定したら更新する。サインアップ時にアカウントへ記録） */
 const TERMS_VERSION = '2026-11-19';
+/** 確認メールの再送までの待ち時間（秒） */
+const RESEND_SECONDS = 60;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+type Mode = 'signin' | 'signup' | 'reset';
+/** existing：登録の途中（メール未確認）だったアカウントに確認メールを送り直した */
+type Sent = { kind: 'signup' | 'reset'; email: string; existing?: boolean } | null;
+
+/**
+ * ログイン・新規登録・パスワードを忘れたとき（1画面で切り替える）。
+ *
+ * 新規登録の流れ（仕組みは以前と同じ）：
+ *   メールアドレス＋規約に同意 → メールのリンク（slopelink://set-password）→ パスワード設定 → プロフィール作成
+ * パスワードを忘れたとき：
+ *   メールアドレス → メールのリンク（slopelink://reset-password）→ 新しいパスワード → ログイン
+ *
+ * 結果はアラートではなく画面の中で伝える（エラーは欄の下、送信後は「メールを確認」の画面）。
+ */
 export default function SignInScreen() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const c = useAppColors();
   const { t } = useTranslation();
-  const { locale, setLocale } = useLocale();
+  const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
-  // 新規登録時の利用規約・プライバシーポリシーへの同意（Apple Guideline 1.2）
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [sent, setSent] = useState<Sent>(null);
+  const [cooldown, setCooldown] = useState(0);
+  const [errors, setErrors] = useState<{ email?: string; password?: string; terms?: string; form?: string }>({});
+  const [info, setInfo] = useState<string | null>(null);
+  const passwordRef = useRef<TextInput>(null);
+  // メールのリンクの期限切れ・無効で戻ってきたとき（RootLayout が linkError を付けて開く）
+  const { linkError } = useLocalSearchParams<{ linkError?: string }>();
+  useEffect(() => {
+    if (!linkError) return;
+    // 次にすることは「新規登録から同じメールアドレスで送り直す」なので、新規登録を開いておく
+    setMode('signup');
+    setErrors({ form: t('onboarding.linkExpiredSignIn') });
+  }, [linkError, t]);
 
-  const handleEmailPasswordAuth = async () => {
-    console.log('🔐 [SignIn] Starting authentication...', { mode, email });
+  // 再送までのカウントダウン
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setTimeout(() => setCooldown((s) => s - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [cooldown]);
 
-    // メールアドレスのバリデーション
-    const emailValidation = validateEmail(email);
-    if (!emailValidation.isValid) {
-      console.log('❌ [SignIn] Email validation failed:', emailValidation.error);
-      Alert.alert(t('common.error'), emailValidation.error);
-      return;
-    }
-
-    // 新規登録は利用規約への同意が必須
-    if (mode === 'signup' && !agreedToTerms) {
-      Alert.alert(t('common.error'), t('auth.mustAgreeToTerms'));
-      return;
-    }
-
-    // パスワードのバリデーション（サインイン時のみ）
-    if (mode === 'signin') {
-      const passwordValidation = validatePassword(password);
-      if (!passwordValidation.isValid) {
-        if (!password || password.trim() === '') {
-          console.log('❌ [SignIn] Password is empty');
-          Alert.alert(t('common.error'), t('auth.enterPassword'));
-          return;
-        }
-      }
-    }
-
-    console.log('⏳ [SignIn] Setting loading state to true');
-    setLoading(true);
-    try {
-      if (mode === 'signup') {
-        // サインアップ (ユーザー存在チェックのためにsignUpを使用)
-        console.log('📝 [SignIn] Calling signUp with dummy password...');
-        // ランダムなダミーパスワードを生成 (ユーザーには見えない)
-        const dummyPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8) + 'Aa1!';
-
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password: dummyPassword,
-          options: {
-            emailRedirectTo: 'slopelink://set-password',
-            // 同意した日時と規約の版をアカウントに記録する
-            data: {
-              terms_accepted_at: new Date().toISOString(),
-              terms_version: TERMS_VERSION,
-            },
-          },
-        });
-
-        if (error) {
-          console.error('❌ [SignIn] Sign up error:', error);
-          // Database error handling
-          if (error.message.includes('Database error')) {
-            throw new Error(t('auth.databaseError'));
-          }
-          throw error;
-        }
-
-        // 既存ユーザーの判定
-        if (data?.user?.identities?.length === 0) {
-          console.log('⚠️  [SignIn] Account already exists');
-
-          // 既存ユーザーの詳細情報を取得して適切なメッセージを表示
-          const { data: existingUser } = await supabase.auth.getUser();
-          const isEmailConfirmed = existingUser?.user?.email_confirmed_at;
-
-          if (!isEmailConfirmed) {
-            // メール未確認の既存ユーザー - 確認メールの再送信を提案
-            console.log('⚠️  [SignIn] Account exists but email not confirmed');
-            Alert.alert(
-              t('auth.accountExistsTitle'),
-              t('auth.accountExistsEmailNotConfirmed'),
-              [
-                {
-                  text: t('auth.resendEmail'),
-                  onPress: async () => {
-                    try {
-                      setLoading(true);
-                      const { error: otpError } = await supabase.auth.signInWithOtp({
-                        email,
-                        options: {
-                          emailRedirectTo: 'slopelink://set-password',
-                          shouldCreateUser: false,
-                        }
-                      });
-
-                      if (otpError) {
-                        throw otpError;
-                      }
-
-                      Alert.alert(
-                        t('auth.confirmEmailSent'),
-                        t('auth.resendEmailSuccess'),
-                        [{ text: t('common.ok') }]
-                      );
-                    } catch (error: any) {
-                      console.error('❌ [SignIn] Failed to resend email:', error);
-                      Alert.alert(t('common.error'), error.message || t('auth.resendEmailFailed'));
-                    } finally {
-                      setLoading(false);
-                    }
-                  }
-                },
-                {
-                  text: t('common.cancel'),
-                  style: 'cancel'
-                }
-              ]
-            );
-          } else {
-            // メール確認済みの既存ユーザー - ログインへ誘導
-            console.log('⚠️  [SignIn] Account exists and email confirmed');
-            Alert.alert(
-              t('auth.accountExistsTitle'),
-              t('auth.accountAlreadyExists'),
-              [
-                {
-                  text: t('auth.goToLogin'),
-                  onPress: () => setMode('signin')
-                },
-                {
-                  text: t('auth.forgotPasswordLink'),
-                  onPress: handleForgotPassword
-                },
-                {
-                  text: t('common.cancel'),
-                  style: 'cancel'
-                }
-              ]
-            );
-          }
-          return;
-        }
-
-        // 自動ログインされてしまった場合（Supabaseの設定でメール確認が不要になっている場合など）
-        if (data.session) {
-          console.log('⚠️ [SignIn] User was logged in immediately. Signing out and sending magic link...');
-          await supabase.auth.signOut();
-
-          // 改めてマジックリンクを送信
-          const { error: otpError } = await supabase.auth.signInWithOtp({
-            email,
-            options: {
-              emailRedirectTo: 'slopelink://set-password',
-              shouldCreateUser: false, // 既に作成済みなのでfalse
-            }
-          });
-
-          if (otpError) {
-            console.error('❌ [SignIn] Failed to send magic link:', otpError);
-            throw otpError;
-          }
-        } else {
-          // セッションがない場合（通常のメール確認待ち状態）でも、マジックリンクを明示的に送信する
-          // (Supabaseのデフォルトの確認メールが届かない場合や、テンプレートの違いを吸収するため)
-          console.log('📝 [SignIn] sending magic link explicity...');
-          const { error: otpError } = await supabase.auth.signInWithOtp({
-            email,
-            options: {
-              emailRedirectTo: 'slopelink://set-password',
-              shouldCreateUser: false, // 既に作成済み
-            }
-          });
-
-          if (otpError) {
-            // レート制限などで失敗する可能性はあるが、signUp自体の確認メールが飛んでいる可能性もあるので
-            // 致命的なエラーにはしないがログは出す
-            console.warn('⚠️ [SignIn] Failed to send magic link (secondary):', otpError);
-          }
-        }
-
-        console.log('✅ [SignIn] SignUp initiated, confirmation email sent');
-        Alert.alert(
-          t('auth.confirmEmailSent'),
-          '認証メールを送信しました。メール内のリンクをクリックしてパスワード設定へ進んでください。',
-          [{ text: t('common.ok') }]
-        );
-      } else {
-        // サインイン
-        console.log('🔑 [SignIn] Calling signInWithPassword...');
-        console.log('📧 [SignIn] Email:', email);
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) {
-          console.error('❌ [SignIn] Sign in error:', error);
-          // Invalid Login Credentialsエラーの場合、分かりやすいメッセージに変換
-          if (error.message.includes('Invalid login credentials')) {
-            throw new Error(t('auth.invalidCredentials'));
-          }
-          throw error;
-        }
-
-        console.log('✅ [SignIn] Signed in successfully');
-        console.log('📧 [SignIn] User email:', data.user?.email);
-        console.log('🆔 [SignIn] User ID:', data.user?.id);
-        console.log('⏳ [SignIn] Waiting for RootLayout onAuthStateChange to handle navigation...');
-        // RootLayout の onAuthStateChange が自動的にリダイレクトするまで待つ
-        // 明示的なナビゲーションは行わない（競合を避けるため）
-      }
-    } catch (error: any) {
-      console.error('❌ [SignIn] Auth error:', error);
-      Alert.alert(t('common.error'), error.message || t('auth.authenticationFailed'));
-    } finally {
-      console.log('✅ [SignIn] Setting loading state to false');
-      setLoading(false);
-    }
+  const switchMode = (next: Mode) => {
+    setMode(next);
+    setErrors({});
+    setInfo(null);
   };
 
-  const handleForgotPassword = async () => {
-    console.log('🔐 [ForgotPassword] Starting password reset flow...');
+  const checkEmail = () => {
+    const value = email.trim();
+    if (!value) return t('onboarding.emailRequired');
+    if (!EMAIL_PATTERN.test(value)) return t('onboarding.emailInvalid');
+    return undefined;
+  };
 
-    // メールアドレスのバリデーション
-    const emailValidation = validateEmail(email);
-    if (!emailValidation.isValid) {
-      console.log('❌ [ForgotPassword] Email validation failed:', emailValidation.error);
-      Alert.alert(t('common.error'), t('auth.enterEmailForReset'));
-      return;
+  // ---------- 送信処理（Supabase の呼び方は以前と同じ） ----------
+
+  /** メールのエラーを画面の文言に（送りすぎ・その他） */
+  const emailErrorMessage = (error: { message?: string; code?: string; status?: number }): string => {
+    const text = `${error.code ?? ''} ${error.message ?? ''}`.toLowerCase();
+    if (error.status === 429 || text.includes('rate limit') || text.includes('security purposes')) {
+      return t('onboarding.tooManyEmails');
     }
+    return t('onboarding.genericError');
+  };
 
-    console.log('📧 [ForgotPassword] Email validated:', email);
+  const sendSignupLink = async (address: string) => {
+    // メール確認のリンクを確実に届けるため、ログイン用のリンクも明示的に送る（以前と同じ）
+    const { error } = await supabase.auth.signInWithOtp({
+      email: address,
+      options: { emailRedirectTo: 'slopelink://set-password', shouldCreateUser: false },
+    });
+    return error;
+  };
+
+  const handleSignUp = async () => {
+    const emailError = checkEmail();
+    const termsError = agreed ? undefined : t('onboarding.termsRequired');
+    setErrors({ email: emailError, terms: termsError });
+    if (emailError || termsError) return;
+
+    const address = email.trim();
     setLoading(true);
-
     try {
-      console.log('⏳ [ForgotPassword] Calling resetPasswordForEmail...');
-      console.log('🔗 [ForgotPassword] Redirect URL: slopelink://reset-password');
+      // 登録を終えているメールアドレス（プロフィールまで作成済み）は新規登録させず、ログインへ案内する
+      // （20261130000000_signup_email_status.sql。関数がまだ無いときは、以前どおり下の流れで扱う）
+      const { data: status, error: statusError } = await supabase.rpc('signup_email_status' as any, { p_email: address } as any);
+      if (!statusError && status === 'registered') {
+        logHandled('SignUp', 'already registered → sign in');
+        setMode('signin');
+        setErrors({});
+        setInfo(t('onboarding.accountExists'));
+        return;
+      }
 
-      // アプリ内のパスワードリセット画面にリダイレクト
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: 'slopelink://reset-password',
+      // パスワードは次の画面（メールのリンクから）で決めるので、ここでは本人にも見えない仮のものを使う
+      const dummyPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8) + 'Aa1!';
+      const { data, error } = await supabase.auth.signUp({
+        email: address,
+        password: dummyPassword,
+        options: {
+          emailRedirectTo: 'slopelink://set-password',
+          data: { terms_accepted_at: new Date().toISOString(), terms_version: TERMS_VERSION },
+        },
       });
+      // 登録済みのメールアドレス：このプロジェクトでは 422 user_already_exists が返る
+      // （設定によっては、エラーではなく identities が空のユーザーが返る。どちらも同じに扱う）
+      const alreadyRegistered =
+        error?.code === 'user_already_exists' ||
+        /already registered/i.test(error?.message ?? '') ||
+        (!error && data?.user?.identities?.length === 0);
+      if (error && !alreadyRegistered) throw error;
 
-      console.log('📊 [ForgotPassword] Response received');
-      console.log('📊 [ForgotPassword] Data:', data);
-      console.log('📊 [ForgotPassword] Error:', error);
-
-      if (error) {
-        console.error('❌ [ForgotPassword] Supabase error:', error);
-        throw error;
+      // 登録済みのメールアドレス（リンクの期限切れで登録を終えられなかった人を含む）。
+      // このプロジェクトはメール確認を省いているので、アカウントは作られた時点で確認済みになり、
+      // 仮のパスワードのままログインできなくなる。→ パスワードを決める画面へのリンクを改めて送り、続きから進めてもらう
+      // （プロフィールがあればホームへ、無ければプロフィール作成へ進む。メールを受け取れる本人だけが進める）
+      if (alreadyRegistered) {
+        logHandled('SignUp', 'already registered → sending set-password link');
+        const linkError = await sendSignupLink(address);
+        if (linkError) {
+          setErrors({ form: emailErrorMessage(linkError) });
+          return;
+        }
+        setSent({ kind: 'signup', email: address, existing: true });
+        setCooldown(RESEND_SECONDS);
+        return;
       }
 
-      console.log('✅ [ForgotPassword] Reset email sent successfully');
-      Alert.alert(
-        t('auth.resetPasswordEmailSent'),
-        t('auth.resetPasswordEmailMessage'),
-        [{ text: t('common.ok') }]
-      );
+      // メール確認なしでログインされた設定のときは、いったん抜けてリンクから進んでもらう
+      if (data?.session) await supabase.auth.signOut();
+      const linkError = await sendSignupLink(address);
+      if (linkError) logHandled('SignUp', `link not sent: ${linkError.message}`);
+
+      setSent({ kind: 'signup', email: address });
+      setCooldown(RESEND_SECONDS);
     } catch (error: any) {
-      console.error('❌ [ForgotPassword] Password reset error:', error);
-      console.error('❌ [ForgotPassword] Error name:', error.name);
-      console.error('❌ [ForgotPassword] Error message:', error.message);
-      console.error('❌ [ForgotPassword] Error stack:', error.stack);
-
-      // より詳細なエラーメッセージを提供
-      let errorMessage = error.message || t('auth.resetPasswordFailed');
-      if (error.message?.includes('Error sending recovery email')) {
-        errorMessage = t('auth.emailServiceNotConfigured');
-      }
-
-      Alert.alert(t('common.error'), errorMessage);
+      logHandled('SignUp', error);
+      setErrors({ form: emailErrorMessage(error ?? {}) });
     } finally {
-      console.log('✅ [ForgotPassword] Setting loading state to false');
       setLoading(false);
     }
   };
 
-  const toggleLanguage = async () => {
+  const handleSignIn = async () => {
+    const emailError = checkEmail();
+    const passwordError = password ? undefined : t('onboarding.passwordRequired');
+    setErrors({ email: emailError, password: passwordError });
+    setInfo(null);
+    if (emailError || passwordError) return;
+
+    setLoading(true);
     try {
-      await setLocale(locale === 'ja' ? 'en' : 'ja');
-    } catch (error) {
-      console.error('Failed to change language:', error);
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (error) {
+        const message = error.message || '';
+        if (message.includes('Invalid login credentials')) {
+          setErrors({ form: t('onboarding.invalidCredentials') });
+        } else if (message.includes('Email not confirmed')) {
+          setErrors({ form: t('onboarding.emailNotConfirmed') });
+        } else {
+          setErrors({ form: t('onboarding.genericError') });
+        }
+        return;
+      }
+      // 画面の移動は RootLayout の onAuthStateChange に任せる（プロフィールの有無で行き先が変わる）
+    } finally {
+      setLoading(false);
     }
   };
+
+  const handleReset = async () => {
+    const emailError = checkEmail();
+    setErrors({ email: emailError });
+    if (emailError) return;
+
+    const address = email.trim();
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(address, { redirectTo: 'slopelink://reset-password' });
+      if (error) throw error;
+      setSent({ kind: 'reset', email: address });
+      setCooldown(RESEND_SECONDS);
+    } catch (error: any) {
+      logHandled('ForgotPassword', error);
+      setErrors({ form: emailErrorMessage(error ?? {}) });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!sent || cooldown > 0) return;
+    setLoading(true);
+    try {
+      let error;
+      if (sent.kind === 'signup') {
+        // パスワードを決める画面へのリンクを送り直す（メール確認を省いた設定なので、確認メールではなくこちら）
+        error = await sendSignupLink(sent.email);
+      } else {
+        error = (await supabase.auth.resetPasswordForEmail(sent.email, { redirectTo: 'slopelink://reset-password' })).error;
+      }
+      setInfo(error ? emailErrorMessage(error) : t('onboarding.resent'));
+      if (!error) setCooldown(RESEND_SECONDS);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ---------- 送信後：「メールを確認してください」 ----------
+
+  if (sent) {
+    return (
+      <AuthScaffold
+        title={t('onboarding.checkEmailTitle')}
+        subtitle={t(sent.kind === 'signup' ? 'onboarding.checkEmailSignup' : 'onboarding.checkEmailReset', { email: sent.email })}
+        step={sent.kind === 'signup' ? { current: 1, total: 4 } : undefined}
+        onBack={() => {
+          setSent(null);
+          setInfo(null);
+        }}
+        footer={
+          <Pressable
+            onPress={() => {
+              setSent(null);
+              setInfo(null);
+              switchMode('signin');
+            }}
+            style={styles.textButton}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.textButtonLabel, { color: c.tintText }]}>{t('onboarding.backToSignIn')}</Text>
+          </Pressable>
+        }
+      >
+        {info ? <AuthNotice text={info} tone="info" /> : null}
+        <Text style={[styles.body, { color: c.textMuted }]}>
+          {sent.existing ? `${t('onboarding.resumedSignup')}\n` : ''}
+          {t('onboarding.checkEmailHint')}
+        </Text>
+        <PillButton
+          title={cooldown > 0 ? t('onboarding.resendIn', { seconds: cooldown }) : t('onboarding.resend')}
+          variant="secondary"
+          onPress={handleResend}
+          disabled={cooldown > 0}
+          loading={loading}
+          testID="auth-resend"
+        />
+        <Pressable
+          onPress={() => {
+            setSent(null);
+            setInfo(null);
+          }}
+          style={styles.textButton}
+          accessibilityRole="button"
+        >
+          <Text style={[styles.textButtonLabel, { color: c.tintText }]}>{t('onboarding.useDifferentEmail')}</Text>
+        </Pressable>
+      </AuthScaffold>
+    );
+  }
+
+  // ---------- パスワードを忘れたとき ----------
+
+  if (mode === 'reset') {
+    return (
+      <AuthScaffold
+        title={t('onboarding.resetTitle')}
+        subtitle={t('onboarding.resetSubtitle')}
+        onBack={() => switchMode('signin')}
+      >
+        {errors.form ? <AuthNotice text={errors.form} /> : null}
+        <TextField
+          label={t('onboarding.emailLabel')}
+          value={email}
+          onChangeText={setEmail}
+          error={errors.email}
+          placeholder="name@example.com"
+          autoCapitalize="none"
+          autoCorrect={false}
+          keyboardType="email-address"
+          autoComplete="email"
+          textContentType="emailAddress"
+          returnKeyType="send"
+          onSubmitEditing={handleReset}
+          editable={!loading}
+          testID="auth-reset-email"
+        />
+        <PillButton title={t('onboarding.resetButton')} onPress={handleReset} loading={loading} testID="auth-reset-submit" />
+      </AuthScaffold>
+    );
+  }
+
+  // ---------- ログイン／新規登録 ----------
+
+  const isSignUp = mode === 'signup';
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* 言語切り替えボタン */}
-      <TouchableOpacity
-        style={styles.languageButton}
-        onPress={toggleLanguage}
-        disabled={loading}
-      >
-        <Text style={[styles.languageButtonText, { color: colors.text }]}>
-          🌐 {locale === 'ja' ? 'EN' : 'JP'}
-        </Text>
-      </TouchableOpacity>
+    <AuthScaffold
+      showBrand
+      title={isSignUp ? t('onboarding.signUpTitle') : t('onboarding.signInTitle')}
+      subtitle={isSignUp ? t('onboarding.signUpSubtitle') : undefined}
+    >
+      <SegmentedToggle<'signin' | 'signup'>
+        options={[
+          { value: 'signin', label: t('onboarding.signInTab') },
+          { value: 'signup', label: t('onboarding.signUpTab') },
+        ]}
+        value={isSignUp ? 'signup' : 'signin'}
+        onChange={(v) => switchMode(v)}
+        accessibilityLabel={t('onboarding.modeA11y')}
+        fill
+      />
 
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* ロゴ */}
-          <View style={styles.logoContainer}>
-            <Image
-              source={require('../../../assets/images/app_logo.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-          </View>
+      {info ? <AuthNotice text={info} tone="info" /> : null}
+      {errors.form ? <AuthNotice text={errors.form} /> : null}
 
-          {/* フォーム */}
-          <View style={styles.form}>
-            <Text style={[styles.title, { color: colors.text }]}>
-              {mode === 'signin' ? t('auth.signIn') : t('auth.signUp')}
-            </Text>
+      <TextField
+        label={t('onboarding.emailLabel')}
+        value={email}
+        onChangeText={setEmail}
+        error={errors.email}
+        placeholder="name@example.com"
+        autoCapitalize="none"
+        autoCorrect={false}
+        keyboardType="email-address"
+        autoComplete="email"
+        textContentType={isSignUp ? 'emailAddress' : 'username'}
+        returnKeyType={isSignUp ? 'done' : 'next'}
+        onSubmitEditing={() => (isSignUp ? undefined : passwordRef.current?.focus())}
+        editable={!loading}
+        testID="auth-email"
+      />
 
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                placeholder={t('auth.email')}
-                placeholderTextColor={colors.textSecondary}
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                autoComplete="email"
-                editable={!loading}
-              />
-
-              {mode === 'signin' && (
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, color: colors.text }]}
-                  placeholder={t('auth.password')}
-                  placeholderTextColor={colors.textSecondary}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoComplete="password"
-                  editable={!loading}
-                />
-              )}
-            </View>
-
-            {/* パスワードを忘れた場合 (サインインモード時のみ表示) */}
-            {mode === 'signin' && (
-              <TouchableOpacity
-                style={styles.forgotPasswordButton}
-                onPress={handleForgotPassword}
-                disabled={loading}
-              >
-                <Text style={[styles.forgotPasswordText, { color: colors.tint }]}>
-                  {t('auth.forgotPasswordLink')}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* 新規登録：利用規約・プライバシーポリシーへの同意（必須） */}
-            {mode === 'signup' && (
-              <View style={styles.termsRow}>
-                <Pressable
-                  onPress={() => setAgreedToTerms((v) => !v)}
-                  style={styles.checkboxHit}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: agreedToTerms }}
-                  accessibilityLabel={t('auth.agreeToTermsA11y')}
-                  testID="signup-terms-checkbox"
-                >
-                  <Ionicons
-                    name={agreedToTerms ? 'checkbox' : 'square-outline'}
-                    size={24}
-                    color={agreedToTerms ? colors.tintText : colors.textLabel}
-                  />
-                </Pressable>
-                <Text style={[styles.termsText, { color: colors.textSecondary }]}>
-                  <Text style={[styles.termsLink, { color: colors.tintText }]} onPress={() => router.push('/terms-of-service' as any)}>
-                    {t('settings.termsOfService')}
-                  </Text>
-                  {t('auth.and')}
-                  <Text style={[styles.termsLink, { color: colors.tintText }]} onPress={() => router.push('/privacy-policy' as any)}>
-                    {t('settings.privacyPolicy')}
-                  </Text>
-                  {t('auth.agreeToTermsSuffix')}
-                </Text>
-              </View>
-            )}
-
-            {/* メインボタン */}
-            <TouchableOpacity
-              style={[
-                styles.button,
-                styles.primaryButton,
-                { backgroundColor: colors.primaryButton },
-                (loading || (mode === 'signup' && !agreedToTerms)) && styles.buttonDisabled,
-              ]}
-              onPress={handleEmailPasswordAuth}
-              disabled={loading || (mode === 'signup' && !agreedToTerms)}
-              accessibilityState={{ disabled: loading || (mode === 'signup' && !agreedToTerms) }}
+      {isSignUp ? (
+        // 規約への同意（Apple Guideline 1.2）。チェックと文言をまとめて1つの押せる範囲にする
+        <View style={styles.termsBlock}>
+          <View style={styles.termsRow}>
+            <Pressable
+              onPress={() => setAgreed((v) => !v)}
+              style={styles.checkbox}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: agreed }}
+              accessibilityLabel={t('auth.agreeToTermsA11y')}
+              testID="signup-terms-checkbox"
             >
-              <Text style={[styles.buttonText, { color: colors.primaryButtonText }]}>
-                {loading ? t('common.processing') : mode === 'signin' ? t('auth.signIn') : t('auth.signUp')}
+              <Ionicons name={agreed ? 'checkbox' : 'square-outline'} size={24} color={agreed ? c.tintText : c.textLabel} />
+            </Pressable>
+            <Text style={[styles.termsText, { color: c.textMuted }]} onPress={() => setAgreed((v) => !v)}>
+              <Text style={[styles.link, { color: c.tintText }]} onPress={() => router.push('/terms-of-service' as any)}>
+                {t('settings.termsOfService')}
               </Text>
-            </TouchableOpacity>
-
-            {/* モード切替 */}
-            <View style={styles.switchModeContainer}>
-              <Text style={[styles.switchModeText, { color: colors.textSecondary }]}>
-                {mode === 'signin'
-                  ? t('auth.dontHaveAccount')?.split('はこちら')[0]
-                  : t('auth.alreadyHaveAccount')?.split('はこちら')[0]}
+              {t('auth.and')}
+              <Text style={[styles.link, { color: c.tintText }]} onPress={() => router.push('/privacy-policy' as any)}>
+                {t('settings.privacyPolicy')}
               </Text>
-              <TouchableOpacity
-                onPress={() => setMode(mode === 'signin' ? 'signup' : 'signin')}
-                disabled={loading}
-              >
-                <Text style={[styles.switchModeLink, { color: colors.tint }]}>
-                  {mode === 'signin' ? t('auth.signUp') : t('auth.signIn')}
-                </Text>
-              </TouchableOpacity>
-            </View>
+              {t('auth.agreeToTermsSuffix')}
+            </Text>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </View>
+          {errors.terms ? <Text style={[styles.inlineError, { color: c.danger }]}>{errors.terms}</Text> : null}
+        </View>
+      ) : (
+        <>
+          <TextField
+            ref={passwordRef}
+            label={t('onboarding.passwordLabel')}
+            value={password}
+            onChangeText={setPassword}
+            error={errors.password}
+            password
+            autoCapitalize="none"
+            autoComplete="password"
+            textContentType="password"
+            returnKeyType="go"
+            onSubmitEditing={handleSignIn}
+            editable={!loading}
+            testID="auth-password"
+          />
+          <Pressable onPress={() => switchMode('reset')} style={styles.forgot} accessibilityRole="button" testID="auth-forgot">
+            <Text style={[styles.textButtonLabel, { color: c.tintText }]}>{t('onboarding.forgotPassword')}</Text>
+          </Pressable>
+        </>
+      )}
+
+      <PillButton
+        title={isSignUp ? t('onboarding.signUpButton') : t('onboarding.signInButton')}
+        onPress={isSignUp ? handleSignUp : handleSignIn}
+        loading={loading}
+        testID="auth-submit"
+      />
+    </AuthScaffold>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 24,
-    paddingBottom: 40,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: 48,
-  },
-  logoImage: {
-    width: 100,
-    height: 100,
-    borderRadius: borderRadius.round,
-  },
-  form: {
-    width: '100%',
-  },
-  title: {
-    fontSize: fontSize.title,
-    fontWeight: fontWeight.bold,
-    marginBottom: 32,
-    textAlign: 'center',
-    letterSpacing: -0.5,
-  },
-  inputContainer: {
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: borderRadius.card,
-    padding: 18,
-    fontSize: fontSize.md,
-    marginBottom: 14,
-  },
-  forgotPasswordButton: {
-    alignSelf: 'flex-end',
-    marginBottom: 24,
-    paddingVertical: 4,
-  },
-  forgotPasswordText: {
+  body: {
     fontSize: fontSize.sm,
-    fontWeight: fontWeight.medium,
+    lineHeight: 21,
   },
-  button: {
-    borderRadius: borderRadius.card,
-    padding: 18,
-    alignItems: 'center',
+  textButton: {
+    minHeight: touchTarget.min,
     justifyContent: 'center',
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    alignSelf: 'center',
   },
-  primaryButton: {
-    // backgroundColor is set dynamically
+  textButtonLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  forgot: {
+    minHeight: touchTarget.min - 8,
+    justifyContent: 'center',
+    alignSelf: 'flex-end',
+    marginTop: -spacing.sm,
   },
-  buttonText: {
-    fontSize: fontSize.lg,
-    fontWeight: fontWeight.semibold,
-    letterSpacing: 0.3,
+  termsBlock: {
+    gap: 4,
   },
   termsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 12,
+    gap: 2,
   },
-  checkboxHit: {
-    width: 44,
-    height: 44,
+  checkbox: {
+    width: touchTarget.min,
+    height: touchTarget.min,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: -10,
@@ -560,35 +453,12 @@ const styles = StyleSheet.create({
     fontSize: fontSize.meta,
     lineHeight: 19,
   },
-  termsLink: {
+  link: {
     fontWeight: fontWeight.bold,
     textDecorationLine: 'underline',
   },
-  switchModeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-  },
-  switchModeText: {
-    fontSize: fontSize.body,
-  },
-  switchModeLink: {
-    fontSize: fontSize.body,
-    fontWeight: fontWeight.semibold,
-  },
-  languageButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 40,
-    right: 20,
-    zIndex: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: borderRadius.glass,
-    backgroundColor: 'rgba(128, 128, 128, 0.1)',
-  },
-  languageButtonText: {
-    fontSize: fontSize.sm,
-    fontWeight: fontWeight.semibold,
+  inlineError: {
+    fontSize: fontSize.xs,
+    marginLeft: 2,
   },
 });

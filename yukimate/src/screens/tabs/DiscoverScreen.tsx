@@ -416,7 +416,7 @@ const SwipeableCard = forwardRef<SwipeableCardHandle, SwipeableCardProps>(functi
           {/* ★登録ユーザーが参加しているとき */}
           {hasStarredParticipant ? (
             <View style={styles.starredBadge} pointerEvents="none">
-              <Chip label={`★ ${t('chips.starredJoining')}`} tone="overlay" />
+              <Chip label={t('chips.starredJoining')} tone="starred" />
             </View>
           ) : null}
 
@@ -456,11 +456,20 @@ const SwipeableCard = forwardRef<SwipeableCardHandle, SwipeableCardProps>(functi
             {isFree ? <Chip label={t('chips.free')} tone="neutral" /> : null}
           </View>
           <View style={styles.hostRow}>
-            <RoleBasedAvatar avatarUrl={event.hostAvatar} role={event.hostRole} size={28} showBadge={false} />
-            <Text style={[styles.hostText, { color: c.chipText }]} numberOfLines={1}>
-              {t('search.host', { name: event.hostName })}
-            </Text>
-            {event.isHostStarred ? <Ionicons name="star" size={12} color={c.gold} /> : null}
+            {/* ホストを押すとプロフィールへ */}
+            <Pressable
+              onPress={() => router.push(`/user/${event.hostUserId}` as any)}
+              style={styles.hostLink}
+              hitSlop={6}
+              accessibilityRole="link"
+              accessibilityLabel={t('search.host', { name: event.hostName })}
+            >
+              <RoleBasedAvatar avatarUrl={event.hostAvatar} role={event.hostRole} size={28} showBadge={false} />
+              <Text style={[styles.hostText, { color: c.tintText }]} numberOfLines={1}>
+                {t('search.host', { name: event.hostName })}
+              </Text>
+              {event.isHostStarred ? <Ionicons name="star" size={12} color={c.gold} /> : null}
+            </Pressable>
             {!isFree ? (
               <Text style={[styles.price, { color: c.gold }]}>
                 {priceLabel(event.pricePerPersonJpy, t)}
@@ -634,6 +643,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 4,
+  },
+  hostLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
   },
   hostRow: {
     flexDirection: 'row',

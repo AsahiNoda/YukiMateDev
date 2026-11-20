@@ -76,11 +76,15 @@ export default function HomeScreen() {
   const resortName = resort ? getResortName(resort, locale) : null;
 
   const columns = useMemo(() => (feed.hourly ? buildTodayColumns(feed.hourly, new Date()) : null), [feed.hourly]);
-  const powderCm = useMemo(() => {
-    if (!feed.hourly) return null;
-    const cm = snowUntilTomorrowMorning(feed.hourly, new Date());
-    return cm >= POWDER_ALERT_CM ? Math.round(cm) : null;
-  }, [feed.hourly]);
+  // パウダーアラート：明日の朝までの降雪予報、または今日の降雪（天気カードの「新雪」）が基準以上のとき。
+  // 予報を優先（朝イチに動く理由になる）。以前は予報だけを見ていたので、新雪30cmでも出なかった
+  const todaySnowCm: number | null = (state as any)?.data?.weather?.newSnowCm ?? null;
+  const powder = useMemo<{ cm: number; kind: 'forecast' | 'today' } | null>(() => {
+    const forecast = feed.hourly ? snowUntilTomorrowMorning(feed.hourly, new Date()) : 0;
+    if (forecast >= POWDER_ALERT_CM) return { cm: Math.round(forecast), kind: 'forecast' };
+    if (todaySnowCm !== null && todaySnowCm >= POWDER_ALERT_CM) return { cm: Math.round(todaySnowCm), kind: 'today' };
+    return null;
+  }, [feed.hourly, todaySnowCm]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -186,7 +190,8 @@ export default function HomeScreen() {
           weather={{ ...weather, resortName: weather.resortName ?? resortName ?? '' }}
           columns={columns}
           onPressMore={() => openResortPage('forecast')}
-          powderCm={powderCm}
+          powderCm={powder?.cm ?? null}
+          powderKind={powder?.kind}
           onPowderAction={openEarlyGroup}
         />
       ),

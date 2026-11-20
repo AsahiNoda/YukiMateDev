@@ -11,6 +11,7 @@ import React, { useState } from 'react';
 import { Image } from 'expo-image';
 import {
   Alert,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -374,7 +375,12 @@ export default function PostEventActionScreen() {
             >
               <View style={styles.participantTopRow}>
               {/* 左側: アバター + ユーザー情報 */}
-              <View style={styles.participantInfo}>
+              <Pressable
+                style={styles.participantInfo}
+                onPress={() => router.push(`/user/${participant.user.id}` as any)}
+                accessibilityRole="link"
+                accessibilityLabel={participant.user.profiles?.display_name || 'Unknown'}
+              >
                 <Image
                   source={{
                     uri: participant.user.profiles?.avatar_url || undefined,
@@ -395,7 +401,7 @@ export default function PostEventActionScreen() {
                     )}
                   </View>
                 </View>
-              </View>
+              </Pressable>
 
               {/* 右側: アクションボタン */}
               <View style={styles.actionButtons}>

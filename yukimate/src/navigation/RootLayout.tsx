@@ -12,8 +12,15 @@ import { initAnalytics } from '@lib/analytics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, InteractionManager, Linking, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, InteractionManager, Linking, LogBox, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
+// 開発中だけ：Expo の開発ツール（withDevTools）が画面を点けたままにするために expo-keep-awake を呼ぶが、
+// Android でアプリが前面に無い瞬間（リンクから起動・バックグラウンドから復帰など）は失敗し、
+// その Promise を Expo 側が catch していないため赤いエラーになる。アプリの不具合ではなく、本番ビルドには含まれない。
+if (__DEV__) {
+  LogBox.ignoreLogs(['Unable to activate keep awake']);
+}
 // import * as Sentry from '@sentry/react-native'; // 一時的に無効化
 
 // ErrorUtilsの型定義
@@ -141,6 +148,10 @@ export default function RootLayout() {
           }
           // リスナー登録部分にジャンプ（下の方で実行される）
         } else {
+          // 起動時の確認（リンク・セッション・プロフィール）。途中の return はこの中だけを抜ける。
+          // 以前は initialize 全体から return していたため、リンクの期限切れ・未ログインなどで起動したとき
+          // 下の「ログインしたら画面を進める」リスナーが登録されず、ログインしても先へ進めなかった。
+          await (async () => {
           console.log('🔄 Checking session...');
           globalInitialized = true;
 
@@ -163,12 +174,12 @@ export default function RootLayout() {
 
               if (error) {
                 console.warn('⚠️  Deep link contains error:', error, errorDescription);
-                // エラーがある場合はサインイン画面にリダイレクト
+                // エラーがある場合はサインイン画面へ。期限切れなどの理由を画面に出す（linkError）
                 if (mounted) {
                   setIsReady(true);
-                  router.replace('/(auth)/sign-in');
+                  router.replace({ pathname: '/(auth)/sign-in', params: { linkError: error } } as any);
                 }
-                return; // 早期リターンしてリスナー登録をスキップしない
+                return; // 起動時の確認だけを抜ける（下のリスナーは登録される）
               }
 
               // URLからaccess_tokenとrefresh_tokenを抽出
@@ -411,7 +422,10 @@ export default function RootLayout() {
             // 初期化完了 - ローディング解除
             setIsReady(true);
           }
+          })();
         } // else ブロックを閉じる
+
+        if (!mounted) return;
 
         // 認証状態の変化を監視（セッションチェックをスキップした場合も必ず実行）
         console.log('📡 Registering auth state change listener...');
@@ -557,17 +571,8 @@ export default function RootLayout() {
 
             if (error) {
               console.warn('⚠️  Deep link contains error:', error, errorDescription);
-              // エラーメッセージを表示
-              Alert.alert(
-                'リンクエラー',
-                errorDescription?.replace(/\+/g, ' ') || 'リンクが無効または期限切れです。',
-                [
-                  {
-                    text: 'OK',
-                    onPress: () => router.replace('/(auth)/sign-in'),
-                  },
-                ]
-              );
+              // サインイン画面で理由（期限切れ・無効）と次にすることを出す（アラートはやめた）
+              router.replace({ pathname: '/(auth)/sign-in', params: { linkError: error } } as any);
               return;
             }
 

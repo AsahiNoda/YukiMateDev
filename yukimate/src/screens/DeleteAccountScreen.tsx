@@ -1,3 +1,4 @@
+import { logHandled } from '@/lib/logHandled';
 import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
 import { PillButton } from '@/components/ui/PillButton';
 import { Colors } from '@/constants/theme';
@@ -83,8 +84,11 @@ export default function DeleteAccountScreen() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || t('deleteAccount.deleteFailed'));
+        // 技術的な内容（Database error など）は画面に出さず、ログにだけ残す。
+        // サーバー側は最初に認証ユーザーを消すので、失敗したときは何も消えていない
+        const errorData = await response.json().catch(() => ({}));
+        logHandled('DeleteAccount', { status: response.status, ...errorData });
+        throw new Error(t('deleteAccount.deleteFailed'));
       }
 
       // ログアウト
@@ -95,7 +99,7 @@ export default function DeleteAccountScreen() {
 
       Alert.alert(t('deleteAccount.completed'), t('deleteAccount.accountDeleted'));
     } catch (error) {
-      console.error('Delete account error:', error);
+      logHandled('DeleteAccount', error);
       Alert.alert(t('common.error'), error instanceof Error ? error.message : t('deleteAccount.deleteFailed'));
     } finally {
       setDeleting(false);

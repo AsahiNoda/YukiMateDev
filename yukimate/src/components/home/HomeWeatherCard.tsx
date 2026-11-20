@@ -1,3 +1,4 @@
+import { PillButton } from '@/components/ui/PillButton';
 import { borderRadius, fontSize, fontWeight, spacing } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -36,6 +37,8 @@ interface HomeWeatherCardProps {
   showMountain?: boolean;
   /** 明日の朝までの降雪予報が基準以上のときだけ渡す（パウダーアラート）。今の状態の下に1行で出す */
   powderCm?: number | null;
+  /** forecast：明日の朝までの予報／today：今日の降雪（すでに降った分を含む） */
+  powderKind?: 'forecast' | 'today';
   /** パウダーアラートの「朝イチ組を作る」 */
   onPowderAction?: () => void;
 }
@@ -60,6 +63,7 @@ export function HomeWeatherCard({
   title,
   showMountain = true,
   powderCm = null,
+  powderKind = 'forecast',
   onPowderAction,
 }: HomeWeatherCardProps) {
   const c = useAppColors();
@@ -121,25 +125,24 @@ export function HomeWeatherCard({
             </View>
           </View>
 
-          {/* パウダーアラート：目立たせすぎず、細い線の下に1行 */}
+          {/* パウダーアラート：細い線の下に1行。見出しは赤、右の「＋」で朝イチのイベントを作る */}
           {powderCm !== null ? (
             <View style={[styles.powderRow, { borderTopColor: c.glassDivider }]}>
               <Text style={[styles.powderText, { color: c.text }]} numberOfLines={2}>
-                <Text style={{ color: c.tintText, fontWeight: fontWeight.bold }}>{t('homeFeed.powderAlertTitle')}</Text>
+                <Text style={{ color: c.danger, fontWeight: fontWeight.bold }}>{t('homeFeed.powderAlertTitle')}</Text>
                 {'  '}
-                {t('homeFeed.powderAlertMessage', { cm: powderCm })}
+                {t(powderKind === 'today' ? 'homeFeed.powderAlertToday' : 'homeFeed.powderAlertMessage', { cm: powderCm })}
               </Text>
               {onPowderAction ? (
-                <Pressable
+                // 「＋ 朝イチ組を作る」。文と並ばないときは折り返して右下に回る
+                <PillButton
+                  title={t('homeFeed.makeEarlyGroup')}
+                  icon="add"
+                  size="sm"
                   onPress={onPowderAction}
-                  hitSlop={8}
-                  style={({ pressed }) => [styles.powderAction, pressed && { opacity: 0.7 }]}
-                  accessibilityRole="button"
+                  style={styles.powderAction}
                   testID="home-powder-action"
-                >
-                  <Text style={[styles.powderActionText, { color: c.tintText }]}>{t('homeFeed.makeEarlyGroup')}</Text>
-                  <Ionicons name="chevron-forward" size={14} color={c.tintText} />
-                </Pressable>
+                />
               ) : null}
             </View>
           ) : null}
@@ -154,29 +157,17 @@ export function HomeWeatherCard({
                   return (
                     <View
                       key={col.hour}
-                      style={[
-                        styles.hourCol,
-                        col.highlighted && { backgroundColor: c.hourHighlightBackground },
-                        col.isPast && styles.hourPast,
-                      ]}
+                      style={[styles.hourCol, col.isPast && styles.hourPast]}
                       accessible
                       accessibilityLabel={[
                         t('homeFeed.hourLabel', { hour: col.hour }),
                         col.temperatureC !== null ? `${col.temperatureC}°` : '',
                         t('homeFeed.snowCm', { cm: col.snowfallCm }),
-                        col.highlighted ? t('homeFeed.goodTime') : '',
                       ]
                         .filter(Boolean)
                         .join(', ')}
                     >
-                      <Text
-                        style={[
-                          styles.hourLabel,
-                          col.highlighted
-                            ? { color: c.hourHighlightText, fontWeight: fontWeight.bold }
-                            : { color: c.textMuted },
-                        ]}
-                      >
+                      <Text style={[styles.hourLabel, { color: c.textMuted }]}>
                         {t('homeFeed.hourLabel', { hour: col.hour })}
                       </Text>
                       <Icon width={22} height={22} color={c.text} />
@@ -277,25 +268,24 @@ const styles = StyleSheet.create({
   },
   powderRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: spacing.sm,
+    justifyContent: 'space-between',
+    columnGap: spacing.sm,
+    rowGap: 6,
     marginTop: 12,
     paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   powderText: {
-    flex: 1,
+    // 文の幅は中身に合わせて伸び縮みし、ボタンと並ばなくなったらボタンが次の行へ
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 150,
     fontSize: fontSize.meta,
   },
   powderAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    minHeight: 32,
-  },
-  powderActionText: {
-    fontSize: fontSize.meta,
-    fontWeight: fontWeight.bold,
+    marginLeft: 'auto',
   },
   hourlyTitle: {
     fontSize: fontSize.xs,

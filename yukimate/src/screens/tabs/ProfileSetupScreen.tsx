@@ -1,565 +1,301 @@
-import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
-import {
-  CountryField,
-  CountryPickerModal,
-  FormInput,
-  FormLabel,
-  FormSection,
-  GearFields,
-  LevelSelector,
-  PhotoFields,
-  SocialFields,
-  StyleSelector,
-  type SocialKey,
-} from '@/components/profile/ProfileFormParts';
+import { logHandled } from '@/lib/logHandled';
+import { AuthNotice, AuthScaffold } from '@/components/auth/AuthScaffold';
+import { CountryField, CountryPickerModal, FormLabel, LevelSelector, StyleSelector } from '@/components/profile/ProfileFormParts';
+import { ResortSearch } from '@/components/snowfeed/ResortSearch';
 import { Chip } from '@/components/ui/Chip';
 import { PillButton } from '@/components/ui/PillButton';
-import { COUNTRIES, getFlagSource } from '@/constants/countries';
-import { useAppColors } from '@/hooks/useAppColors';
-import { updateGear } from '@/hooks/useProfile';
-import { Colors } from '@/constants/theme';
+import { TextField } from '@/components/ui/TextField';
+import { LANGUAGE_OPTIONS, type LanguageCode } from '@/constants/languages';
+import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAuth } from '@/contexts/AuthContext';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useResorts } from '@/hooks/useResorts';
+import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/hooks/useTranslation';
 import { pickAndUploadImage } from '@/lib/imageUpload';
 import { supabase } from '@/lib/supabase';
 import type { SkillLevel } from '@/types';
-import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { useState, useEffect } from 'react';
 import { Image } from 'expo-image';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
 type RidingStyle = 'Freeride' | 'Powder' | 'Carving' | 'Park' | 'Backcountry';
+const RIDING_STYLES: RidingStyle[] = ['Freeride', 'Powder', 'Carving', 'Park', 'Backcountry'];
+const NAME_MAX = 50;
 
-const SKILL_LEVELS: SkillLevel[] = ['beginner', 'intermediate', 'advanced'];
-
-const RIDING_STYLES: RidingStyle[] = [
-  'Freeride',
-  'Powder',
-  'Carving',
-  'Park',
-  'Backcountry',
-];
-
-function createStyles(colors: typeof Colors.light) {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    content: {
-      padding: 16,
-    },
-    header: {
-      marginBottom: 24,
-      marginTop: 48,
-    },
-    title: {
-      fontSize: fontSize.xxxl,
-      fontWeight: fontWeight.bold,
-      color: colors.text,
-      marginBottom: 8,
-    },
-    subtitle: {
-      fontSize: fontSize.md,
-      color: colors.textSecondary,
-    },
-    section: {
-      marginBottom: 24,
-    },
-    label: {
-      fontSize: fontSize.md,
-      fontWeight: fontWeight.semibold,
-      color: colors.text,
-      marginBottom: 12,
-    },
-    input: {
-      backgroundColor: colors.backgroundSecondary,
-      color: colors.text,
-      fontSize: fontSize.md,
-      padding: 16,
-      borderRadius: borderRadius.card,
-    },
-    bioInput: {
-      minHeight: 100,
-      paddingTop: 16,
-    },
-    hint: {
-      fontSize: fontSize.xs,
-      color: colors.textSecondary,
-      marginTop: 8,
-    },
-    // ヘッダー画像スタイル
-    headerImageContainer: {
-      width: '100%',
-      height: 180,
-      borderRadius: borderRadius.card,
-      overflow: 'hidden',
-      backgroundColor: colors.backgroundSecondary,
-    },
-    headerImage: {
-      width: '100%',
-      height: '100%',
-      resizeMode: 'cover',
-    },
-    headerImagePlaceholder: {
-      width: '100%',
-      height: '100%',
-      justifyContent: 'center',
-      alignItems: 'center',
-      gap: 8,
-    },
-    placeholderText: {
-      fontSize: fontSize.sm,
-      color: colors.textSecondary,
-      marginTop: 8,
-    },
-    // アバター画像スタイル
-    avatarContainer: {
-      width: 120,
-      height: 120,
-      borderRadius: borderRadius.round,
-      overflow: 'hidden',
-      backgroundColor: colors.backgroundSecondary,
-      alignSelf: 'center',
-    },
-    avatar: {
-      width: '100%',
-      height: '100%',
-      resizeMode: 'cover',
-    },
-    avatarPlaceholder: {
-      width: '100%',
-      height: '100%',
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: colors.backgroundSecondary,
-    },
-    avatarHint: {
-      fontSize: fontSize.xs,
-      color: colors.textSecondary,
-      textAlign: 'center',
-      marginTop: 8,
-    },
-    // 国籍セレクタースタイル
-    countrySelector: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.backgroundSecondary,
-      borderRadius: borderRadius.card,
-      paddingHorizontal: 16,
-      paddingVertical: 16,
-      gap: 12,
-    },
-    selectedFlag: {
-      width: 32,
-      height: 22,
-      resizeMode: 'contain',
-    },
-    selectedCountryText: {
-      flex: 1,
-      fontSize: fontSize.md,
-      color: colors.text,
-    },
-    // ピッカーモーダルスタイル
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
-      justifyContent: 'flex-end',
-    },
-    pickerModal: {
-      backgroundColor: colors.background,
-      borderTopLeftRadius: borderRadius.glass,
-      borderTopRightRadius: borderRadius.glass,
-      height: 500,
-    },
-    pickerHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      padding: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    pickerTitle: {
-      fontSize: fontSize.lg,
-      fontWeight: fontWeight.semibold,
-      color: colors.text,
-    },
-    pickerList: {
-      // maxHeight removed to fill available space
-    },
-    pickerItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: 16,
-      gap: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.borderLight,
-    },
-    pickerItemActive: {
-      backgroundColor: colors.backgroundSecondary,
-    },
-    pickerFlag: {
-      width: 32,
-      height: 22,
-      resizeMode: 'contain',
-    },
-    pickerItemText: {
-      flex: 1,
-      fontSize: fontSize.md,
-      color: colors.textSecondary,
-    },
-    pickerItemTextActive: {
-      color: colors.text,
-      fontWeight: fontWeight.semibold,
-    },
-    buttonGroup: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-    // 言語スタイル
-    languageButton: {
-      flex: 1,
-      paddingVertical: 16,
-      backgroundColor: colors.backgroundSecondary,
-      borderRadius: borderRadius.card,
-      alignItems: 'center',
-    },
-    languageButtonActive: {
-      backgroundColor: colors.tint,
-    },
-    languageText: {
-      fontSize: fontSize.md,
-      color: colors.textSecondary,
-    },
-    languageTextActive: {
-      color: colors.text,
-      fontWeight: fontWeight.bold,
-    },
-    // スキルレベルスタイル
-    skillButton: {
-      flex: 1,
-      paddingVertical: 16,
-      backgroundColor: colors.backgroundSecondary,
-      borderRadius: borderRadius.card,
-      alignItems: 'center',
-    },
-    skillButtonActive: {
-      backgroundColor: colors.tint,
-    },
-    skillText: {
-      fontSize: fontSize.md,
-      color: colors.textSecondary,
-    },
-    skillTextActive: {
-      color: colors.text,
-      fontWeight: fontWeight.bold,
-    },
-    styleGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 12,
-    },
-    styleButton: {
-      paddingHorizontal: 16,
-      paddingVertical: 12,
-      backgroundColor: colors.backgroundSecondary,
-      borderRadius: borderRadius.glass,
-    },
-    styleButtonActive: {
-      backgroundColor: colors.tint,
-    },
-    styleText: {
-      fontSize: fontSize.sm,
-      color: colors.textSecondary,
-    },
-    styleTextActive: {
-      color: colors.text,
-      fontWeight: fontWeight.semibold,
-    },
-    submitButton: {
-      marginTop: 24,
-      paddingVertical: 16,
-      borderRadius: borderRadius.card,
-      backgroundColor: colors.tint,
-      alignItems: 'center',
-    },
-    submitButtonDisabled: {
-      opacity: 0.6,
-    },
-    submitButtonText: {
-      color: colors.text,
-      fontSize: fontSize.lg,
-      fontWeight: fontWeight.semibold,
-    },
-  });
-}
-
+/**
+ * 新規登録の3・4歩目：プロフィール作成。
+ *   3. 自分のこと（写真・名前・レベル・スタイル・国籍・言語）
+ *   4. ホームゲレンデ（あとでも設定できる）
+ * 自己紹介・ヘッダー画像・ギア・SNS は最初は聞かない（プロフィール編集からいつでも足せる）。
+ * HIG：最初に聞くのは使い始めるのに要るものだけ。ホームゲレンデを決めるとホームの天気・投稿がすぐ出る。
+ */
 export default function ProfileSetupScreen() {
-  const { user, refreshProfile } = useAuth();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  const { t, locale } = useTranslation();
-  const insets = useSafeAreaInsets();
   const c = useAppColors();
-  const styles = React.useMemo(() => createStyles(colors), [colors]);
-  const [loading, setLoading] = useState(false);
+  const { t, locale } = useTranslation();
+  const { user, refreshProfile, signOut } = useAuth();
+  const [step, setStep] = useState<1 | 2>(1);
+  const [saving, setSaving] = useState(false);
 
-  // フォーム状態
-  const [displayName, setDisplayName] = useState('');
-  const [countryCode, setCountryCode] = useState('JP');
-  const [language, setLanguage] = useState<'ja' | 'en'>('ja'); // デフォルトは日本語
-  const [skillLevel, setSkillLevel] = useState<SkillLevel>('beginner');
-  const [ridingStyle, setRidingStyle] = useState<RidingStyle[]>([]);
-  const [bio, setBio] = useState('');
-
-  // ギア（名前だけ）・SNS（任意）
-  const [gear, setGear] = useState({ board: '', binding: '', boots: '' });
-  const [socials, setSocials] = useState<Record<SocialKey, string>>({ instagram: '', x: '', youtube: '', tiktok: '' });
-
-  // お気に入りスキー場（複数）
-  const [favoriteResortIds, setFavoriteResortIds] = useState<string[]>([]);
-  const [showResortPicker, setShowResortPicker] = useState(false);
-  const resortsState = useResorts();
-
-  // 画像関連の状態
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [headerUrl, setHeaderUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [headerUrl, setHeaderUrl] = useState<string | null>(null);
   const [uploadingHeader, setUploadingHeader] = useState(false);
+  const [displayName, setDisplayName] = useState('');
+  const [skillLevel, setSkillLevel] = useState<SkillLevel>('beginner');
+  const [ridingStyles, setRidingStyles] = useState<RidingStyle[]>([]);
+  const [countryCode, setCountryCode] = useState(locale === 'en' ? '' : 'JP');
+  // 話せる言語（いくつでも）。先頭はアプリの表示言語にも使われるので、今の表示言語から始める
+  const [languages, setLanguages] = useState<LanguageCode[]>([locale === 'en' ? 'en' : 'ja']);
+  const [homeResort, setHomeResort] = useState<{ id: string; name: string } | null>(null);
 
-  // UI状態
   const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [showResortPicker, setShowResortPicker] = useState(false);
+  const [errors, setErrors] = useState<{ name?: string; country?: string; form?: string }>({});
 
-  const toggleRidingStyle = (style: RidingStyle) => {
-    if (ridingStyle.includes(style)) {
-      setRidingStyle(ridingStyle.filter((s) => s !== style));
-    } else {
-      setRidingStyle([...ridingStyle, style]);
-    }
-  };
-
-  const toggleFavoriteResort = (resortId: string) => {
-    setFavoriteResortIds((prev) =>
-      prev.includes(resortId) ? prev.filter((id) => id !== resortId) : [...prev, resortId]
-    );
-  };
-  // プロフィールが既に存在するか確認
+  // プロフィールがもうある人はホームへ
   useEffect(() => {
-    const checkProfile = async () => {
-      if (!user?.id) return;
-
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('user_id')
-          .eq('user_id', user.id)
-          .single();
-
-        if (data) {
-          console.log('✅ Profile already exists, redirecting to home...');
-          router.replace('/(tabs)/home');
-        }
-      } catch (error) {
-        console.error('Error checking profile:', error);
-      }
-    };
-
-    checkProfile();
-  }, [user]);
-
-
-
-  // アバター画像をアップロード
-  const handleAvatarUpload = async () => {
     if (!user?.id) return;
+    supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) router.replace('/(tabs)/home');
+      });
+  }, [user?.id]);
 
+  const handleAvatar = async () => {
+    if (!user?.id) return;
     setUploadingAvatar(true);
     const url = await pickAndUploadImage(user.id, 'avatar');
-    if (url) {
-      setAvatarUrl(url);
-    }
+    if (url) setAvatarUrl(url);
     setUploadingAvatar(false);
   };
 
-  // ヘッダー画像をアップロード
-  const handleHeaderUpload = async () => {
+  const handleHeader = async () => {
     if (!user?.id) return;
-
     setUploadingHeader(true);
     const url = await pickAndUploadImage(user.id, 'header');
-    if (url) {
-      setHeaderUrl(url);
-    }
+    if (url) setHeaderUrl(url);
     setUploadingHeader(false);
   };
 
-  const handleSubmit = async () => {
-    // バリデーション
+  // 最低1つは残す（全部外すと、アプリの表示言語を決められなくなる）
+  const toggleLanguage = (code: LanguageCode) =>
+    setLanguages((prev) =>
+      prev.includes(code) ? (prev.length > 1 ? prev.filter((x) => x !== code) : prev) : [...prev, code]
+    );
+
+  const toggleStyle = (s: RidingStyle) =>
+    setRidingStyles((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+
+  const goNext = () => {
+    const nameError = displayName.trim() ? undefined : t('onboarding.nameRequired');
+    const countryError = countryCode ? undefined : t('onboarding.countryRequired');
+    setErrors({ name: nameError, country: countryError });
+    if (nameError || countryError) return;
+    setStep(2);
+  };
+
+  const finish = async (resortId: string | null) => {
     if (!user?.id) {
-      Alert.alert(t('common.error'), t('profileSetup.errorUserNotFound'));
+      setErrors({ form: t('onboarding.genericError') });
       return;
     }
-
-    if (!displayName.trim()) {
-      Alert.alert(t('common.error'), t('profileSetup.errorDisplayNameRequired'));
-      return;
-    }
-
-    if (!countryCode) {
-      Alert.alert(t('common.error'), t('profileSetup.errorNationalityRequired'));
-      return;
-    }
-
-    // 言語は必須でデフォルト値があるため、バリデーション不要
-
+    setSaving(true);
+    setErrors({});
     try {
-      setLoading(true);
-
       const { error } = await supabase.from('profiles').insert({
         user_id: user.id,
         display_name: displayName.trim(),
         avatar_url: avatarUrl,
         header_url: headerUrl,
         country_code: countryCode,
-        languages: [language], // 単一言語を配列として保存
+        languages,
         level: skillLevel,
-        styles: ridingStyle,
-        bio: bio.trim() || null,
-        home_resort_id: null,
-        social_links: (() => {
-          const clean = (v: string) => v.trim().replace(/^@/, '').replace(/\/+$/, '');
-          const links: Record<string, string> = {};
-          if (clean(socials.instagram)) links.instagram = clean(socials.instagram);
-          if (clean(socials.x)) links.x = clean(socials.x);
-          if (socials.youtube.trim()) links.youtube = socials.youtube.trim();
-          if (clean(socials.tiktok)) links.tiktok = clean(socials.tiktok);
-          return links;
-        })(),
+        styles: ridingStyles,
+        bio: null,
+        home_resort_id: resortId,
+        social_links: {},
       });
-
-      if (error) {
-        if (error.code === '23505') {
-          Alert.alert(t('common.error'), t('profileSetup.errorProfileExists'));
-        } else {
-          throw error;
-        }
-        return;
-      }
-
-      // プロフィール作成成功
-      console.log('✅ Profile created successfully');
-
-      // ギア（入力があれば。失敗してもプロフィール作成は続ける）
-      if (gear.board.trim() || gear.binding.trim() || gear.boots.trim()) {
-        const gearResult = await updateGear({
-          board: gear.board.trim(),
-          binding: gear.binding.trim(),
-          boots: gear.boots.trim(),
-        });
-        if (!gearResult.success) console.warn('Gear save failed:', gearResult.error);
-      }
-
-      // AuthContextを更新してプロフィール情報を取得
-      console.log('🔄 Refreshing profile...');
+      // 23505 = もう作られている（二重送信など）→ そのままホームへ
+      if (error && error.code !== '23505') throw error;
       await refreshProfile();
-      console.log('✅ Profile refreshed');
-
-      // プロフィール情報が更新されたことを確認してからホーム画面に遷移
-      console.log('➡️  Navigating to home...');
       router.replace('/(tabs)/home');
     } catch (error: any) {
-      console.error('Error creating profile:', error);
-      Alert.alert(t('common.error'), t('profileSetup.errorCreateFailed'));
+      logHandled('ProfileSetup', error);
+      setErrors({ form: t('onboarding.profileSaveFailed') });
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  return (
-    <View style={[styles.container, { backgroundColor: c.background }]}>
-      <ScrollView
-        contentContainerStyle={{ padding: 16, paddingTop: Math.max(insets.top, 16) + 8, paddingBottom: insets.bottom + 40 }}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text style={[styles.title, { color: c.text }]} accessibilityRole="header">
-          {t('profileSetup.title')}
-        </Text>
-        <Text style={[styles.subtitle, { color: c.chipText, marginBottom: 20 }]}>{t('profileSetup.subtitle')}</Text>
+  // ---------- 4歩目：ホームゲレンデ ----------
+  if (step === 2) {
+    return (
+      <>
+        <AuthScaffold
+          title={t('onboarding.homeResortTitle')}
+          subtitle={t('onboarding.homeResortSubtitle')}
+          step={{ current: 4, total: 4 }}
+          onBack={() => setStep(1)}
+          footer={
+            <Pressable
+              onPress={() => finish(null)}
+              disabled={saving}
+              style={styles.textButton}
+              accessibilityRole="button"
+              testID="setup-skip-resort"
+            >
+              <Text style={[styles.textButtonLabel, { color: c.tintText }]}>{t('onboarding.setLater')}</Text>
+            </Pressable>
+          }
+        >
+          {errors.form ? <AuthNotice text={errors.form} /> : null}
+          <Pressable
+            onPress={() => setShowResortPicker(true)}
+            style={({ pressed }) => [
+              styles.resortRow,
+              { backgroundColor: c.backgroundSecondary, borderColor: homeResort ? c.tintText : c.glassCardBorder },
+              pressed && { opacity: 0.8 },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={homeResort ? homeResort.name : t('onboarding.chooseResort')}
+            testID="setup-choose-resort"
+          >
+            <View style={styles.flex}>
+              <Text style={[styles.resortLabel, { color: c.textMuted }]}>{t('onboarding.homeResortLabel')}</Text>
+              <Text style={[styles.resortName, { color: homeResort ? c.text : c.textLabel }]} numberOfLines={1}>
+                {homeResort ? homeResort.name : t('onboarding.chooseResort')}
+              </Text>
+            </View>
+            <Text style={[styles.change, { color: c.tintText }]}>{homeResort ? t('onboarding.change') : t('onboarding.choose')}</Text>
+          </Pressable>
+          {/* まだ選んでいないときは押すと一覧を開く（ボタンを無効にして理由が分からない状態にしない） */}
+          <PillButton
+            title={homeResort ? t('onboarding.startUsing') : t('onboarding.chooseResort')}
+            onPress={() => (homeResort ? finish(homeResort.id) : setShowResortPicker(true))}
+            loading={saving}
+            testID="setup-finish"
+          />
+        </AuthScaffold>
 
-        <PhotoFields
-          headerUrl={headerUrl}
-          avatarUrl={avatarUrl}
-          uploadingHeader={uploadingHeader}
-          uploadingAvatar={uploadingAvatar}
-          onPickHeader={handleHeaderUpload}
-          onPickAvatar={handleAvatarUpload}
+        <Modal
+          visible={showResortPicker}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowResortPicker(false)}
+        >
+          <ResortSearch
+            title={t('onboarding.homeResortLabel')}
+            selectedId={homeResort?.id ?? null}
+            onSelectResort={(id, name) => {
+              setHomeResort({ id, name });
+              setShowResortPicker(false);
+            }}
+            onClose={() => setShowResortPicker(false)}
+          />
+        </Modal>
+      </>
+    );
+  }
+
+  // ---------- 3歩目：自分のこと ----------
+  return (
+    <>
+      <AuthScaffold
+        title={t('onboarding.profileTitle')}
+        subtitle={t('onboarding.profileSubtitle')}
+        step={{ current: 3, total: 4 }}
+        footer={
+          <Pressable
+            onPress={async () => {
+              await signOut().catch(() => {});
+              router.replace('/(auth)/sign-in');
+            }}
+            style={styles.textButton}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.textButtonLabel, { color: c.textMuted }]}>{t('onboarding.signOutInstead')}</Text>
+          </Pressable>
+        }
+      >
+        {/* 写真（任意）：横長のヘッダーと、その左下に重ねた丸いアイコン。どちらも押すと写真を選ぶ */}
+        <View style={styles.photos}>
+          <Pressable
+            onPress={handleHeader}
+            disabled={uploadingHeader}
+            style={[styles.header, { backgroundColor: c.backgroundSecondary, borderColor: c.glassCardBorder }]}
+            accessibilityRole="button"
+            accessibilityLabel={headerUrl ? t('onboarding.changeHeader') : t('onboarding.addHeader')}
+            testID="setup-header"
+          >
+            {uploadingHeader ? (
+              <ActivityIndicator color={c.tintText} />
+            ) : headerUrl ? (
+              <Image source={{ uri: headerUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            ) : (
+              <PlusBadge size={32} />
+            )}
+          </Pressable>
+          <Pressable
+            onPress={handleAvatar}
+            disabled={uploadingAvatar}
+            style={[styles.avatar, { backgroundColor: c.softTintChipBackground, borderColor: c.background }]}
+            accessibilityRole="button"
+            accessibilityLabel={avatarUrl ? t('onboarding.changePhoto') : t('onboarding.addPhoto')}
+            testID="setup-avatar"
+          >
+            {uploadingAvatar ? (
+              <ActivityIndicator color={c.tintText} />
+            ) : avatarUrl ? (
+              <Image source={{ uri: avatarUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            ) : (
+              <PlusBadge size={28} />
+            )}
+          </Pressable>
+        </View>
+
+        <TextField
+          label={t('onboarding.nameLabel')}
+          value={displayName}
+          onChangeText={setDisplayName}
+          error={errors.name}
+          maxLength={NAME_MAX}
+          autoComplete="nickname"
+          textContentType="nickname"
+          returnKeyType="done"
+          testID="setup-name"
         />
 
-        <FormSection title={t('profileForm.basic')}>
-          <FormInput
-            label={t('profileSetup.displayName')}
-            required
-            value={displayName}
-            onChangeText={setDisplayName}
-            placeholder={t('profileSetup.displayNamePlaceholder')}
-            maxLength={50}
-          />
-          <CountryField code={countryCode} onPress={() => setShowCountryPicker(true)} label={t('profileSetup.nationality')} />
-          <View style={{ gap: 6 }}>
-            <FormLabel label={t('profileSetup.language')} required />
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Chip label={t('profileSetup.japanese')} selected={language === 'ja'} onPress={() => setLanguage('ja')} />
-              <Chip label={t('profileSetup.english')} selected={language === 'en'} onPress={() => setLanguage('en')} />
-            </View>
+        <LevelSelector value={skillLevel} onChange={setSkillLevel} label={t('onboarding.levelLabel')} />
+        <StyleSelector options={RIDING_STYLES} values={ridingStyles} onToggle={toggleStyle} label={t('onboarding.stylesLabel')} />
+
+        <View style={styles.field}>
+          <CountryField code={countryCode} onPress={() => setShowCountryPicker(true)} label={t('onboarding.countryLabel')} />
+          {errors.country ? <Text style={[styles.inlineError, { color: c.danger }]}>{errors.country}</Text> : null}
+        </View>
+
+        <View style={styles.field}>
+          <FormLabel label={t('onboarding.languageLabel')} />
+          <View style={styles.chips}>
+            {LANGUAGE_OPTIONS.map((option) => (
+              <Chip
+                key={option.code}
+                label={option.label}
+                selected={languages.includes(option.code)}
+                onPress={() => toggleLanguage(option.code)}
+                testID={`setup-language-${option.code}`}
+              />
+            ))}
           </View>
-          <FormInput
-            label={t('profileSetup.bio')}
-            value={bio}
-            onChangeText={setBio}
-            placeholder={t('profileSetup.bioPlaceholder')}
-            multiline
-            maxLength={500}
-            showCounter
-          />
-        </FormSection>
+        </View>
 
-        <FormSection title={t('profileForm.riding')}>
-          <LevelSelector value={skillLevel} onChange={setSkillLevel} label={t('profileSetup.skillLevel')} />
-          <StyleSelector options={RIDING_STYLES} values={ridingStyle} onToggle={toggleRidingStyle} label={t('profileSetup.ridingStyle')} />
-        </FormSection>
-
-        {/* ギアは名前だけ（任意） */}
-        <FormSection title={t('profileForm.gear')}>
-          <GearFields
-            board={gear.board}
-            binding={gear.binding}
-            boots={gear.boots}
-            onChange={(key, value) => setGear((g) => ({ ...g, [key]: value }))}
-          />
-        </FormSection>
-
-        <FormSection title={t('profileForm.social')}>
-          <SocialFields values={socials} onChange={(key, value) => setSocials((v) => ({ ...v, [key]: value }))} />
-        </FormSection>
-
-        <PillButton title={t('profileSetup.createProfile')} onPress={handleSubmit} loading={loading} fill />
-      </ScrollView>
+        <Text style={[styles.later, { color: c.textLabel }]}>{t('onboarding.moreLater')}</Text>
+        <PillButton title={t('onboarding.next')} onPress={goNext} testID="setup-next" />
+      </AuthScaffold>
 
       <CountryPickerModal
         visible={showCountryPicker}
@@ -570,6 +306,90 @@ export default function ProfileSetupScreen() {
         }}
         onClose={() => setShowCountryPicker(false)}
       />
+    </>
+  );
+}
+
+/** 写真を足す場所の「＋」（丸に＋） */
+function PlusBadge({ size }: { size: number }) {
+  const c = useAppColors();
+  return (
+    <View style={[styles.plus, { width: size, height: size, backgroundColor: c.primaryButton }]}>
+      <Ionicons name="add" size={Math.round(size * 0.7)} color={c.primaryButtonText} />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  field: { gap: 6 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  photos: {
+    // アイコンがヘッダーの下に半分はみ出すので、その分の高さを取る
+    paddingBottom: 40,
+  },
+  header: {
+    height: 112,
+    borderRadius: borderRadius.card,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatar: {
+    position: 'absolute',
+    left: spacing.md,
+    bottom: 0,
+    width: 80,
+    height: 80,
+    borderRadius: borderRadius.round,
+    borderWidth: 3,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  plus: {
+    borderRadius: borderRadius.round,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  later: {
+    fontSize: fontSize.xs,
+    lineHeight: 17,
+  },
+  textButton: {
+    minHeight: touchTarget.min,
+    justifyContent: 'center',
+    alignSelf: 'center',
+  },
+  textButtonLabel: {
+    fontSize: fontSize.sm,
+    fontWeight: fontWeight.bold,
+  },
+  inlineError: {
+    fontSize: fontSize.xs,
+  },
+  resortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: touchTarget.min + 16,
+    borderRadius: borderRadius.card,
+    borderWidth: 1.5,
+    paddingHorizontal: spacing.md - 2,
+    paddingVertical: 10,
+  },
+  resortLabel: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+  },
+  resortName: {
+    fontSize: fontSize.md,
+    fontWeight: fontWeight.semibold,
+    marginTop: 2,
+  },
+  change: {
+    fontSize: fontSize.meta,
+    fontWeight: fontWeight.bold,
+  },
+});

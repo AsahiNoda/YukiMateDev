@@ -743,16 +743,23 @@ export default function EventChatScreen() {
         ]}
       >
         {!isOwnMessage && (
-          <Image
-            source={{ uri: item.sender?.profiles?.avatar_url || undefined }}
-            style={styles.avatar}
-          />
+          <Pressable
+            onPress={() => router.push(`/user/${item.sender_user_id}` as any)}
+            accessibilityRole="link"
+            accessibilityLabel={item.sender?.profiles?.display_name || t('common.unknown')}
+          >
+            <Image source={{ uri: item.sender?.profiles?.avatar_url || undefined }} style={styles.avatar} />
+          </Pressable>
         )}
 
         <View style={styles.messageContent}>
           {!isOwnMessage && (
             <View style={styles.senderNameContainer}>
-              <Text style={[styles.senderName, { color: colors.text }]}>
+              <Text
+                style={[styles.senderName, { color: colors.text }]}
+                onPress={() => router.push(`/user/${item.sender_user_id}` as any)}
+                accessibilityRole="link"
+              >
                 {item.sender?.profiles?.display_name || t('common.unknown')}
               </Text>
               {/* ホストは名前の横にチップ（開発者バッジと同じ緑はやめた） */}
@@ -835,14 +842,15 @@ export default function EventChatScreen() {
           >
             <Ionicons name="chevron-back" size={24} color={colors.text} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.headerTitleArea} onPress={openDetails} accessibilityRole="button">
-            <Text style={[styles.compactTitle, { color: colors.text }]} numberOfLines={1}>
+          {/* タイトルと日時は表示だけ（押せるのは右上の ⓘ。押せる場所を見た目どおりにする） */}
+          <View style={styles.headerTitleArea}>
+            <Text style={[styles.compactTitle, { color: colors.text }]} numberOfLines={1} accessibilityRole="header">
               {event.title}
             </Text>
             <Text style={[styles.compactMeta, { color: colors.textLabel }]} numberOfLines={1}>
               {meta}
             </Text>
-          </TouchableOpacity>
+          </View>
           <TouchableOpacity
             style={styles.headerIconButton}
             onPress={openDetails}

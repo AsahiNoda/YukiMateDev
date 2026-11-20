@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { RoleBasedAvatar } from '@/components/RoleBasedAvatar';
 import { Chip } from '@/components/ui/Chip';
 import { IconSymbol } from '@/components/ui/icon-symbol';
@@ -140,20 +141,27 @@ export function EventListCard({ event, onPress }: EventListCardProps) {
           <View style={styles.chips}>
             {isSoloFriendly(event) ? <Chip label={t('chips.soloOk')} tone="tint" /> : null}
             {spots ? <Chip label={spots.label} tone={spots.tone} /> : null}
-            {hasStarredParticipant ? <Chip label={t('chips.starredJoining')} tone="neutral" /> : null}
+            {hasStarredParticipant ? <Chip label={t('chips.starredJoining')} tone="starred" /> : null}
           </View>
         ) : null}
 
         <View style={styles.footer}>
-          <View style={styles.hostRow}>
+          {/* ホストを押すとプロフィールへ（カード全体はイベント詳細へ） */}
+          <Pressable
+            onPress={() => router.push(`/user/${event.hostUserId}` as any)}
+            style={styles.hostRow}
+            hitSlop={6}
+            accessibilityRole="link"
+            accessibilityLabel={event.hostName}
+          >
             <RoleBasedAvatar avatarUrl={event.hostAvatar} role={event.hostRole} size={26} showBadge={false} />
-            <Text style={[styles.hostName, { color: c.chipText }]} numberOfLines={1}>
+            <Text style={[styles.hostName, { color: c.tintText }]} numberOfLines={1}>
               {event.hostName}
             </Text>
             {event.isHostStarred ? (
               <Ionicons name="star" size={12} color={c.gold} accessibilityLabel={t('settings.starredUsers')} />
             ) : null}
-          </View>
+          </Pressable>
           <Text style={[styles.price, { color: c.gold }]}>
             {priceLabel(event.pricePerPersonJpy, t)}
             <Text style={[styles.perPerson, { color: c.chipText }]}>{t('chips.perPerson')}</Text>

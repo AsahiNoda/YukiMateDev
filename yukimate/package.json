@@ -1,7 +1,7 @@
 {
   "name": "slope-link",
   "main": "expo-router/entry",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "react-native": {
     "ws": "./shims/ws/index.js"
   },

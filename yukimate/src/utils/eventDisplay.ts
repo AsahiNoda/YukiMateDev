@@ -35,7 +35,8 @@ export function spotsLeftChip(
   if (!capacityTotal) return null;
   const left = capacityTotal - spotsTaken;
   if (left <= 0) return { label: t('chips.full'), tone: 'neutral' };
-  return { label: t('chips.spotsLeft', { count: left }), tone: left <= 1 ? 'warning' : 'success' };
+  // 「参加者／定員」で見せる（あと1人のときは注意の色）
+  return { label: t('chips.spotsCount', { taken: spotsTaken, total: capacityTotal }), tone: left <= 1 ? 'warning' : 'success' };
 }
 
 /** 価格の表示。null と 0 は「無料」 */

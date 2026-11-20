@@ -12,8 +12,9 @@ import { Pressable, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-n
  * warning: 注意系（「残り1人」「混雑」）— 色だけに頼らず、文言でも状態を伝えること
  * outline: 枠線のみ（プロフィールのレベル・スタイル）
  * overlay: 写真の上に置く（日付・レベル・参加人数）
+ * starred: ★登録ユーザーが参加（金色の地。参加を決める大事な手がかりなので目立たせる。写真の上でも読める）
  */
-export type ChipTone = 'neutral' | 'tint' | 'success' | 'warning' | 'outline' | 'overlay';
+export type ChipTone = 'neutral' | 'tint' | 'success' | 'warning' | 'outline' | 'overlay' | 'starred';
 
 interface ChipProps {
   /** 翻訳済みの文言（t() を通したもの） */
@@ -43,6 +44,9 @@ function toneColors(c: ThemeColors, tone: ChipTone) {
       return { bg: 'transparent', fg: c.chipText, border: c.secondaryButtonBorder };
     case 'overlay':
       return { bg: c.photoOverlayBackground, fg: c.photoOverlayText, border: 'transparent' };
+    case 'starred':
+      // 金色の地に、主要ボタンと同じ文字色（ライト：白／ダーク：紺）
+      return { bg: c.gold, fg: c.primaryButtonText, border: 'transparent' };
     case 'neutral':
     default:
       return { bg: c.chipBackground, fg: c.chipText, border: 'transparent' };

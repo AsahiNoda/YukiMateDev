@@ -130,7 +130,12 @@ export default function StarredUsersScreen() {
 
     return (
       <View style={[styles.userItem, { borderBottomColor: colors.border }]}>
-        <View style={styles.userInfo}>
+        <TouchableOpacity
+          style={styles.userInfo}
+          onPress={() => router.push(`/user/${item.target_user_id}` as any)}
+          accessibilityRole="link"
+          accessibilityLabel={profile?.display_name || t('common.unknown')}
+        >
           {profile?.avatar_url ? (
             <Image
               source={{ uri: profile.avatar_url }}
@@ -144,7 +149,7 @@ export default function StarredUsersScreen() {
           <Text style={[styles.userName, { color: colors.text }]}>
             {profile?.display_name || t('common.unknown')}
           </Text>
-        </View>
+        </TouchableOpacity>
 
         <PillButton
           title={t('starredUsers.unstarButton')}

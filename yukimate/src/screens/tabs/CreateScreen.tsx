@@ -1,3 +1,4 @@
+import { TagInput } from '@/components/TagInput';
 import { RemovablePhoto } from '@/components/ui/RemovablePhoto';
 import { borderRadius, fontSize, fontWeight } from '@/constants/spacing';
 import { PillButton } from '@/components/ui/PillButton';
@@ -137,7 +138,6 @@ export default function CreateEventScreen() {
     }, [params.eventId])
   );
   const [meetingPlace, setMeetingPlace] = useState('');
-  const [tagInput, setTagInput] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [selectedImages, setSelectedImages] = useState<string[]>([]);
 
@@ -268,14 +268,19 @@ export default function CreateEventScreen() {
       return;
     }
 
+    // 一度に複数選べる（残りの枚数まで）
+    const remaining = 3 - selectedImages.length;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: false, // Cropを無効化 - アスペクト比を保持
+      allowsMultipleSelection: remaining > 1,
+      selectionLimit: remaining,
+      orderedSelection: true,
       quality: 0.8,
     });
 
-    if (!result.canceled && result.assets[0]) {
-      setSelectedImages([...selectedImages, result.assets[0].uri]);
+    if (!result.canceled && result.assets.length > 0) {
+      setSelectedImages((prev) => [...prev, ...result.assets.map((a) => a.uri)].slice(0, 3));
     }
   };
 
@@ -283,27 +288,6 @@ export default function CreateEventScreen() {
     setSelectedImages(selectedImages.filter((_, i) => i !== index));
   };
 
-  const addTag = () => {
-    const trimmed = tagInput.trim();
-    if (!trimmed) return;
-
-    if (tags.length >= 10) {
-      Alert.alert(t('create.limitLabel'), t('create.maxTagsLimit'));
-      return;
-    }
-
-    if (tags.includes(trimmed)) {
-      Alert.alert(t('common.error'), t('create.tagAlreadyAdded'));
-      return;
-    }
-
-    setTags([...tags, trimmed]);
-    setTagInput('');
-  };
-
-  const removeTag = (index: number) => {
-    setTags(tags.filter((_, i) => i !== index));
-  };
 
   const resetForm = () => {
     setTitle('');
@@ -319,7 +303,6 @@ export default function CreateEventScreen() {
     setSoloOk(false);
     setActivities([]);
     setMeetingPlace('');
-    setTagInput('');
     setTags([]);
     setSelectedImages([]);
   };
@@ -1009,38 +992,15 @@ export default function CreateEventScreen() {
           />
         </View>
 
-        {/* Tags */}
+        {/* Tags：Enter・読点で追加、よく使うタグは押すだけ */}
         <View style={styles.section}>
-          <Text style={styles.label}>{t('create.tagsLabel')}</Text>
-          <View style={styles.tagInputRow}>
-            <TextInput
-              style={[styles.input, styles.tagInput]}
-              placeholder={t('create.tagsPlaceholder')}
-              placeholderTextColor={colors.textSecondary}
-              value={tagInput}
-              onChangeText={setTagInput}
-              onSubmitEditing={addTag}
-            />
-            <PillButton title={t('create.addTagButton')} size="sm" variant="secondary" onPress={addTag} />
-          </View>
-          {tags.length > 0 && (
-            <View style={styles.tagsList}>
-              {tags.map((tag, index) => (
-                <View key={index} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                  <TouchableOpacity
-                    onPress={() => removeTag(index)}
-                    style={styles.tagRemoveButton}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  >
-                    <View style={styles.tagRemoveIcon}>
-                      <IconSymbol name="xmark" size={14} color={colors.text} />
-                    </View>
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          )}
+          <TagInput
+            tags={tags}
+            onChange={setTags}
+            max={10}
+            label={t('create.tagsLabel')}
+            placeholder={t('create.tagsPlaceholder')}
+          />
         </View>
 
         {/* Images */}
@@ -1271,44 +1231,6 @@ function createStyles(colors: typeof Colors.light) {
     resortItemTextActive: {
       color: colors.text,
       fontWeight: fontWeight.semibold,
-    },
-    tagInputRow: {
-      flexDirection: 'row',
-      gap: 8,
-    },
-    tagInput: {
-      flex: 1,
-      marginBottom: 0,
-    },
-    tagsList: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-      marginTop: 12,
-    },
-    tag: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      backgroundColor: colors.tint,
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-      borderRadius: borderRadius.xl,
-    },
-    tagText: {
-      color: colors.text,
-      fontSize: fontSize.sm,
-    },
-    tagRemoveButton: {
-      marginLeft: 4,
-    },
-    tagRemoveIcon: {
-      width: 20,
-      height: 20,
-      borderRadius: borderRadius.round,
-      backgroundColor: colors.error,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     imagesContainer: {
       flexDirection: 'row',

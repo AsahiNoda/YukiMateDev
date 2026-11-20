@@ -2,7 +2,6 @@ import { PillButton } from '@/components/ui/PillButton';
 import { borderRadius, fontSize, fontWeight, spacing, touchTarget } from '@/constants/spacing';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/hooks/useTranslation';
-import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -17,17 +16,12 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import HomeBgMountain from '../../assets/images/home-bg-mountain.svg';
 
 /** 内容を大きく変えたら版を上げる（もう一度全員に見せる） */
 const STORAGE_KEY = 'tutorial.v1.done';
 
-const SLIDES: { key: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'home', icon: 'partly-sunny-outline' },
-  { key: 'search', icon: 'albums-outline' },
-  { key: 'create', icon: 'add-circle-outline' },
-  { key: 'chat', icon: 'chatbubbles-outline' },
-  { key: 'safety', icon: 'shield-checkmark-outline' },
-];
+const SLIDES: { key: string }[] = [{ key: 'home' }, { key: 'search' }, { key: 'create' }, { key: 'chat' }, { key: 'safety' }];
 
 // 設定の「使い方をもう一度見る」から開き直すための仕組み
 const listeners = new Set<() => void>();
@@ -88,6 +82,10 @@ export function AppTutorial() {
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={finish} statusBarTranslucent>
       <View style={[styles.container, { backgroundColor: c.background, paddingTop: insets.top, paddingBottom: insets.bottom + spacing.md }]}>
+        {/* ログイン画面・ホームと同じ山の背景 */}
+        <View style={styles.mountain} pointerEvents="none" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <HomeBgMountain width={width * 1.4} height={360} preserveAspectRatio="xMidYMid meet" style={{ opacity: 0.45 }} />
+        </View>
         <View style={styles.topRow}>
           {!isLast ? (
             <Pressable onPress={finish} style={styles.skip} accessibilityRole="button" testID="tutorial-skip">
@@ -106,11 +104,12 @@ export function AppTutorial() {
         >
           {SLIDES.map((s) => (
             <View key={s.key} style={[styles.slide, { width }]} accessible accessibilityLabel={`${t(`tutorial.${s.key}.title`)}。${t(`tutorial.${s.key}.body`)}`}>
-              <View style={[styles.iconCircle, { backgroundColor: c.softTintChipBackground }]}>
-                <Ionicons name={s.icon} size={56} color={c.tintText} />
-              </View>
+              {/* アイコンの丸はやめ、何枚目かを小さく出して文字を主役にする */}
+              <Text style={[styles.kicker, { color: c.tintText }]}>
+                {t('tutorial.progress', { current: SLIDES.findIndex((x) => x.key === s.key) + 1, total: SLIDES.length })}
+              </Text>
               <Text style={[styles.title, { color: c.text }]}>{t(`tutorial.${s.key}.title`)}</Text>
-              <Text style={[styles.body, { color: c.chipText }]}>{t(`tutorial.${s.key}.body`)}</Text>
+              <Text style={[styles.body, { color: c.textMuted }]}>{t(`tutorial.${s.key}.body`)}</Text>
             </View>
           ))}
         </ScrollView>
@@ -140,10 +139,11 @@ const styles = StyleSheet.create({
   topRow: { height: touchTarget.min, alignItems: 'flex-end', paddingHorizontal: spacing.sm },
   skip: { minWidth: touchTarget.min, height: touchTarget.min, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.sm },
   skipText: { fontSize: fontSize.body, fontWeight: fontWeight.semibold },
-  slide: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.xl, gap: spacing.md },
-  iconCircle: { width: 120, height: 120, borderRadius: borderRadius.round, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.sm },
-  title: { fontSize: fontSize.xxl, fontWeight: fontWeight.bold, textAlign: 'center' },
-  body: { fontSize: fontSize.body, lineHeight: 23, textAlign: 'center' },
+  mountain: { position: 'absolute', top: 60, left: 0, right: 0, alignItems: 'center' },
+  slide: { flex: 1, justifyContent: 'flex-end', paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, gap: spacing.sm },
+  kicker: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
+  title: { fontSize: fontSize.title, fontWeight: fontWeight.bold, lineHeight: 36 },
+  body: { fontSize: fontSize.md, lineHeight: 25 },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginBottom: spacing.lg },
   dot: { height: 8, borderRadius: borderRadius.sm },
   footer: { paddingHorizontal: spacing.lg },

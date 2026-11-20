@@ -57,3 +57,6 @@ app-example
 /android
 
 .env.local
+
+# Google Play の提出用キー（秘密情報。コミットしない）
+play-store-service-account.json

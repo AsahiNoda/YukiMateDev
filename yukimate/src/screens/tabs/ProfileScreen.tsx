@@ -1,3 +1,4 @@
+import { languageDisplayName } from '@/constants/languages';
 import { OfficialBadge } from '@/components/OfficialBadge';
 import { getFlagSource } from '@/constants/countries';
 import { Chip } from '@/components/ui/Chip';
@@ -334,12 +335,7 @@ function ProfileScreen({ userId }: { userId?: string }) {
   const isSelf = currentUser?.id === profile.userId;
   const isOwnProfile = isSelf;
   const homeResortName = profile.homeResort ? getResortName(profile.homeResort, locale) : null;
-  const languageLabel = (lang: string) =>
-    lang === 'ja' || lang === 'Japanese' || lang === '日本語'
-      ? t('profileSetup.japanese')
-      : lang === 'en' || lang === 'English'
-        ? t('profileSetup.english')
-        : lang;
+  const languageLabel = languageDisplayName;
   const styleLabel = (style: string) => {
     const label = t(`ridingStyles.${style}`);
     return label === `ridingStyles.${style}` ? style : label;

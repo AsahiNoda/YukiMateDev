@@ -5,7 +5,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'Slope Link',
   slug: 'slopelink',
-  version: '1.2.0',
+  version: '1.2.1',
   orientation: 'portrait',
   icon: './assets/images/app_icon.png',
   scheme: 'slopelink',
@@ -22,7 +22,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     },
   },
   android: {
-    versionCode: 21, // Play Console用の内部バージョン番号（整数、毎回インクリメント。1.1.0 のビルドは 20）
+    versionCode: 22, // Play Console用の内部バージョン番号（整数、毎回インクリメント。1.2.0 は 21）
     adaptiveIcon: {
       backgroundColor: '#E6F4FE',
       foregroundImage: './assets/images/app_icon.png',
@@ -46,7 +46,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
   },
   web: {
-    output: 'static',
+    // 開発用：EXPO_WEB_SPA=1 のときはサーバー側で描画しない（AsyncStorage が window を使うため、画面の確認用）
+    output: process.env.EXPO_WEB_SPA === '1' ? 'single' : 'static',
     favicon: './assets/images/app_icon.png',
   },
   plugins: [

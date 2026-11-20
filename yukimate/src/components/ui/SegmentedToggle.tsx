@@ -8,20 +8,22 @@ interface SegmentedToggleProps<T extends string> {
   value: T;
   onChange: (value: T) => void;
   accessibilityLabel?: string;
+  /** 横幅いっぱいに広げ、選択肢を等分する（ログイン／新規登録など） */
+  fill?: boolean;
 }
 
 /**
  * 2〜3択の切り替え（「リスト／スワイプ」など）。
  * 見た目の仕様：docs/ui-redesign/mockups/New-Explore.html のヘッダー右。
  */
-export function SegmentedToggle<T extends string>({ options, value, onChange, accessibilityLabel }: SegmentedToggleProps<T>) {
+export function SegmentedToggle<T extends string>({ options, value, onChange, accessibilityLabel, fill }: SegmentedToggleProps<T>) {
   const c = useAppColors();
   // 見た目の高さは約34。上下に hitSlop を足してタップ領域を44にする
   const slop = (touchTarget.min - SEGMENT_HEIGHT - PADDING * 2) / 2 + PADDING;
 
   return (
     <View
-      style={[styles.container, { backgroundColor: c.chipBackground }]}
+      style={[styles.container, { backgroundColor: c.chipBackground }, fill && styles.fill]}
       accessibilityRole="tablist"
       accessibilityLabel={accessibilityLabel}
     >
@@ -35,7 +37,7 @@ export function SegmentedToggle<T extends string>({ options, value, onChange, ac
             accessibilityRole="tab"
             accessibilityState={{ selected }}
             accessibilityLabel={option.label}
-            style={[styles.segment, selected && { backgroundColor: c.background }]}
+            style={[styles.segment, fill && styles.segmentFill, selected && { backgroundColor: c.background }]}
           >
             <Text
               style={[
@@ -70,6 +72,12 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: fontSize.meta,
+  },
+  fill: {
+    alignSelf: 'stretch',
+  },
+  segmentFill: {
+    flex: 1,
   },
 });
 

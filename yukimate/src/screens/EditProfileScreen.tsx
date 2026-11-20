@@ -237,7 +237,7 @@ export default function EditProfileScreen() {
           bio: bio.trim() || undefined,
           level: level || undefined,
           countryCode,
-          languages: [],
+          // languages はこの画面では編集しないので送らない（以前は [] で上書きして消えていた）
           styles: ridingStyle,
           avatarUrl: cleanAvatarUrl,
           headerUrl: cleanHeaderUrl,

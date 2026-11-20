@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext';
+import { useAppColors } from '@/hooks/useAppColors';
 import { Redirect } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 
@@ -9,12 +10,13 @@ import { ActivityIndicator, View } from 'react-native';
  */
 export default function Index() {
     const { session, loading } = useAuth();
+    const c = useAppColors();
 
     // 認証状態を確認中はローディング表示
     if (loading) {
         return (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A202C' }}>
-                <ActivityIndicator size="large" color="#5A7D9A" />
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: c.background }}>
+                <ActivityIndicator size="large" color={c.tintText} />
             </View>
         );
     }
